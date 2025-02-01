@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "YouTube Subtitle Translator",
+    "version": "1.0",
+    "description": "Translates YouTube subtitles in real-time",
+    "permissions": [
+        "storage",
+        "scripting"
+    ],
+    "host_permissions": [
+        "*://*.youtube.com/*"
+    ],
+    "content_scripts": [{
+        "matches": ["*://*.youtube.com/*"],
+        "css": ["styles.css"],
+        "js": ["contentScript.js"],
+        "run_at": "document_idle"
+    }],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+    }
+}
