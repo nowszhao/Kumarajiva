@@ -5,7 +5,8 @@
     "description": "Translates YouTube subtitles in real-time",
     "permissions": [
         "storage",
-        "scripting"
+        "scripting",
+        "webNavigation"
     ],
     "host_permissions": [
         "*://*.youtube.com/*",
@@ -13,6 +14,7 @@
         "http://47.121.117.100/*",
         "https://47.121.117.100/*"
     ],
+    "options_page": "dist/options.html",
     "content_scripts": [{
         "matches": ["*://*.youtube.com/*"],
         "css": ["styles.css"],

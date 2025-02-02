@@ -1,10 +1,13 @@
 const path = require('path');
 
 module.exports = {
-    entry: './src/contentScript.js',
+    entry: {
+        contentScript: './src/contentScript.js',
+        options: './src/options.js'
+    },
     output: {
-        filename: 'contentScript.js',
-        path: path.resolve(__dirname, 'dist'),
+        filename: '[name].js',
+        path: path.resolve(__dirname, 'dist')
     },
     module: {
         rules: [

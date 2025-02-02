@@ -33,20 +33,31 @@ import config from './config/config';
     // 添加全局开关状态
     let isSubtitleEnabled = false;
 
+    // 在全局变量声明后，添加 throttle 函数的实现
+    function throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        }
+    }
+
     // 修改 URL 变化监听函数
     function setupUrlChangeListener() {
-        // 保存当前 URL
         let lastUrl = location.href;
         let lastVideoId = new URLSearchParams(window.location.search).get('v');
 
-        // 修改检查函数
         const checkForVideoChange = () => {
             const currentUrl = location.href;
             const newVideoId = new URLSearchParams(window.location.search).get('v');
             
             // 只在视频页面进行处理
             if (!currentUrl.includes('youtube.com/watch')) {
-                // 如果离开视频页面，清理当前会话
                 if (lastUrl.includes('youtube.com/watch')) {
                     console.log('Leaving video page, cleaning up');
                     cleanupCurrentSession();
@@ -56,40 +67,39 @@ import config from './config/config';
                 return;
             }
 
-            if (currentUrl !== lastUrl || newVideoId !== lastVideoId) {
-                // 只在视频页面才打印日志
-                if (currentUrl.includes('youtube.com/watch')) {
-                    console.log('Video page URL or ID changed:', currentUrl, newVideoId);
-                }
-                
-                // 更新最后的URL和视频ID
+            // 检查视频ID是否变化
+            if (newVideoId && newVideoId !== lastVideoId) {
+                console.log('Video ID changed from', lastVideoId, 'to', newVideoId);
+                lastVideoId = newVideoId;
                 lastUrl = currentUrl;
                 
-                // 检查是否是有效的视频页面且视频ID确实发生变化
-                if (newVideoId && newVideoId !== lastVideoId) {
-                    console.log('Video ID changed from', lastVideoId, 'to', newVideoId);
-                    lastVideoId = newVideoId;
-                    cleanupCurrentSession();
-                    setTimeout(() => {
-                        initializePlugin();
-                    }, 500);
-                }
+                // 清理当前会话并重新初始化
+                cleanupCurrentSession();
+                setTimeout(() => {
+                    initializePlugin();
+                }, 1000); // 增加延迟以确保页面完全加载
             }
         };
 
-        // 减少检查频率
-        const throttledCheck = throttle(checkForVideoChange, 1000);
+        // 添加消息监听器
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.type === 'VIDEO_CHANGED') {
+                console.log('Received VIDEO_CHANGED message:', message);
+                checkForVideoChange();
+            }
+        });
 
-        // 监听事件
+        // 使用已定义的 throttle 函数
+        const throttledCheck = throttle(checkForVideoChange, 1000);
+        
         window.addEventListener('popstate', throttledCheck);
         window.addEventListener('pushstate', throttledCheck);
         window.addEventListener('replacestate', throttledCheck);
         document.addEventListener('yt-navigate-start', throttledCheck);
         document.addEventListener('yt-navigate-finish', throttledCheck);
 
-        // 修改 MutationObserver
+        // 修改 MutationObserver 配置
         const observer = new MutationObserver((mutations) => {
-            // 只在视频页面才触发检查
             if (location.href.includes('youtube.com/watch')) {
                 const hasRelevantChanges = mutations.some(mutation => {
                     return mutation.target.id === 'content' || 
@@ -103,30 +113,12 @@ import config from './config/config';
             }
         });
 
-        // 添加节流函数
-        function throttle(func, limit) {
-            let inThrottle;
-            return function() {
-                const args = arguments;
-                const context = this;
-                if (!inThrottle) {
-                    func.apply(context, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            }
-        }
-
-        // 观察整个文档的变化
         observer.observe(document.body, {
             childList: true,
             subtree: true,
             attributes: true,
             attributeFilter: ['data-video-id']
         });
-
-        // 移除定期检查，改用事件驱动
-        // setInterval(checkForVideoChange, 1000);
 
         // 初始检查
         checkForVideoChange();
@@ -331,7 +323,45 @@ import config from './config/config';
         dragHandle.innerHTML = '⋮⋮';
         container.appendChild(dragHandle);
         
-        // 添加缩放控制器
+        // 创建控制面板
+        const controlPanel = document.createElement('div');
+        controlPanel.className = 'subtitle-control-panel';
+        
+        // 创建第一组控制按钮（循环和导航）
+        const controlsGroup1 = document.createElement('div');
+        controlsGroup1.className = 'subtitle-controls-group';
+        
+        // 添加循环播放开关
+        const loopSwitchContainer = document.createElement('div');
+        loopSwitchContainer.className = 'loop-switch-container';
+        loopSwitchContainer.innerHTML = `
+            <div class="loop-switch-tooltip">循环播放当前字幕</div>
+            <div class="loop-switch"></div>
+        `;
+        controlsGroup1.appendChild(loopSwitchContainer);
+        
+        // 创建导航按钮组
+        const navGroup = document.createElement('div');
+        navGroup.className = 'subtitle-nav-group';
+        
+        // 添加导航按钮
+        const prevButton = document.createElement('button');
+        prevButton.className = 'nav-button prev-button';
+        prevButton.title = '跳转到上一句';
+        prevButton.textContent = '上一句';
+        navGroup.appendChild(prevButton);
+        
+        const nextButton = document.createElement('button');
+        nextButton.className = 'nav-button next-button';
+        nextButton.title = '跳转到下一句';
+        nextButton.textContent = '下一句';
+        navGroup.appendChild(nextButton);
+        
+        controlsGroup1.appendChild(navGroup);
+        controlPanel.appendChild(controlsGroup1);
+        container.appendChild(controlPanel);
+        
+        // 创建缩放控制器（独立面板）
         const scaleControl = document.createElement('div');
         scaleControl.className = 'subtitle-scale-control';
         scaleControl.innerHTML = `
@@ -352,12 +382,12 @@ import config from './config/config';
             playerContainer.appendChild(container);
             console.log("Subtitle container created and appended to player container");
             
-            // 初始化拖拽功能
+            // 初始化各种功能
             initializeDrag(container, dragHandle);
-            // 初始化缩放功能
             initializeScale(container);
-            // 初始化鼠标悬停控制
             initializeHoverControl(container);
+            initializeNavigation(container);
+            initializeLoopControl(container);
         } else {
             console.error("Player container not found");
         }
@@ -637,7 +667,7 @@ import config from './config/config';
 - 禁止尾随逗号
 - 确保特殊字符被正确转义
 - 换行符替换为空（即移除原文中的换行符）
-- 严格保持字段顺序：startTime > endTime > text > correctedText > translation
+- 严格保持字段顺序：startTime > endTime > correctedText > translation
 3. 输入示例：
 [
     {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
@@ -648,7 +678,6 @@ import config from './config/config';
     {
         "startTime": 120,
         "endTime": 1800,
-        "text": "hey welcome back so this week the world",
         "correctedText": "Hey, welcome back! So this week, the world",
         "translation": "嘿，欢迎回来！本周我们将讨论"
     },
@@ -704,7 +733,20 @@ ${JSON.stringify(batch, null, 2)}
         const relevantSubtitles = currentSubtitles.filter(sub => 
             currentTime >= sub.startTime && currentTime < sub.endTime
         ).slice(-MAX_SUBTITLES);
+        
         updateSubtitleDisplay(relevantSubtitles);
+        
+        // 更新导航按钮状态
+        const container = document.getElementById('yt-subtitle-container');
+        if (container) {
+            const prevButton = container.querySelector('.prev-button');
+            const nextButton = container.querySelector('.next-button');
+            if (prevButton && nextButton) {
+                const currentIndex = getCurrentSubtitleIndex();
+                prevButton.disabled = currentIndex <= 0;
+                nextButton.disabled = currentIndex === -1 || currentIndex >= currentSubtitles.length - 1;
+            }
+        }
     }
 
     function updateSubtitleDisplay(subtitles) {
@@ -725,14 +767,14 @@ ${JSON.stringify(batch, null, 2)}
             .map(sub => {
                 let cached = subtitleCache.get(sub.text) || {};
                 // 如果找不到完全匹配的缓存，尝试模糊匹配
-                if (!cached.correctedText) {
-                    const fuzzyMatch = Array.from(subtitleCache.entries()).find(([key]) => 
-                        normalizeText(key) === normalizeText(sub.text)
-                    );
-                    if (fuzzyMatch) {
-                        cached = fuzzyMatch[1];
-                    }
-                }
+                // if (!cached.correctedText) {
+                //     const fuzzyMatch = Array.from(subtitleCache.entries()).find(([key]) => 
+                //         normalizeText(key) === normalizeText(sub.text)
+                //     );
+                //     if (fuzzyMatch) {
+                //         cached = fuzzyMatch[1];
+                //     }
+                // }
                 
                 return `
                     <div class="subtitle-item">
@@ -829,106 +871,108 @@ ${JSON.stringify(batch, null, 2)}
         }
     }
 
-
-    // 监听来自 background.js 的消息
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.type === 'VIDEO_CHANGED') {
-            // 忽略来自 background.js 的消息，因为我们已经有了 URL 变化监听
-            return;
-        }
-    });
-
     // 修改 initializeDrag 函数
     function initializeDrag(container, dragHandle) {
         let isDragging = false;
         let startX, startY;
-        let initialLeft, initialTop;
+        let originalX, originalY;
+        let lastValidPosition = { x: 0, y: 0 };
 
-        // 获取播放器容器
-        const playerContainer = document.querySelector('#movie_player');
-        if (!playerContainer) return;
+        // 修改初始位置的获取和设置
+        const savedPosition = localStorage.getItem('subtitle-position');
+        if (savedPosition) {
+            const position = JSON.parse(savedPosition);
+            container.style.transform = 'none';
+            container.style.left = `${position.x}px`;
+            container.style.bottom = 'auto';
+            container.style.top = `${position.y}px`;
+        } else {
+            // 如果没有保存的位置，保持默认的居中定位
+            container.style.left = '50%';
+            container.style.transform = 'translateX(-50%)';
+        }
 
-        // 初始化容器位置
-        container.style.transform = 'translateX(-50%)'; // 保持水平居中
-        container.style.left = '50%';
-        container.style.bottom = '80px';
-
-        dragHandle.onmousedown = startDragging;
-
-        function startDragging(e) {
-            isDragging = true;
+        // 修改鼠标按下事件处理
+        dragHandle.addEventListener('mousedown', (e) => {
             e.preventDefault();
-
-            // 获取初始位置
+            e.stopPropagation();
+            
+            isDragging = true;
+            container.classList.add('dragging');
+            
+            // 获取当前实际位置
             const rect = container.getBoundingClientRect();
+            
+            // 如果还在使用transform居中定位，先转换为绝对定位
+            if (container.style.transform.includes('translateX(-50%)')) {
+                container.style.transform = 'none';
+                container.style.left = `${rect.left}px`;
+                container.style.bottom = 'auto';
+                container.style.top = `${rect.top}px`;
+            }
+            
+            // 记录起始位置
             startX = e.clientX;
             startY = e.clientY;
-            
-            // 移除 transform 以便准确计算位置
-            container.style.transform = 'none';
-            container.style.left = rect.left + 'px';
-            
-            initialLeft = rect.left;
-            initialTop = rect.top;
+            originalX = rect.left;
+            originalY = rect.top;
+            lastValidPosition = { x: rect.left, y: rect.top };
+        });
 
-            // 添加临时事件监听器
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', stopDragging);
-
-            // 添加正在拖拽的类
-            container.classList.add('dragging');
-        }
-
-        function stopDragging() {
+        // 修改鼠标移动事件处理
+        const handleMouseMove = (e) => {
             if (!isDragging) return;
-            isDragging = false;
+            
+            e.preventDefault();
+            e.stopPropagation();
 
-            // 移除临时事件监听器
-            document.removeEventListener('mousemove', onDrag);
-            document.removeEventListener('mouseup', stopDragging);
-
-            // 移除拖拽类
-            container.classList.remove('dragging');
-
-            // 如果位置接近中心，恢复默认居中位置
-            const containerRect = container.getBoundingClientRect();
-            const playerRect = playerContainer.getBoundingClientRect();
-            const centerX = playerRect.left + playerRect.width / 2;
-            const threshold = 50; // 设置一个阈值
-
-            if (Math.abs(containerRect.left + containerRect.width / 2 - centerX) < threshold) {
-                // 恢复默认居中位置
-                container.style.transform = 'translateX(-50%)';
-                container.style.left = '50%';
-                container.style.bottom = '80px';
-                container.style.top = 'auto';
-            }
-        }
-
-        function onDrag(e) {
-            if (!isDragging) return;
-
-            // 计算位移
             const deltaX = e.clientX - startX;
             const deltaY = e.clientY - startY;
+            const newX = originalX + deltaX;
+            const newY = originalY + deltaY;
 
-            // 获取播放器边界
-            const playerRect = playerContainer.getBoundingClientRect();
+            const player = document.querySelector('#movie_player');
+            const playerRect = player.getBoundingClientRect();
             const containerRect = container.getBoundingClientRect();
 
-            // 计算新位置
-            let newLeft = initialLeft + deltaX;
-            let newTop = initialTop + deltaY;
+            if (newX >= playerRect.left && 
+                newX + containerRect.width <= playerRect.right &&
+                newY >= playerRect.top && 
+                newY + containerRect.height <= playerRect.bottom) {
+                
+                container.style.left = `${newX}px`;
+                container.style.top = `${newY}px`;
+                lastValidPosition = { x: newX, y: newY };
+            } else {
+                container.style.left = `${lastValidPosition.x}px`;
+                container.style.top = `${lastValidPosition.y}px`;
+            }
+        };
 
-            // 限制在播放器范围内
-            newLeft = Math.max(playerRect.left, Math.min(newLeft, playerRect.right - containerRect.width));
-            newTop = Math.max(playerRect.top, Math.min(newTop, playerRect.bottom - containerRect.height));
+        // 修改鼠标松开事件处理
+        const handleMouseUp = (e) => {
+            if (!isDragging) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            isDragging = false;
+            container.classList.remove('dragging');
+            
+            const finalPosition = {
+                x: parseFloat(container.style.left),
+                y: parseFloat(container.style.top)
+            };
+            localStorage.setItem('subtitle-position', JSON.stringify(finalPosition));
 
-            // 更新位置（相对于播放器）
-            container.style.left = `${newLeft - playerRect.left}px`;
-            container.style.top = `${newTop - playerRect.top}px`;
-            container.style.bottom = 'auto';
-        }
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        dragHandle.addEventListener('mousedown', () => {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
     }
 
     // 修改 initializeScale 函数
@@ -1121,6 +1165,143 @@ ${JSON.stringify(batch, null, 2)}
                 cleanupCurrentSession();
             }
         });
+    }
+
+    function getCurrentSubtitleIndex() {
+        if (!player || !currentSubtitles.length) return -1;
+        
+        const currentTime = player.currentTime * 1000;
+        return currentSubtitles.findIndex(sub => 
+            currentTime >= sub.startTime && currentTime < sub.endTime
+        );
+    }
+    
+    // 添加新的导航初始化函数
+    function initializeNavigation(container) {
+        const prevButton = container.querySelector('.prev-button');
+        const nextButton = container.querySelector('.next-button');
+        
+
+        
+        function updateButtonStates() {
+            const currentIndex = getCurrentSubtitleIndex();
+            prevButton.disabled = currentIndex <= 0;
+            nextButton.disabled = currentIndex === -1 || currentIndex >= currentSubtitles.length - 1;
+        }
+        
+        prevButton.addEventListener('click', () => {
+            const currentIndex = getCurrentSubtitleIndex();
+            if (currentIndex > 0) {
+                const prevSubtitle = currentSubtitles[currentIndex - 1];
+                player.currentTime = prevSubtitle.startTime / 1000;
+            }
+        });
+        
+        nextButton.addEventListener('click', () => {
+            const currentIndex = getCurrentSubtitleIndex();
+            if (currentIndex !== -1 && currentIndex < currentSubtitles.length - 1) {
+                const nextSubtitle = currentSubtitles[currentIndex + 1];
+                player.currentTime = nextSubtitle.startTime / 1000;
+            }
+        });
+        
+        // 监听视频时间更新以更新按钮状态
+        player.addEventListener('timeupdate', () => {
+            updateButtonStates();
+        });
+        
+        // 初始更新按钮状态
+        updateButtonStates();
+    }
+
+    // 修复循环播放功能
+    function initializeLoopControl(container) {
+        const loopSwitch = container.querySelector('.loop-switch');
+        const loopSwitchContainer = container.querySelector('.loop-switch-container');
+        let isLooping = false;
+        let loopInterval = null;
+        let currentLoopingIndex = -1;
+        
+        function getCurrentSubtitleIndex() {
+            if (!player || !currentSubtitles.length) return -1;
+            
+            const currentTime = player.currentTime * 1000;
+            return currentSubtitles.findIndex(sub => 
+                currentTime >= sub.startTime && currentTime < sub.endTime
+            );
+        }
+        
+        function startLoop() {
+            if (loopInterval) clearInterval(loopInterval);
+            
+            // 获取当前字幕索引
+            currentLoopingIndex = getCurrentSubtitleIndex();
+            if (currentLoopingIndex === -1) return;
+            
+            loopInterval = setInterval(() => {
+                if (!isLooping || !player) return;
+                
+                const currentTime = player.currentTime * 1000;
+                const currentSubtitle = currentSubtitles[currentLoopingIndex];
+                
+                // 如果超出当前字幕时间范围，跳回开始
+                if (currentTime >= currentSubtitle.endTime || currentTime < currentSubtitle.startTime) {
+                    player.currentTime = currentSubtitle.startTime / 1000;
+                }
+            }, 100);
+        }
+        
+        function stopLoop() {
+            if (loopInterval) {
+                clearInterval(loopInterval);
+                loopInterval = null;
+            }
+            currentLoopingIndex = -1;
+        }
+        
+        loopSwitchContainer.addEventListener('click', () => {
+            isLooping = !isLooping;
+            if (isLooping) {
+                loopSwitch.classList.add('active');
+                startLoop();
+            } else {
+                loopSwitch.classList.remove('active');
+                stopLoop();
+            }
+        });
+        
+        // 监听视频时间更新，处理字幕切换
+        player.addEventListener('timeupdate', () => {
+            if (isLooping) {
+                const newIndex = getCurrentSubtitleIndex();
+                if (newIndex !== -1 && newIndex !== currentLoopingIndex) {
+                    currentLoopingIndex = newIndex;
+                    startLoop(); // 重新开始循环新的字幕
+                }
+            }
+        });
+        
+        // 在视频暂停时保持循环状态，但暂停检查
+        player.addEventListener('pause', () => {
+            if (loopInterval) {
+                clearInterval(loopInterval);
+                loopInterval = null;
+            }
+        });
+        
+        // 在视频播放时恢复循环检查
+        player.addEventListener('play', () => {
+            if (isLooping) {
+                startLoop();
+            }
+        });
+        
+        // 在清理时停止循环
+        const originalCleanup = cleanupCurrentSession;
+        cleanupCurrentSession = function() {
+            stopLoop();
+            originalCleanup();
+        };
     }
 
     // 初始化扩展

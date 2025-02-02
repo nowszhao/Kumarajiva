@@ -10,13 +10,13 @@
     background: rgba(0, 0, 0, 0.3);
     border-radius: 12px;
     padding: 8px;
-    transition: all 0.3s;
+    transition: none;
     user-select: none;
     backdrop-filter: blur(8px);
 }
 
 .subtitle-container.dragging {
-    transform: none;
+    transition: none;
     opacity: 0.8;
     cursor: move;
 }
@@ -31,9 +31,10 @@
     color: rgba(255, 255, 255, 0.7);
     font-size: 14px;
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.2s;
     background: rgba(0, 0, 0, 0.5);
     border-radius: 4px;
+    z-index: 1;
 }
 
 .subtitle-container:hover .subtitle-drag-handle {
@@ -184,15 +185,51 @@
     transition: width 0.3s ease;
 }
 
-/* 添加缩放控制器样式 */
+/* 修改字幕控制面板样式 */
+.subtitle-control-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.subtitle-container:hover .subtitle-control-panel {
+    opacity: 1;
+}
+
+/* 分组控制按钮 */
+.subtitle-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    padding-right: 12px;
+    min-height: 24px;
+}
+
+/* 最后一个组不需要右边框 */
+.subtitle-controls-group:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+/* 缩放控制组样式 */
 .subtitle-scale-control {
     position: absolute;
     top: 0;
     right: 0;
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
+    gap: 8px;
+    padding: 8px 12px;
     background: rgba(0, 0, 0, 0.5);
     border-radius: 4px;
     opacity: 0;
@@ -301,4 +338,128 @@
 .subtitle-switch-container:hover .subtitle-switch-tooltip {
     visibility: visible;
     opacity: 1;
+}
+
+/* 添加字幕导航按钮样式 */
+.subtitle-navigation {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.subtitle-container:hover .subtitle-navigation {
+    opacity: 1;
+}
+
+/* 修改导航按钮样式以适应新布局 */
+.nav-button {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+    height: 24px;
+}
+
+.nav-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 添加图标样式 */
+.nav-button::before {
+    font-size: 16px;
+}
+
+.prev-button::before {
+    content: "←";
+}
+
+.next-button::before {
+    content: "→";
+}
+
+/* 循环播放开关样式 */
+.loop-switch-container {
+    position: relative;
+    left: 40px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.loop-switch-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-bottom: 8px;
+}
+
+.loop-switch-container:hover .loop-switch-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.loop-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    transition: background-color 0.3s;
+}
+
+.loop-switch.active {
+    background-color: #1a73e8;
+}
+
+.loop-switch::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.loop-switch.active::before {
+    transform: translateX(20px);
+}
+
+/* 调整导航按钮组样式 */
+.subtitle-nav-group {
+    position: relative;
+    left: 40px;
+    display: inline-flex;
+    /* display: flex; */
+    gap: 8px;
+    align-items: center;
 } 
