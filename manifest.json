@@ -8,12 +8,15 @@
         "scripting"
     ],
     "host_permissions": [
-        "*://*.youtube.com/*"
+        "*://*.youtube.com/*",
+        "https://kimi.moonshot.cn/*",
+        "http://47.121.117.100/*",
+        "https://47.121.117.100/*"
     ],
     "content_scripts": [{
         "matches": ["*://*.youtube.com/*"],
         "css": ["styles.css"],
-        "js": ["contentScript.js"],
+        "js": ["dist/contentScript.js"],
         "run_at": "document_idle"
     }],
     "background": {
