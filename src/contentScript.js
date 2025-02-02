@@ -14,13 +14,10 @@ import config from './config/config';
 
     console.log("####### contentScript.js ");
 
-    const KIMI_API_TOKEN = 'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1c2VyLWNlbnRlciIsImV4cCI6MTc0NTc5NDIxMiwiaWF0IjoxNzM4MDE4MjEyLCJqdGkiOiJjdWMwcjk2bjNta2JwY21ndGI2MCIsInR5cCI6ImFjY2VzcyIsImFwcF9pZCI6ImtpbWkiLCJzdWIiOiJjb2ZzamI5a3FxNHR0cmdhaGhxZyIsInNwYWNlX2lkIjoiY29mc2piOWtxcTR0dHJnYWhocGciLCJhYnN0cmFjdF91c2VyX2lkIjoiY29mc2piOWtxcTR0dHJnYWhocDAiLCJyb2xlcyI6WyJmX212aXAiLCJ2aWRlb19nZW5fYWNjZXNzIl0sInNzaWQiOiIxNzMwMzAzNjQ3NjY1MTIzNDEzIiwiZGV2aWNlX2lkIjoiNzM1ODgyMTg1OTE0OTc1MjMyOSJ9.j3UoRKj4tI8sZmxfBt8W_wus9ZJ3EqR91XNQVapveAv5uCViugJTo7LT7Aa1-a8k_5E9PeLPXxkyybLONU_fBg'; //'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1c2VyLWNlbnRlciIsImV4cCI6MTc0NTc5MjQzNywiaWF0IjoxNzM4MDE2NDM3LCJqdGkiOiJjdWMwZGRmcGZhaDNoZTdzOGtvZyIsInR5cCI6ImFjY2VzcyIsImFwcF9pZCI6ImtpbWkiLCJzc2lkIjoiMTczMDMwMzY0NzY2NTEyMzQxMyIsImRldmljZV9pZCI6IjczNTg4MjE4NTkxNDk3NTIzMjkifQ.DJlyDX_32kuEOnMJqQlzyfwRfTduoQRguLnAi22_uhS91vnle0-Wvyyv8ZXq48Pyo68YYvoht2A5mUs6VWhvEQ';
     const MAX_SUBTITLES = 5;
-    const BATCH_SIZE = 10; // 每批处理的字幕数量
+    const BATCH_SIZE = 5; // 每批处理的字幕数量
     const BATCH_INTERVAL = 2000; // 添加批次间隔时间(ms)
     const SUBTITLE_STORAGE_KEY = 'yt-subtitles-'; // 存储键前缀
-    const MAX_RETRIES = 10; // 最大重试次数
-    const MAX_BATCH_RETRIES = 10; // 批次最大重试次数
 
     // 全局状态
     let currentChatId = null;
@@ -35,9 +32,6 @@ import config from './config/config';
 
     // 添加全局开关状态
     let isSubtitleEnabled = false;
-
-    // 添加全局初始化标志
-    let isInitialized = false;
 
     // 修改 URL 变化监听函数
     function setupUrlChangeListener() {
@@ -573,31 +567,83 @@ import config from './config/config';
         }
     }
 
+
+    function extractJsonFromString(input) {
+        const jsonRegex = /```json([\s\S]*?)```|```([\s\S]*?)```|(\[[\s\S]*?\])/g;
+        const matches = [];
+        let match;
+      
+        while ((match = jsonRegex.exec(input)) !== null) {
+          let jsonData;
+          if (match[1]) {
+            // 匹配 ```json ... ```
+            jsonData = match[1].trim();
+          } else if (match[2]) {
+            // 匹配 ``` ... ```
+            jsonData = match[2].trim();
+          } else if (match[3]) {
+            // 匹配直接存在的 JSON 数据
+            jsonData = match[3].trim();
+          }
+      
+          try {
+            const parsedData = JSON.parse(jsonData);
+            if (Array.isArray(parsedData)) {
+              matches.push(...parsedData);
+            } else {
+              matches.push(parsedData);
+            }
+          } catch (e) {
+            console.error("Invalid JSON found:", jsonData);
+            throw new Error('Invalid JSON found');
+          }
+        }
+      
+        return matches;
+      }
+
+
+    function normalizeText(text) {
+        return text
+            // 解码 HTML 实体
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            // 标准化空白字符
+            .replace(/\s+/g, ' ')
+            // 移除标点符号
+            .replace(/[.,!?]/g, '')
+            // 转换为小写并去除首尾空格
+            .toLowerCase()
+            .trim();
+    }
+
     // 修改 processBatch 函数以使用新的翻译系统
     async function processBatch(batch, currentBatch, totalBatches, retryCount = 0) {
         try {
             const prompt = `
 你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
-
 1. 处理规则：
 - 保持原始时间戳(startTime/endTime)不变
-- 将输入所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
+- 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
 - 生成准确流畅的中文翻译(translation字段)
 - 所有数字时间值保持整数格式
 
-2. 必须遵守的JSON规范：
-- 使用双引号
+2. 遵守的JSON规范：
+- 使用双引号("")
 - 禁止尾随逗号
-- 确保特殊字符转义
-- 换行符替换为为空
+- 确保特殊字符被正确转义
+- 换行符替换为空（即移除原文中的换行符）
 - 严格保持字段顺序：startTime > endTime > text > correctedText > translation
-
 3. 输入示例：
 [
     {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
 ]
-
 4. 输出示例：
+\`\`\`
 [
     {
         "startTime": 120,
@@ -608,7 +654,7 @@ import config from './config/config';
     },
     ...
 ]
-
+\`\`\`
 请现在处理以下输入内容：
 ${JSON.stringify(batch, null, 2)}
 `;
@@ -620,14 +666,19 @@ ${JSON.stringify(batch, null, 2)}
             }
 
             console.log("processBatch-response:", response);
-            
-            const processed = JSON.parse(response);
-            processed.forEach(item => {
-                subtitleCache.set(item.text, {
+            const processed = extractJsonFromString(response);
+            console.log("processBatch-processed:", processed);
+
+            // 使用索引匹配原始文本和翻译结果
+            processed.forEach((item, index) => {
+                const originalText = batch[index].text;
+                subtitleCache.set(originalText, {
                     correctedText: item.correctedText,
                     translation: item.translation
                 });
             });
+
+            console.log("processBatch-subtitleCache:", subtitleCache);
 
             // 更新进度
             processingStatus.processed += batch.length;
@@ -657,15 +708,12 @@ ${JSON.stringify(batch, null, 2)}
     }
 
     function updateSubtitleDisplay(subtitles) {
-       
-
         const container = document.getElementById('yt-subtitle-container');
         if (!container) {
             console.error('Subtitle container not found!');
             return;
         }
 
-        // 获取或创建内容容器
         let contentContainer = container.querySelector('.subtitle-content');
         if (!contentContainer) {
             contentContainer = document.createElement('div');
@@ -675,7 +723,17 @@ ${JSON.stringify(batch, null, 2)}
 
         const html = subtitles
             .map(sub => {
-                const cached = subtitleCache.get(sub.text) || {};
+                let cached = subtitleCache.get(sub.text) || {};
+                // 如果找不到完全匹配的缓存，尝试模糊匹配
+                if (!cached.correctedText) {
+                    const fuzzyMatch = Array.from(subtitleCache.entries()).find(([key]) => 
+                        normalizeText(key) === normalizeText(sub.text)
+                    );
+                    if (fuzzyMatch) {
+                        cached = fuzzyMatch[1];
+                    }
+                }
+                
                 return `
                     <div class="subtitle-item">
                         <div class="subtitle-english">${cached.correctedText || '原文| '+sub.text}</div>
