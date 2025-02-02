@@ -24,16 +24,15 @@ import config from '../config/config';
 
     // 优化：更精确的段落选择逻辑
     function findTextContainer(element) {
-        console.log("findTextContainer-element:",element);
         // 忽略这些元素
         const ignoredTags = new Set(['BODY','SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'IMG', 'SVG', 'VIDEO', 'AUDIO']);
         if (ignoredTags.has(element.tagName)) {
             return null;
         }
 
-        // 如果元素本身就包含文本，直接返回
-        if (element.childNodes.length === 1 && 
-            element.childNodes[0].nodeType === Node.TEXT_NODE && 
+        // 如果元素本身就包含文本且没有子元素，直接返回
+        if (element.childNodes.length === 1 &&
+            element.childNodes[0].nodeType === Node.TEXT_NODE &&
             element.textContent.trim().length > 0) {
             return element;
         }
@@ -42,7 +41,7 @@ import config from '../config/config';
         const validSelectors = [
             'p',                    // 段落
             'article',              // 文章
-            'h1, h2, h3, h4, h5',  // 标题
+            'h1, h2, h3, h4, h5',     // 标题
             '.text',                // 文本类
             '[role="article"]',     // ARIA 角色
             'li',                   // 列表项
@@ -50,12 +49,18 @@ import config from '../config/config';
             'div:not(:empty)'       // 非空 div
         ].join(',');
 
-        const container = element.closest(validSelectors);
+        let container = element.closest(validSelectors);
         
-        // 验证找到的容器是否合适
-        if (container && 
-            container.textContent.trim().length > 0 && 
-            container.textContent.trim().length < 1000 &&
+        // 如果找不到合适的容器，尝试使用父级
+        if (!container && element.parentElement) {
+            container = element.parentElement.closest(validSelectors);
+        }
+
+        // 验证找到的容器是否合适（这里可以根据需要放宽长度限制）
+        if (container &&
+            container.textContent.trim().length > 0 &&
+            // 调整：允许较长文本，或将条件移除
+            // container.textContent.trim().length < 1000 &&
             !container.querySelector('input, button, select, textarea')) {
             return container;
         }
@@ -171,25 +176,27 @@ import config from '../config/config';
 
     // 主要功能初始化
     function initializeInlineTranslator() {
-        // 监听鼠标移动
-        document.addEventListener('mouseover', throttle((e) => {
+        // 监听鼠标移动（使用 mousemove 以确保在段落内的任何位置都能正确检测）
+        document.addEventListener('mousemove', throttle((e) => {
             const element = findTextContainer(e.target);
-
-// console.log("initializeInlineTranslator-mouseover-element:",element);
+            // 仅当新获取的元素与当前 hoveredElement 不同时才更新
             if (element && containsEnglish(element.textContent)) {
-                if (hoveredElement) {
-                    hoveredElement.classList.remove('hoverable-text');
+                if (hoveredElement !== element) {
+                    if (hoveredElement) {
+                        hoveredElement.classList.remove('hoverable-text');
+                    }
+                    hoveredElement = element;
+                    element.classList.add('hoverable-text');
                 }
-                hoveredElement = element;
-                element.classList.add('hoverable-text');
             }
         }, 100));
 
         // 监听鼠标移出
         document.addEventListener('mouseout', (e) => {
-            const element = findTextContainer(e.target);
-            if (element) {
-                element.classList.remove('hoverable-text');
+            // 只有当鼠标真正离开 hoveredElement 时才移除高亮
+            if (hoveredElement &&
+                (!e.relatedTarget || !hoveredElement.contains(e.relatedTarget))) {
+                hoveredElement.classList.remove('hoverable-text');
                 if (!isCtrlPressed && !isTranslating) {
                     hoveredElement = null;
                 }
@@ -198,12 +205,12 @@ import config from '../config/config';
 
         // 监听 Ctrl 键
         document.addEventListener('keydown', (e) => {
-            console.log("initializeInlineTranslator-keydown-e:",e);
+            console.log("initializeInlineTranslator-keydown-e:", e);
             if (e.key === 'Control' && !isCtrlPressed) {
-                console.log("initializeInlineTranslator-keydown-e.key:",e.key);
+                console.log("initializeInlineTranslator-keydown-e.key:", e.key);
                 isCtrlPressed = true;
                 if (hoveredElement) {
-                    console.log("initializeInlineTranslator-keydown-hoveredElement:",hoveredElement);
+                    console.log("initializeInlineTranslator-keydown-hoveredElement:", hoveredElement);
                     handleTranslation(hoveredElement);
                 }
             }
