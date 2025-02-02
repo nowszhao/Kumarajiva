@@ -20,6 +20,11 @@
         "css": ["styles.css"],
         "js": ["dist/contentScript.js"],
         "run_at": "document_idle"
+    }, {
+        "matches": ["<all_urls>"],
+        "css": ["styles/inlineTranslator.css"],
+        "js": ["dist/inlineTranslator.js"],
+        "run_at": "document_end"
     }],
     "background": {
         "service_worker": "background.js"

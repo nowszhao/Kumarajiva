@@ -1,0 +1,465 @@
+.subtitle-container {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: 80%;
+    z-index: 2147483647;
+    text-align: center;
+    background: rgba(0, 0, 0, 0);
+    border-radius: 12px;
+    padding: 8px;
+    transition: none;
+    user-select: none;
+    /* backdrop-filter: blur(8px); */
+}
+
+.subtitle-container.dragging {
+    transition: none;
+    opacity: 0.8;
+    cursor: move;
+}
+
+/* 修改拖拽手柄样式 */
+.subtitle-drag-handle {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    padding: 4px 8px;
+    cursor: move;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    z-index: 1;
+}
+
+.subtitle-container:hover .subtitle-drag-handle {
+    opacity: 1;
+}
+
+/* 确保字幕内容不会干扰拖拽 */
+.subtitle-content {
+    pointer-events: none;
+    padding: 16px 4px 4px 4px;
+}
+
+.subtitle-item {
+    margin-bottom: 12px;
+    padding: 0;
+    background: none;
+    width: auto;
+    display: inline-block;
+}
+
+.subtitle-english {
+    display: inline-block;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: #ffffff;
+    padding: 20px 16px;
+    margin: 20px 0;
+    border-radius: 8px;
+    font-size: 24px;
+    line-height: 1.4;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-weight: 500;
+    white-space: pre-wrap;
+    max-width: 100%;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.subtitle-chinese {
+    display: inline-block;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.95);
+    padding: 4px 14px;
+    margin: 2px 0;
+    border-radius: 6px;
+    font-size: 22px;
+    line-height: 1.5;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+    font-weight: 400;
+    white-space: pre-wrap;
+    max-width: 100%;
+    transition: all 0.2s ease;
+    letter-spacing: 1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* 悬停效果 */
+.subtitle-container:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+/* 全屏模式下的样式调整 */
+.ytp-fullscreen .subtitle-container {
+    bottom: 120px;
+    padding: 12px;
+}
+
+.ytp-fullscreen .subtitle-english {
+    font-size: 32px;
+    padding: 8px 20px;
+}
+
+.ytp-fullscreen .subtitle-chinese {
+    font-size: 28px;
+    padding: 6px 18px;
+}
+
+/* 暗色主题优化 */
+@media (prefers-color-scheme: dark) {
+    .subtitle-english {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+    
+    .subtitle-chinese {
+        background-color: rgba(0, 0, 0, 0.65);
+    }
+}
+
+.loading {
+    opacity: 0.5;
+}
+
+/* 添加到现有样式文件末尾 */
+.processing-status {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    width: 200px;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    margin-top: 8px;
+}
+
+.progress {
+    height: 100%;
+    background-color: #1a73e8;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* 添加进度显示容器的样式 */
+.translation-progress-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 2147483647;
+    width: 200px;
+}
+
+.translation-progress-container .processing-status {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.translation-progress-container .progress-bar {
+    width: 100%;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin-top: 6px;
+}
+
+.translation-progress-container .progress {
+    height: 100%;
+    background-color: #1a73e8;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* 修改字幕控制面板样式 */
+.subtitle-control-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.subtitle-container:hover .subtitle-control-panel {
+    opacity: 1;
+}
+
+/* 分组控制按钮 */
+.subtitle-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    padding-right: 12px;
+    min-height: 24px;
+}
+
+/* 最后一个组不需要右边框 */
+.subtitle-controls-group:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+/* 缩放控制组样式 */
+.subtitle-scale-control {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.subtitle-container:hover .subtitle-scale-control {
+    opacity: 1;
+}
+
+.scale-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.scale-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.scale-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.scale-value {
+    color: white;
+    font-size: 12px;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* 添加字幕开关按钮样式 */
+.subtitle-switch-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 16px;
+    height: 50%;
+    cursor: pointer;
+}
+
+.subtitle-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    transition: background-color 0.3s;
+}
+
+.subtitle-switch.active {
+    background-color: #1a73e8;
+}
+
+.subtitle-switch::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.subtitle-switch.active::before {
+    transform: translateX(20px);
+}
+
+.subtitle-switch-label {
+    color: white;
+    font-size: 13px;
+    margin-left: 8px;
+    user-select: none;
+}
+
+/* 添加工具提示样式 */
+.subtitle-switch-tooltip {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-bottom: 8px;
+}
+
+.subtitle-switch-container:hover .subtitle-switch-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* 添加字幕导航按钮样式 */
+.subtitle-navigation {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.subtitle-container:hover .subtitle-navigation {
+    opacity: 1;
+}
+
+/* 修改导航按钮样式以适应新布局 */
+.nav-button {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+    height: 24px;
+}
+
+.nav-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 添加图标样式 */
+.nav-button::before {
+    font-size: 16px;
+}
+
+.prev-button::before {
+    content: "←";
+}
+
+.next-button::before {
+    content: "→";
+}
+
+/* 循环播放开关样式 */
+.loop-switch-container {
+    position: relative;
+    left: 40px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.loop-switch-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-bottom: 8px;
+}
+
+.loop-switch-container:hover .loop-switch-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.loop-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    transition: background-color 0.3s;
+}
+
+.loop-switch.active {
+    background-color: #1a73e8;
+}
+
+.loop-switch::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.loop-switch.active::before {
+    transform: translateX(20px);
+}
+
+/* 调整导航按钮组样式 */
+.subtitle-nav-group {
+    position: relative;
+    left: 40px;
+    display: inline-flex;
+    /* display: flex; */
+    gap: 8px;
+    align-items: center;
+} 

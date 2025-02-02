@@ -1,8 +1,5 @@
-// contentScript.js
-// 配置
-
-import { TranslatorFactory } from './translators';
-import config from './config/config';
+import { TranslatorFactory } from '../translators';
+import config from '../config/config';
 
 // 将所有代码包装在一个立即执行函数中以避免全局变量污染
 (function() {
@@ -603,7 +600,7 @@ import config from './config/config';
         const matches = [];
         let match;
       
-        while ((match = jsonRegex.exec(input)) !== null) {
+        if ((match = jsonRegex.exec(input)) !== null) {
           let jsonData;
           if (match[1]) {
             // 匹配 ```json ... ```
@@ -617,14 +614,20 @@ import config from './config/config';
           }
       
           try {
+
+            console.log("extractJsonFromString-jsonData:",jsonData);
+
             const parsedData = JSON.parse(jsonData);
+
+            console.log("extractJsonFromString-parsedData:",parsedData);
+
             if (Array.isArray(parsedData)) {
-              matches.push(...parsedData);
+              return parsedData;
             } else {
               matches.push(parsedData);
             }
           } catch (e) {
-            console.error("Invalid JSON found:", jsonData);
+            console.error("Invalid JSON found:",e);
             throw new Error('Invalid JSON found');
           }
         }

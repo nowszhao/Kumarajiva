@@ -12,7 +12,7 @@ export default {
         maxRetries: 3
     },
     translation: {
-        defaultService: 'qwen', 
+        defaultService: 'doubao', 
         batchSize: 10,
         batchInterval: 2000,
         maxSubtitles: 5,

@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Subtitle Translator",
+  "version": "1.0",
+  "description": "Translates YouTube subtitles in real-time",
+  "permissions": [
+    "storage",
+    "scripting",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://kimi.moonshot.cn/*",
+    "http://47.121.117.100/*",
+    "https://47.121.117.100/*"
+  ],
+  "options_page": "html/options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "css": [
+        "styles/styles.css"
+      ],
+      "js": [
+        "js/contentScript.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "css": [
+        "styles/inlineTranslator.css"
+      ],
+      "js": [
+        "js/inlineTranslator.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "icons": {}
+}

@@ -1,13 +1,17 @@
 const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     entry: {
-        contentScript: './src/contentScript.js',
-        options: './src/options.js'
+        contentScript: './src/js/contentScript.js',
+        options: './src/js/options.js',
+        inlineTranslator: './src/js/inlineTranslator.js',
+        background: './src/background.js'
     },
     output: {
-        filename: '[name].js',
-        path: path.resolve(__dirname, 'dist')
+        filename: 'js/[name].js',
+        path: path.resolve(__dirname, 'dist'),
+        clean: true // 在每次构建前清理 dist 目录
     },
     module: {
         rules: [
@@ -23,6 +27,36 @@ module.exports = {
             }
         ]
     },
+    plugins: [
+        new CopyPlugin({
+            patterns: [
+                { 
+                    from: "src/manifest.json",
+                    to: "manifest.json",
+                    transform(content) {
+                        // 自动更新 manifest 中的路径
+                        const manifest = JSON.parse(content);
+                        // 更新文件路径
+                        manifest.content_scripts[0].js = ['js/contentScript.js'];
+                        manifest.content_scripts[0].css = ['styles/styles.css'];
+                        manifest.content_scripts[1].js = ['js/inlineTranslator.js'];
+                        manifest.content_scripts[1].css = ['styles/inlineTranslator.css'];
+                        manifest.options_page = 'html/options.html';
+                        manifest.background.service_worker = 'js/background.js';
+                        return JSON.stringify(manifest, null, 2);
+                    }
+                },
+                { 
+                    from: "src/styles",
+                    to: "styles"
+                },
+                { 
+                    from: "src/html",
+                    to: "html"
+                }
+            ],
+        }),
+    ],
     resolve: {
         extensions: ['.js']
     }
