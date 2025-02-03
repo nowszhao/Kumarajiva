@@ -271,72 +271,71 @@
     text-align: center;
 }
 
-/* 添加字幕开关按钮样式 */
+/* 修改字幕开关按钮容器样式，确保与 YouTube 原生控件对齐 */
 .subtitle-switch-container {
     position: relative;
-    display: inline-flex;
+    display: inline-block; /* 使用 inline-flex 保持与相邻控件同行 */
+    padding: 0 2px;
     align-items: center;
-    margin-left: 16px;
-    height: 50%;
+    justify-content: center; 
+    margin-left: 4px;          /* 调整左边距，以匹配原生按钮 */
+    height: 100%;              /* 使用100%高度，填充父容器 */
     cursor: pointer;
-}
+ }
 
+/* 修改 switch 开关样式，调小尺寸 */
 .subtitle-switch {
+    width: 40px; /* switch 宽度 调小 */
+    height: 20px; /* switch 高度 调小 */
+    margin-top: 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
     position: relative;
-    width: 40px;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-radius: 10px;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
-.subtitle-switch.active {
-    background-color: #1a73e8;
-}
-
-.subtitle-switch::before {
-    content: '';
+/* 修改伪元素作为滑动按钮的尺寸 */
+.subtitle-switch::after {
+    content: "";
     position: absolute;
     width: 16px;
     height: 16px;
-    background-color: white;
+    background: white;
     border-radius: 50%;
     top: 2px;
     left: 2px;
-    transition: transform 0.3s;
+    transition: left 0.3s;
 }
 
-.subtitle-switch.active::before {
-    transform: translateX(20px);
+.subtitle-switch.active {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 1);
 }
 
-.subtitle-switch-label {
-    color: white;
-    font-size: 13px;
-    margin-left: 8px;
-    user-select: none;
+.subtitle-switch.active::after {
+    left: 22px; /* 当 active 时，将滑块移动到右侧 */
 }
 
-/* 添加工具提示样式 */
+/* 新增工具提示样式，位置及风格参考 YouTube 原生提示 */
 .subtitle-switch-tooltip {
     position: absolute;
-    bottom: 10%;
+    bottom: 110%;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 0px;
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 3px;
     font-size: 12px;
     white-space: nowrap;
-    visibility: hidden;
     opacity: 0;
-    transition: opacity 0.2s;
-    margin-bottom: 8px;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 1000;
 }
 
 .subtitle-switch-container:hover .subtitle-switch-tooltip {
-    visibility: visible;
     opacity: 1;
 }
 

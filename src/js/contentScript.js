@@ -1123,7 +1123,7 @@ ${JSON.stringify(batch, null, 2)}
         });
     }
 
-    // 添加字幕开关按钮
+    // 修改 addSubtitleSwitch 函数
     function addSubtitleSwitch() {
         // 查找YouTube原生字幕按钮
         const ytpRightControls = document.querySelector('.ytp-right-controls');
@@ -1132,8 +1132,9 @@ ${JSON.stringify(batch, null, 2)}
         // 创建开关容器
         const switchContainer = document.createElement('div');
         switchContainer.className = 'subtitle-switch-container';
+        // 将提示文字更新为“双语字幕”，与YouTube原生提示一致
         switchContainer.innerHTML = `
-            <div class="subtitle-switch-tooltip">AI双语字幕翻译</div>
+            <div class="subtitle-switch-tooltip">双语字幕</div>
             <div class="subtitle-switch"></div>
         `;
 
