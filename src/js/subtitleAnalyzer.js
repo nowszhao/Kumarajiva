@@ -45,7 +45,7 @@ class SubtitleAnalyzer {
     }
 
     buildWordsAnalysisPrompt(subtitleText) {
-        return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语播客的字幕文件，要求如下：
+        return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语字幕文件，要求如下：
 1、解析我提供的字幕内容，帮我从字幕中筛选出10个最难理解的词汇。
 2、输出请遵循以下要求：
  - 类型：包括词汇、短语/词块、俚语、缩写（Words, Phrases, Slang, Abbreviations）
@@ -81,7 +81,7 @@ ${subtitleText}`;
     }
 
     buildPhrasesAnalysisPrompt(subtitleText) {
-        return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语播客的字幕文件，要求如下：
+        return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语字幕文件，要求如下：
 1、解析我提供的字幕内容，帮我从字幕中筛选出10个最难理解的短语或词块。
 2、输出请遵循以下要求：
  - 类型：包括词汇、短语/词块、俚语、缩写（Words, Phrases, Slang, Abbreviations）
