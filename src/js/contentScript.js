@@ -380,8 +380,8 @@ import config from '../config/config';
             console.log("Subtitle container created and appended to player container");
             
             // 初始化各种功能
-            initializeDrag(container);
-            initializeScale(container);
+            // initializeDrag(container);
+            // initializeScale(container);
             initializeHoverControl(container);
             initializeNavigation(container);
             initializeLoopControl(container);
