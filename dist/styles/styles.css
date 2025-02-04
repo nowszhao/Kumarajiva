@@ -463,4 +463,44 @@
 
 .analyze-button:active {
     background: #174ea6;
+}
+
+/* Add these styles for the play button */
+.expression-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.play-audio-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: #1a73e8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.play-audio-btn:hover {
+    background-color: rgba(26, 115, 232, 0.1);
+}
+
+.play-audio-btn:active {
+    background-color: rgba(26, 115, 232, 0.2);
+}
+
+.play-audio-btn.loading {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* Ensure the expression text maintains its style */
+.expression {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1a73e8;
 } 

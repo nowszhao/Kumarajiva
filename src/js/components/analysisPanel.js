@@ -75,6 +75,9 @@ class AnalysisPanel {
                 this.switchTab(tab);
             });
         });
+
+        // Add after setupEventListeners method
+        this.setupAudioPlayback();
     }
 
     handleFullscreenChange() {
@@ -122,6 +125,8 @@ class AnalysisPanel {
             resultsContainer.innerHTML = this.createSummaryCard(results);
         } else {
             resultsContainer.innerHTML = results.map(item => this.createAnalysisCard(item)).join('');
+            // Setup audio playback after rendering cards
+            this.setupAudioPlayback();
         }
     }
 
@@ -129,7 +134,14 @@ class AnalysisPanel {
         return `
             <div class="analysis-card">
                 <div class="card-header">
-                    <span class="expression">${item.expression}</span>
+                    <div class="expression-container">
+                        <span class="expression">${item.expression}</span>
+                        <button class="play-audio-btn" data-text="${item.expression}">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="tags">
                         <span class="tag type">${item.type}</span>
                         <span class="tag difficulty">${item.difficulty}</span>
@@ -275,6 +287,42 @@ class AnalysisPanel {
 
     setSubtitles(subtitles) {
         this.currentSubtitles = subtitles;
+    }
+
+    setupAudioPlayback() {
+        if (!this.panel) return;
+        
+        this.panel.addEventListener('click', (e) => {
+            // 阻止事件冒泡
+            e.stopPropagation();
+            
+            const playButton = e.target.closest('.play-audio-btn');
+            if (!playButton) return;
+
+            // 如果按钮正在加载状态，不要重复播放
+            if (playButton.classList.contains('loading')) return;
+
+            const text = playButton.dataset.text;
+            if (!text) return;
+
+            const audio = new Audio(
+                `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2&rate=6`
+            );
+            
+            // Add loading state
+            playButton.classList.add('loading');
+            
+            audio.onloadeddata = () => {
+                playButton.classList.remove('loading');
+            };
+            
+            audio.onerror = () => {
+                playButton.classList.remove('loading');
+                console.error('Failed to load audio');
+            };
+            
+            audio.play();
+        });
     }
 }
 
