@@ -1,5 +1,7 @@
 import { TranslatorFactory } from '../translators';
 import config from '../config/config';
+import SubtitleAnalyzer from './subtitleAnalyzer';
+import AnalysisPanel from './components/analysisPanel';
 
 // 将所有代码包装在一个立即执行函数中以避免全局变量污染
 (function() {
@@ -32,6 +34,10 @@ import config from '../config/config';
 
     // 添加全局开关状态
     let isSubtitleEnabled = false;
+
+    // 在全局变量区域添加
+    let analyzer = null;
+    let analysisPanel = null;
 
     // 在全局变量声明后，添加 throttle 函数的实现
     function throttle(func, limit) {
@@ -198,6 +204,15 @@ import config from '../config/config';
                 }
             }
             
+            // 清理分析面板
+            if (analysisPanel) {
+                analysisPanel.hidePanel();
+            }
+            
+            // 重置分析组件
+            analyzer = null;
+            analysisPanel = null;
+            
             console.log('Session cleanup completed successfully');
         } catch (error) {
             console.error('Error during cleanup:', error);
@@ -319,54 +334,75 @@ import config from '../config/config';
         container.className = 'subtitle-container';
         container.id = 'yt-subtitle-container';
         
-        
         // 创建控制面板
         const controlPanel = document.createElement('div');
         controlPanel.className = 'subtitle-control-panel';
-        
-        // 创建第一组控制按钮（循环和导航）
-        const controlsGroup1 = document.createElement('div');
-        controlsGroup1.className = 'subtitle-controls-group';
-        
-        // 添加循环播放开关
-        const loopSwitchContainer = document.createElement('div');
-        loopSwitchContainer.className = 'loop-switch-container';
-        loopSwitchContainer.innerHTML = `
-            <div class="loop-switch-tooltip">循环播放当前字幕</div>
-            <div class="loop-switch"></div>
+        controlPanel.innerHTML = `
+            <div class="subtitle-controls-group">
+                <button class="nav-button prev-button">上一句</button>
+                <button class="nav-button next-button">下一句</button>
+            </div>
+            <div class="subtitle-controls-group">
+                <div class="loop-switch-container">
+                    <div class="loop-switch"></div>
+                </div>
+            </div>
+            <div class="subtitle-controls-group">
+                <button class="analyze-button">AI解析</button>
+            </div>
         `;
-        controlsGroup1.appendChild(loopSwitchContainer);
-        
-        // 创建导航按钮组
-        const navGroup = document.createElement('div');
-        navGroup.className = 'subtitle-nav-group';
-        
-        // 添加导航按钮
-        const prevButton = document.createElement('button');
-        prevButton.className = 'nav-button prev-button';
-        prevButton.title = '跳转到上一句';
-        prevButton.textContent = '上一句';
-        navGroup.appendChild(prevButton);
-        
-        const nextButton = document.createElement('button');
-        nextButton.className = 'nav-button next-button';
-        nextButton.title = '跳转到下一句';
-        nextButton.textContent = '下一句';
-        navGroup.appendChild(nextButton);
-        
-        controlsGroup1.appendChild(navGroup);
-        controlPanel.appendChild(controlsGroup1);
         container.appendChild(controlPanel);
         
+        // 初始化分析组件
+        analyzer = new SubtitleAnalyzer();
+        analysisPanel = new AnalysisPanel();
+
+        // 添加 AI 解析按钮事件处理
+        const analyzeButton = controlPanel.querySelector('.analyze-button');
+        analyzeButton.addEventListener('click', async () => {
+            if (analysisPanel.isVisible) {
+                analysisPanel.hidePanel();
+                return;
+            }
+
+            analysisPanel.showPanel();
+            analysisPanel.setLoading(true);
+
+            try {
+                const results = await analyzer.analyzeSubtitles(currentSubtitles);
+                if (results) {
+                    analysisPanel.renderResults(results);
+                } else {
+                    throw new Error('Analysis failed');
+                }
+            } catch (error) {
+                console.error('Failed to analyze subtitles:', error);
+                // 显示错误消息
+                analysisPanel.renderResults([{
+                    type: 'Error',
+                    expression: '分析失败',
+                    difficulty: 'N/A',
+                    part_of_speech: 'N/A',
+                    phonetic: 'N/A',
+                    chinese_meaning: '请稍后重试',
+                    memory_method: '',
+                    source_sentence: '',
+                    source_translation: ''
+                }]);
+            } finally {
+                analysisPanel.setLoading(false);
+            }
+        });
+        
         // 创建缩放控制器（独立面板）
-        const scaleControl = document.createElement('div');
-        scaleControl.className = 'subtitle-scale-control';
-        scaleControl.innerHTML = `
-            <button class="scale-btn scale-down" title="缩小字幕">-</button>
-            <span class="scale-value">100%</span>
-            <button class="scale-btn scale-up" title="放大字幕">+</button>
-        `;
-        container.appendChild(scaleControl);
+        // const scaleControl = document.createElement('div');
+        // scaleControl.className = 'subtitle-scale-control';
+        // scaleControl.innerHTML = `
+        //     <button class="scale-btn scale-down" title="缩小字幕">-</button>
+        //     <span class="scale-value">100%</span>
+        //     <button class="scale-btn scale-up" title="放大字幕">+</button>
+        // `;
+        // container.appendChild(scaleControl);
         
         // 创建字幕内容容器
         const contentContainer = document.createElement('div');
@@ -387,6 +423,8 @@ import config from '../config/config';
             initializeLoopControl(container);
         } else {
             console.error("Player container not found");
+            // 如果找不到播放器容器，则添加到 body
+            document.body.appendChild(container);
         }
     }
 

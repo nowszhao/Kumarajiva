@@ -1,10 +1,11 @@
 .subtitle-container {
     position: absolute;
-    bottom: 80px;
+    bottom: 80px;  /* 默认位置 */
     left: 50%;
     transform: translateX(-50%);
-    width: auto;
-    max-width: 80%;
+    width: 80%; /* 改为百分比宽度 */
+    min-width: min(600px, 80vw); /* 最小宽度响应式调整 */
+    max-width: 80%; /* 保持最大宽度 */
     z-index: 2147483647;
     text-align: center;
     background: rgba(0, 0, 0, 0);
@@ -12,11 +13,11 @@
     padding: 8px;
     transition: none;
     user-select: none;
-    /* backdrop-filter: blur(8px); */
+    pointer-events: auto;
 }
 
 .subtitle-container.dragging {
-    transition: none;
+    transition: none !important;
     opacity: 0.8;
     cursor: move;
 }
@@ -44,30 +45,31 @@
 /* 确保字幕内容不会干扰拖拽 */
 .subtitle-content {
     pointer-events: none;
-    padding: 16px 4px 4px 4px;
+    padding: 0; /* 移除内边距 */
+    width: 100%; /* 使用全宽 */
+    position: relative;
 }
 
 .subtitle-item {
-    margin-top: 12px;
-    padding: 0;
+    margin-top: 0; /* 移除顶部间距 */
+    padding: 8px 16px;
     background-color: rgba(0, 0, 0, 0.75);
     border-radius: 6px;
     width: auto;
     display: inline-block;
+    min-width: min(400px, 60vw); /* 响应式最小宽度 */
 }
 
 .subtitle-english {
     display: inline-block;
     color: #ffffff;
-    padding: 20px 16px;
-    /* margin: 20px 0; */
-    /* border-radius: 8px; */
+    padding: 12px 16px 8px 16px; /* 调整内边距 */
     font-size: 24px;
     line-height: 1.4;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
     font-weight: 500;
     white-space: pre-wrap;
-    max-width: 100%;
+    width: 100%;
     transition: all 0.2s ease;
     letter-spacing: 0.3px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -76,15 +78,13 @@
 .subtitle-chinese {
     display: inline-block;
     color: rgba(208, 219, 169, 0.95);
-    padding: 4px 14px;
-    /* margin: 2px 0; */
-    /* border-radius: 6px; */
+    padding: 4px 16px 12px 16px; /* 调整内边距 */
     font-size: 22px;
     line-height: 1.5;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
     font-weight: 400;
     white-space: pre-wrap;
-    max-width: 100%;
+    width: 100%;
     transition: all 0.2s ease;
     letter-spacing: 1px;
     font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -184,34 +184,32 @@
     transition: width 0.3s ease;
 }
 
-/* 修改字幕控制面板样式 */
+/* 修改控制面板样式 */
 .subtitle-control-panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: auto;
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    /* background: rgba(0, 0, 0, 0.5); */
-    border-radius: 4px;
+    gap: 24px;
+    background: rgba(0, 0, 0, 0.75);
+    padding: 4px 16px;
+    border-radius: 8px;
+    margin-bottom: 0; /* 移除底部间距 */
     opacity: 0;
-    transition: opacity 0.3s;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
 }
 
+/* 鼠标悬停时显示控制面板 */
 .subtitle-container:hover .subtitle-control-panel {
     opacity: 1;
+    visibility: visible;
 }
 
-/* 分组控制按钮 */
+/* 修改按钮组样式 */
 .subtitle-controls-group {
     display: flex;
     align-items: center;
-    gap: 12px;
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
-    padding-right: 12px;
-    min-height: 24px;
+    gap: 12px; /* 组内元素间距 */
 }
 
 /* 最后一个组不需要右边框 */
@@ -220,31 +218,20 @@
     padding-right: 0;
 }
 
-/* 缩放控制组样式 */
+/* 缩放控制器样式 */
 .subtitle-scale-control {
-    position: absolute;
-    top: 0;
-    right: 0;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    /* background: rgba(0, 0, 0, 0.5); */
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.subtitle-container:hover .subtitle-scale-control {
-    opacity: 1;
+    margin-left: 16px; /* 与其他控件保持距离 */
 }
 
 .scale-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
     width: 24px;
     height: 24px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
     border-radius: 4px;
     cursor: pointer;
     display: flex;
@@ -265,8 +252,8 @@
 
 .scale-value {
     color: white;
-    font-size: 12px;
-    min-width: 40px;
+    font-size: 14px;
+    min-width: 48px;
     text-align: center;
 }
 
@@ -359,15 +346,11 @@
     background: rgba(255, 255, 255, 0.1);
     color: white;
     border: none;
-    padding: 4px 8px;
+    padding: 4px 12px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
     transition: background-color 0.2s;
-    height: 24px;
 }
 
 .nav-button:hover {
@@ -392,12 +375,20 @@
     content: "→";
 }
 
-/* 循环播放开关样式 */
+/* 循环播放开关容器样式 */
 .loop-switch-container {
-    position: relative;
-    left: 40px;
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    gap: 8px;
+}
+
+/* 循环开关样式 */
+.loop-switch {
+    width: 36px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    position: relative;
     cursor: pointer;
 }
 
@@ -421,15 +412,6 @@
 .loop-switch-container:hover .loop-switch-tooltip {
     visibility: visible;
     opacity: 1;
-}
-
-.loop-switch {
-    position: relative;
-    width: 40px;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-radius: 10px;
-    transition: background-color 0.3s;
 }
 
 .loop-switch.active {
@@ -460,4 +442,25 @@
     /* display: flex; */
     gap: 8px;
     align-items: center;
+}
+
+/* 添加 AI 解析按钮样式 */
+.analyze-button {
+    background: #1a73e8;
+    color: white;
+    border: none;
+    padding: 6px 16px; /* 增加内边距 */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500; /* 稍微加粗 */
+    transition: background-color 0.2s;
+}
+
+.analyze-button:hover {
+    background: #1557b0;
+}
+
+.analyze-button:active {
+    background: #174ea6;
 } 

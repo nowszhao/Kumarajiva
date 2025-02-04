@@ -6,7 +6,9 @@ module.exports = {
         contentScript: './src/js/contentScript.js',
         options: './src/js/options.js',
         inlineTranslator: './src/js/inlineTranslator.js',
-        background: './src/background.js'
+        background: './src/background.js',
+        subtitleAnalyzer: './src/js/subtitleAnalyzer.js',
+        analysisPanel: './src/js/components/analysisPanel.js'
     },
     output: {
         filename: 'js/[name].js',
@@ -37,8 +39,15 @@ module.exports = {
                         // 自动更新 manifest 中的路径
                         const manifest = JSON.parse(content);
                         // 更新文件路径
-                        manifest.content_scripts[0].js = ['js/contentScript.js'];
-                        manifest.content_scripts[0].css = ['styles/styles.css'];
+                        manifest.content_scripts[0].js = [
+                            'js/contentScript.js',
+                            'js/subtitleAnalyzer.js',
+                            'js/analysisPanel.js'
+                        ];
+                        manifest.content_scripts[0].css = [
+                            'styles/styles.css',
+                            'styles/analysisPanel.css'
+                        ];
                         manifest.content_scripts[1].js = ['js/inlineTranslator.js'];
                         manifest.content_scripts[1].css = ['styles/inlineTranslator.css'];
                         manifest.options_page = 'html/options.html';

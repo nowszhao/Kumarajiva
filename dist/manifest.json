@@ -21,10 +21,13 @@
         "*://*.youtube.com/*"
       ],
       "css": [
-        "styles/styles.css"
+        "styles/styles.css",
+        "styles/analysisPanel.css"
       ],
       "js": [
-        "js/contentScript.js"
+        "js/contentScript.js",
+        "js/subtitleAnalyzer.js",
+        "js/analysisPanel.js"
       ],
       "run_at": "document_idle"
     },

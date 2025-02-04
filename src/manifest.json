@@ -17,8 +17,14 @@
     "options_page": "dist/options.html",
     "content_scripts": [{
         "matches": ["*://*.youtube.com/*"],
-        "css": ["styles.css"],
-        "js": ["dist/contentScript.js"],
+        "css": [
+            "styles.css",
+            "styles/analysisPanel.css"
+        ],
+        "js": [
+            "dist/contentScript.js",
+            "dist/subtitleAnalyzer.js"
+        ],
         "run_at": "document_idle"
     }, {
         "matches": ["<all_urls>"],
