@@ -3,6 +3,9 @@ import config from '../config/config';
 
 // 将所有代码包装在一个立即执行函数中以避免全局变量污染
 (function() {
+
+    console.log("location.href:", location.href);
+
     // 检查是否已经初始化
     if (window.youtubeSubtitleTranslatorInitialized) {
         return;
@@ -75,6 +78,8 @@ import config from '../config/config';
                 setTimeout(() => {
                     initializePlugin();
                 }, 1000); // 增加延迟以确保页面完全加载
+
+                window.location.reload();
             }
         };
 
@@ -295,7 +300,7 @@ import config from '../config/config';
 
         // 获取完整字幕数据
         const subtitleData = await fetchAndParseSubtitles(englishTrack);
-        console.log("subtitleData:", subtitleData);
+        // console.log("subtitleData:", subtitleData);
         
         if (!subtitleData.length) return;
         
@@ -615,11 +620,11 @@ import config from '../config/config';
       
           try {
 
-            console.log("extractJsonFromString-jsonData:",jsonData);
+            // console.log("extractJsonFromString-jsonData:",jsonData);
 
             const parsedData = JSON.parse(jsonData);
 
-            console.log("extractJsonFromString-parsedData:",parsedData);
+            // console.log("extractJsonFromString-parsedData:",parsedData);
 
             if (Array.isArray(parsedData)) {
               return parsedData;
@@ -699,7 +704,7 @@ ${JSON.stringify(batch, null, 2)}
 
             console.log("processBatch-response:", response);
             const processed = extractJsonFromString(response);
-            console.log("processBatch-processed:", processed);
+            // console.log("processBatch-processed:", processed);
 
             // 使用索引匹配原始文本和翻译结果
             processed.forEach((item, index) => {
@@ -710,7 +715,7 @@ ${JSON.stringify(batch, null, 2)}
                 });
             });
 
-            console.log("processBatch-subtitleCache:", subtitleCache);
+            // console.log("processBatch-subtitleCache:", subtitleCache);
 
             // 更新进度
             processingStatus.processed += batch.length;
@@ -1133,8 +1138,7 @@ ${JSON.stringify(batch, null, 2)}
         const switchContainer = document.createElement('div');
         switchContainer.className = 'subtitle-switch-container';
         // 将提示文字更新为“双语字幕”，与YouTube原生提示一致
-        switchContainer.innerHTML = `
-            <div class="subtitle-switch-tooltip">双语字幕</div>
+        switchContainer.innerHTML = `            <div class="subtitle-switch-tooltip">双语字幕</div>
             <div class="subtitle-switch"></div>
         `;
 
