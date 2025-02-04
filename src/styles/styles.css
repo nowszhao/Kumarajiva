@@ -48,20 +48,20 @@
 }
 
 .subtitle-item {
-    margin-bottom: 12px;
+    margin-top: 12px;
     padding: 0;
-    background: none;
+    background-color: rgba(0, 0, 0, 0.75);
+    border-radius: 6px;
     width: auto;
     display: inline-block;
 }
 
 .subtitle-english {
     display: inline-block;
-    background-color: rgba(0, 0, 0, 0.75);
     color: #ffffff;
     padding: 20px 16px;
-    margin: 20px 0;
-    border-radius: 8px;
+    /* margin: 20px 0; */
+    /* border-radius: 8px; */
     font-size: 24px;
     line-height: 1.4;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
@@ -75,11 +75,10 @@
 
 .subtitle-chinese {
     display: inline-block;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: rgba(255, 255, 255, 0.95);
+    color: rgba(208, 219, 169, 0.95);
     padding: 4px 14px;
-    margin: 2px 0;
-    border-radius: 6px;
+    /* margin: 2px 0; */
+    /* border-radius: 6px; */
     font-size: 22px;
     line-height: 1.5;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
@@ -195,7 +194,7 @@
     align-items: center;
     gap: 12px;
     padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.5);
+    /* background: rgba(0, 0, 0, 0.5); */
     border-radius: 4px;
     opacity: 0;
     transition: opacity 0.3s;
@@ -230,7 +229,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.5);
+    /* background: rgba(0, 0, 0, 0.5); */
     border-radius: 4px;
     opacity: 0;
     transition: opacity 0.3s;

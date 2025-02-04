@@ -319,11 +319,6 @@ import config from '../config/config';
         container.className = 'subtitle-container';
         container.id = 'yt-subtitle-container';
         
-        // 添加拖拽手柄
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'subtitle-drag-handle';
-        dragHandle.innerHTML = '⋮⋮';
-        container.appendChild(dragHandle);
         
         // 创建控制面板
         const controlPanel = document.createElement('div');
@@ -385,7 +380,7 @@ import config from '../config/config';
             console.log("Subtitle container created and appended to player container");
             
             // 初始化各种功能
-            initializeDrag(container, dragHandle);
+            initializeDrag(container);
             initializeScale(container);
             initializeHoverControl(container);
             initializeNavigation(container);
@@ -879,58 +874,62 @@ ${JSON.stringify(batch, null, 2)}
         }
     }
 
-    // 修改 initializeDrag 函数
-    function initializeDrag(container, dragHandle) {
+    // 修改 initializeDrag 函数以存储相对位置
+    function initializeDrag(container) {
         let isDragging = false;
         let startX, startY;
         let originalX, originalY;
         let lastValidPosition = { x: 0, y: 0 };
 
-        // 修改初始位置的获取和设置
+        const player = document.querySelector('#movie_player');
+        const playerRect = player.getBoundingClientRect();
+
+        // 修改初始位置的获取和设置，从 localStorage 获取相对位置并转换为绝对像素
         const savedPosition = localStorage.getItem('subtitle-position');
         if (savedPosition) {
-            const position = JSON.parse(savedPosition);
-            container.style.transform = 'none';
-            container.style.left = `${position.x}px`;
+            const position = JSON.parse(savedPosition); // { left: relativeLeft, top: relativeTop }（百分比）
+            // 设置内联样式直接使用百分比，让其在播放器尺寸变化时自动调整
+            container.style.left = `${position.left}%`;
+            container.style.top = `${position.top}%`;
             container.style.bottom = 'auto';
-            container.style.top = `${position.y}px`;
+            container.style.transform = ''; // 移除水平居中时的 transform
         } else {
-            // 如果没有保存的位置，保持默认的居中定位
+            // 默认居中：水平居中使用 50% + transform 居中，保持固定底部偏移
             container.style.left = '50%';
+            container.style.bottom = '80px';
             container.style.transform = 'translateX(-50%)';
         }
 
-        // 修改鼠标按下事件处理
-        dragHandle.addEventListener('mousedown', (e) => {
+        container.addEventListener('mousedown', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
+
             isDragging = true;
             container.classList.add('dragging');
-            
-            // 获取当前实际位置
+
+            // 获取当前实际位置（相对于视口的像素值）
             const rect = container.getBoundingClientRect();
-            
-            // 如果还在使用transform居中定位，先转换为绝对定位
+
+            // 如果使用默认 transform 居中，则转换为绝对定位
             if (container.style.transform.includes('translateX(-50%)')) {
-                container.style.transform = 'none';
+                container.style.transform = '';
                 container.style.left = `${rect.left}px`;
                 container.style.bottom = 'auto';
                 container.style.top = `${rect.top}px`;
             }
-            
-            // 记录起始位置
+
             startX = e.clientX;
             startY = e.clientY;
             originalX = rect.left;
             originalY = rect.top;
             lastValidPosition = { x: rect.left, y: rect.top };
+
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
         });
 
-        // 修改鼠标移动事件处理
         const handleMouseMove = (e) => {
             if (!isDragging) return;
-            
             e.preventDefault();
             e.stopPropagation();
 
@@ -939,15 +938,15 @@ ${JSON.stringify(batch, null, 2)}
             const newX = originalX + deltaX;
             const newY = originalY + deltaY;
 
-            const player = document.querySelector('#movie_player');
             const playerRect = player.getBoundingClientRect();
             const containerRect = container.getBoundingClientRect();
 
-            if (newX >= playerRect.left && 
+            if (
+                newX >= playerRect.left &&
                 newX + containerRect.width <= playerRect.right &&
-                newY >= playerRect.top && 
-                newY + containerRect.height <= playerRect.bottom) {
-                
+                newY >= playerRect.top &&
+                newY + containerRect.height <= playerRect.bottom
+            ) {
                 container.style.left = `${newX}px`;
                 container.style.top = `${newY}px`;
                 lastValidPosition = { x: newX, y: newY };
@@ -957,30 +956,31 @@ ${JSON.stringify(batch, null, 2)}
             }
         };
 
-        // 修改鼠标松开事件处理
         const handleMouseUp = (e) => {
             if (!isDragging) return;
-            
             e.preventDefault();
             e.stopPropagation();
-            
+
             isDragging = false;
             container.classList.remove('dragging');
-            
-            const finalPosition = {
-                x: parseFloat(container.style.left),
-                y: parseFloat(container.style.top)
-            };
-            localStorage.setItem('subtitle-position', JSON.stringify(finalPosition));
+
+            // 计算字幕容器相对于播放器的百分比位置
+            const playerRect = player.getBoundingClientRect();
+            const currentLeft = parseFloat(container.style.left);
+            const currentTop = parseFloat(container.style.top);
+            const relativeLeft = ((currentLeft - playerRect.left) / playerRect.width) * 100;
+            const relativeTop = ((currentTop - playerRect.top) / playerRect.height) * 100;
+
+            // 应用百分比定位，让其在播放器调整时能自动计算位置
+            container.style.left = `${relativeLeft}%`;
+            container.style.top = `${relativeTop}%`;
+
+            // 保存相对位置供下次初始化使用
+            localStorage.setItem('subtitle-position', JSON.stringify({ left: relativeLeft, top: relativeTop }));
 
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-
-        dragHandle.addEventListener('mousedown', () => {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        });
     }
 
     // 修改 initializeScale 函数
@@ -1137,7 +1137,7 @@ ${JSON.stringify(batch, null, 2)}
         // 创建开关容器
         const switchContainer = document.createElement('div');
         switchContainer.className = 'subtitle-switch-container';
-        // 将提示文字更新为“双语字幕”，与YouTube原生提示一致
+        // 将提示文字更新为"双语字幕"，与YouTube原生提示一致
         switchContainer.innerHTML = `            <div class="subtitle-switch-tooltip">双语字幕</div>
             <div class="subtitle-switch"></div>
         `;
