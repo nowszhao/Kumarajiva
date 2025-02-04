@@ -28,8 +28,14 @@ class SubtitleAnalyzer {
                 prompt = this.buildWordsAnalysisPrompt(fullText);
         }
 
+
+        console.log("prompt:", prompt,",  type:", type);
+
         try {
             const result = await this.translator.translate(prompt);
+
+            console.log("result:", result);
+            
             // 对于总结类型，直接返回文本结果，不需要 JSON 解析
             return type === 'summary' ? result : JSON.parse(result);
         } catch (error) {
@@ -111,14 +117,25 @@ ${subtitleText}`;
     }
 
     buildSummaryAnalysisPrompt(subtitleText) {
-        return `请使用中文总结概括当前字幕的内容，并列出当前字幕提到的核心观点及支持论据，格式如下：
-1.总结：xxxx
-2.观点：
-  2.1 观点 1： xxxx
-     1) 论据 1：xxx
-     2) 论据 2：xxx
-  2.2 观点 2： xxx
-     ...
+        return `请使用中文总结概括当前字幕的内容，并列出当前字幕提到的核心观点及支持论据，返回Json格式如下：
+{
+    "Summary":"",
+    "Viewpoints":[
+        {
+            "Viewpoint":"xxxx",
+            "Argument":[
+                "论据 1：xxx",
+                "论据 2：xxx"
+            ]
+        }
+    ]
+}
+上述说明如下：
+- Summary：总结
+- Viewpoints：观点集
+- Viewpoint： 观点
+- Argument： 论据
+
 字幕内容如下：
 ${subtitleText}`;
     }

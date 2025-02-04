@@ -154,47 +154,53 @@ class AnalysisPanel {
     }
 
     createSummaryCard(content) {
-        // 解析内容，假设内容格式为:
-        // 1.总结：xxx\n2.观点：\n2.1 观点1：xxx\n1) 论据1：xxx\n2) 论据2：xxx
-        const sections = content.split('\n').map(line => line.trim()).filter(line => line);
-        
-        let html = '<div class="summary-card">';
-        
-        // 处理每一行
-        sections.forEach(section => {
-            if (section.startsWith('1.总结：')) {
-                // 总结部分
+        try {
+            // 解析 JSON 内容
+            const data = typeof content === 'string' ? JSON.parse(content) : content;
+            
+            let html = '<div class="summary-card">';
+            
+            // 添加总结部分
+            if (data.Summary) {
                 html += `
                     <div class="summary-section">
                         <h4 class="summary-title">总结</h4>
-                        <p class="summary-text">${section.replace('1.总结：', '')}</p>
-                    </div>
-                `;
-            } else if (section.startsWith('2.观点：')) {
-                // 观点标题
-                html += `
-                    <div class="viewpoints-section">
-                        <h4 class="summary-title">观点</h4>
-                `;
-            } else if (section.match(/^\d+\.\d+\s*观点\s*\d*：/)) {
-                // 主观点
-                html += `
-                    <div class="viewpoint-item">
-                        <h5 class="viewpoint-title">${section}</h5>
-                    </div>
-                `;
-            } else if (section.match(/^\d+\)\s*论据/)) {
-                // 论据
-                html += `
-                    <div class="argument-item">
-                        <p class="argument-text">${section}</p>
+                        <p class="summary-text">${data.Summary}</p>
                     </div>
                 `;
             }
-        });
-        
-        html += '</div></div>';
-        return html;
+            
+            // 添加观点部分
+            if (data.Viewpoints && data.Viewpoints.length > 0) {
+                html += `
+                    <div class="viewpoints-section">
+                        <h4 class="summary-title">观点</h4>
+                        ${data.Viewpoints.map((point, index) => `
+                            <div class="viewpoint-item">
+                                <h5 class="viewpoint-title">${index + 1}. ${point.Viewpoint}</h5>
+                                ${point.Argument.map(arg => `
+                                    <div class="argument-item">
+                                        <p class="argument-text">${arg}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        } catch (error) {
+            console.error('Error parsing summary content:', error);
+            return `
+                <div class="summary-card">
+                    <div class="summary-error">
+                        <p>解析内容时出现错误，请重试</p>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     filterResults(searchText) {

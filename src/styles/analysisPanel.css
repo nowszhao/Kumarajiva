@@ -287,6 +287,20 @@
     margin: 0;
 }
 
+.summary-error {
+    padding: 16px;
+    text-align: center;
+    color: #d93025;
+    background: #fce8e6;
+    border-radius: 8px;
+    margin: 16px;
+}
+
+.summary-error p {
+    margin: 0;
+    font-size: 14px;
+}
+
 @media (prefers-color-scheme: dark) {
     .subtitle-analysis-panel {
         background: #0f0f0f;
@@ -372,6 +386,11 @@
 
     .viewpoint-item {
         border-left-color: #3ea6ff;
+    }
+
+    .summary-error {
+        background: #3c1514;
+        color: #ff8a83;
     }
 }
 
