@@ -356,6 +356,9 @@ import AnalysisPanel from './components/analysisPanel';
         // 初始化分析组件
         analyzer = new SubtitleAnalyzer();
         analysisPanel = new AnalysisPanel();
+        
+        // 设置分析器和字幕数据
+        analysisPanel.setAnalyzer(analyzer);
 
         // 添加 AI 解析按钮事件处理
         const analyzeButton = controlPanel.querySelector('.analyze-button');
@@ -365,44 +368,13 @@ import AnalysisPanel from './components/analysisPanel';
                 return;
             }
 
+            // 设置当前字幕数据
+            analysisPanel.setSubtitles(currentSubtitles);
             analysisPanel.showPanel();
-            analysisPanel.setLoading(true);
-
-            try {
-                const results = await analyzer.analyzeSubtitles(currentSubtitles);
-                if (results) {
-                    analysisPanel.renderResults(results);
-                } else {
-                    throw new Error('Analysis failed');
-                }
-            } catch (error) {
-                console.error('Failed to analyze subtitles:', error);
-                // 显示错误消息
-                analysisPanel.renderResults([{
-                    type: 'Error',
-                    expression: '分析失败',
-                    difficulty: 'N/A',
-                    part_of_speech: 'N/A',
-                    phonetic: 'N/A',
-                    chinese_meaning: '请稍后重试',
-                    memory_method: '',
-                    source_sentence: '',
-                    source_translation: ''
-                }]);
-            } finally {
-                analysisPanel.setLoading(false);
-            }
+            
+            // 触发初始分析
+            await analysisPanel.triggerAnalysis();
         });
-        
-        // 创建缩放控制器（独立面板）
-        // const scaleControl = document.createElement('div');
-        // scaleControl.className = 'subtitle-scale-control';
-        // scaleControl.innerHTML = `
-        //     <button class="scale-btn scale-down" title="缩小字幕">-</button>
-        //     <span class="scale-value">100%</span>
-        //     <button class="scale-btn scale-up" title="放大字幕">+</button>
-        // `;
-        // container.appendChild(scaleControl);
         
         // 创建字幕内容容器
         const contentContainer = document.createElement('div');
@@ -1006,7 +978,7 @@ ${JSON.stringify(batch, null, 2)}
             const playerRect = player.getBoundingClientRect();
             const currentLeft = parseFloat(container.style.left);
             const currentTop = parseFloat(container.style.top);
-            const relativeLeft = ((currentLeft - playerRect.left) / playerRect.width) * 100;
+            const relativeLeft =  ((currentLeft - playerRect.left) / playerRect.width) * 100;
             const relativeTop = ((currentTop - playerRect.top) / playerRect.height) * 100;
 
             // 应用百分比定位，让其在播放器调整时能自动计算位置
