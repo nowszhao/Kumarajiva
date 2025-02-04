@@ -5,6 +5,7 @@ class AnalysisPanel {
         this.currentTab = 'summary'; // 修改默认标签为总结
         this.analyzer = null; // 添加 analyzer 引用
         this.currentSubtitles = null; // 添加当前字幕引用
+        this.currentVideoId = null; // 添加视频ID属性
     }
 
     createPanel() {
@@ -248,15 +249,20 @@ class AnalysisPanel {
     }
 
     async triggerAnalysis() {
-        if (!this.analyzer || !this.currentSubtitles) {
-            console.error('Analyzer or subtitles not set');
+        if (!this.analyzer || !this.currentSubtitles || !this.currentVideoId) {
+            console.error('Analyzer, subtitles, or video ID not set');
             return;
         }
 
         this.setLoading(true);
 
         try {
-            const results = await this.analyzer.analyzeSubtitles(this.currentSubtitles, this.currentTab);
+            const results = await this.analyzer.analyzeSubtitles(
+                this.currentSubtitles, 
+                this.currentTab,
+                this.currentVideoId
+            );
+            
             if (results) {
                 this.renderResults(results);
             } else {
@@ -323,6 +329,11 @@ class AnalysisPanel {
             
             audio.play();
         });
+    }
+
+    // 添加设置视频ID的方法
+    setVideoId(videoId) {
+        this.currentVideoId = videoId;
     }
 }
 

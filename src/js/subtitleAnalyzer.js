@@ -7,10 +7,36 @@ class SubtitleAnalyzer {
             config.translation.defaultService,
             config[config.translation.defaultService]
         );
+        this.cacheKey = 'yt-subtitle-analysis-';
     }
 
-    async analyzeSubtitles(subtitles, type = 'words') {
-        // 合并所有字幕文本
+    // 生成缓存键
+    generateCacheKey(videoId, type) {
+        return `${this.cacheKey}${videoId}-${type}`;
+    }
+
+    // 获取缓存的分析结果
+    getCachedAnalysis(videoId, type) {
+        const key = this.generateCacheKey(videoId, type);
+        const cached = localStorage.getItem(key);
+        return cached ? JSON.parse(cached) : null;
+    }
+
+    // 保存分析结果到缓存
+    saveAnalysisToCache(videoId, type, results) {
+        const key = this.generateCacheKey(videoId, type);
+        localStorage.setItem(key, JSON.stringify(results));
+    }
+
+    async analyzeSubtitles(subtitles, type = 'words', videoId) {
+        // 首先检查缓存
+        const cachedResults = this.getCachedAnalysis(videoId, type);
+        if (cachedResults) {
+            console.log('Loading analysis from cache');
+            return cachedResults;
+        }
+
+        // 如果没有缓存，进行新的分析
         const fullText = subtitles
             .map(sub => sub.text)
             .join('\n');
@@ -28,16 +54,16 @@ class SubtitleAnalyzer {
                 prompt = this.buildWordsAnalysisPrompt(fullText);
         }
 
-
         console.log("prompt:", prompt,",  type:", type);
 
         try {
             const result = await this.translator.translate(prompt);
-
-            console.log("result:", result);
+            const parsedResult = type === 'summary' ? result : JSON.parse(result);
             
-            // 对于总结类型，直接返回文本结果，不需要 JSON 解析
-            return type === 'summary' ? result : JSON.parse(result);
+            // 保存结果到缓存
+            this.saveAnalysisToCache(videoId, type, parsedResult);
+            
+            return parsedResult;
         } catch (error) {
             console.error('Subtitle analysis failed:', error);
             return null;

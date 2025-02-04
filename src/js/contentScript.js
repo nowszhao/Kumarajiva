@@ -354,11 +354,11 @@ import AnalysisPanel from './components/analysisPanel';
         container.appendChild(controlPanel);
         
         // 初始化分析组件
-        analyzer = new SubtitleAnalyzer();
-        analysisPanel = new AnalysisPanel();
+        initializeAnalysisPanel();
         
         // 设置分析器和字幕数据
         analysisPanel.setAnalyzer(analyzer);
+        analysisPanel.setVideoId(getYouTubeVideoId());
 
         // 添加 AI 解析按钮事件处理
         const analyzeButton = controlPanel.querySelector('.analyze-button');
@@ -1320,6 +1320,26 @@ ${JSON.stringify(batch, null, 2)}
             stopLoop();
             originalCleanup();
         };
+    }
+
+    // 在初始化分析面板时设置视频ID
+    function initializeAnalysisPanel() {
+        // 获取视频ID
+        const videoId = getYouTubeVideoId(); // 你需要实现这个函数
+        
+        // 初始化分析组件
+        analyzer = new SubtitleAnalyzer();
+        analysisPanel = new AnalysisPanel();
+        
+        // 设置分析器和字幕数据
+        analysisPanel.setAnalyzer(analyzer);
+        analysisPanel.setVideoId(videoId);
+    }
+
+    // 添加获取视频ID的辅助函数
+    function getYouTubeVideoId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('v');
     }
 
     // 初始化扩展
