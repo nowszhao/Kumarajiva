@@ -22,4 +22,28 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
     hostEquals: 'www.youtube.com',
     pathPrefix: '/watch'
   }]
+});
+
+// Add proxyFetch handler to forward requests to http://47.121.117.100
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'proxyFetch') {
+    const { url, options } = message;
+    fetch(url, options)
+      .then(async (response) => {
+        const text = await response.text();
+        sendResponse({
+          success: response.ok,
+          status: response.status,
+          body: text
+        });
+      })
+      .catch(error => {
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      });
+    // Return true to indicate that the response will be sent asynchronously.
+    return true;
+  }
 }); 

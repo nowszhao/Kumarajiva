@@ -2,6 +2,7 @@ const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
+    mode: 'development', // 设置为开发模式
     entry: {
         contentScript: './src/js/contentScript.js',
         options: './src/js/options.js',
@@ -66,7 +67,10 @@ module.exports = {
             ],
         }),
     ],
+    optimization: {
+        minimize: false // 禁用压缩
+    },
     resolve: {
         extensions: ['.js']
     }
-}; 
+};

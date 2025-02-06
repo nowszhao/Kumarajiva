@@ -245,7 +245,7 @@ class YouTubeSubtitleApp {
         const switchContainer = document.createElement('div');
         switchContainer.className = 'subtitle-switch-container';
         switchContainer.innerHTML = `
-            <div class="subtitle-switch-tooltip">双语字幕</div>
+            <div class="subtitle-switch-tooltip">AI双语字幕</div>
             <div class="subtitle-switch"></div>
         `;
 

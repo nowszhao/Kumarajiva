@@ -158,7 +158,7 @@ import config from '../config/config';
         );
 
         try {
-            const result = await translator.translate("翻译为地道的中文：" + text);
+            const result = await translator.translate("翻译为准确且地道的中文：" + text);
             return result;
         } finally {
             await translator.cleanup();
