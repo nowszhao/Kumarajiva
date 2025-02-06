@@ -1,60 +1,60 @@
-import { TranslatorFactory } from '../translators';
-import config from '../config/config';
-import SubtitleAnalyzer from './subtitleAnalyzer';
-import AnalysisPanel from './components/analysisPanel';
 
-// 将所有代码包装在一个立即执行函数中以避免全局变量污染
-(function() {
+import { EventBus,SubtitleManager,TranslationProcessor, UIManager, StorageManager} from './youtubeVideoParser';
 
-    console.log("location.href:", location.href);
+// 主应用类 - 负责协调各个组件
+class YouTubeSubtitleApp {
+    constructor() {
+        this.eventBus = new EventBus();
+        this.storageManager = new StorageManager();
+        this.subtitleManager = new SubtitleManager(this.eventBus);
+        this.translationProcessor = new TranslationProcessor(
+            this.storageManager, 
+            this.eventBus,
+            this.subtitleManager
+        );
+        this.uiManager = null;
+        this.player = null;
+        this.isSubtitleEnabled = false;
 
-    // 检查是否已经初始化
-    if (window.youtubeSubtitleTranslatorInitialized) {
-        return;
+        // 绑定方法
+        this.initializeExtension = this.initializeExtension.bind(this);
+        this.handleVideoChange = this.handleVideoChange.bind(this);
+
+        // 注册全局事件监听
+        this.eventBus.on('videoChanged', this.handleVideoChange);
     }
-    window.youtubeSubtitleTranslatorInitialized = true;
 
-    console.log("####### contentScript.js ");
+    setupEventListeners() {
+        this.eventBus.on('translationCompleted', ({ originalText, translatedData }) => {
+            this.subtitleManager.updateSubtitleCache(originalText, translatedData);
+        });
 
-    const MAX_SUBTITLES = 5;
-    const BATCH_SIZE = 5; // 每批处理的字幕数量
-    const BATCH_INTERVAL = 2000; // 添加批次间隔时间(ms)
-    const SUBTITLE_STORAGE_KEY = 'yt-subtitles-'; // 存储键前缀
-
-    // 全局状态
-    let currentChatId = null;
-    let subtitleCache = new Map();
-    let currentSubtitles = [];
-    let player = null;
-    let processingStatus = {
-        total: 0,
-        processed: 0,
-        isProcessing: false
-    };
-
-    // 添加全局开关状态
-    let isSubtitleEnabled = false;
-
-    // 在全局变量区域添加
-    let analyzer = null;
-    let analysisPanel = null;
-
-    // 在全局变量声明后，添加 throttle 函数的实现
-    function throttle(func, limit) {
-        let inThrottle;
-        return function() {
-            const args = arguments;
-            const context = this;
-            if (!inThrottle) {
-                func.apply(context, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
+        this.eventBus.on('subtitlesUpdated', (subtitles) => {
+            if (this.uiManager) {
+                this.uiManager.updateSubtitleDisplay(subtitles);
             }
+        });
+    }
+
+    async initializeExtension() {
+        this.setupEventListeners();
+        this.setupUrlChangeListener();
+        if (location.href.includes('youtube.com/watch')) {
+            setTimeout(() => this.initializePlugin(), 1000);
         }
     }
 
-    // 修改 URL 变化监听函数
-    function setupUrlChangeListener() {
+    async initializePlugin() {
+        if (!document.querySelector('.subtitle-switch-container')) {
+            this.addSubtitleSwitch();
+        }
+
+        if (this.isSubtitleEnabled) {
+            await this.initializePluginCore();
+        }
+    }
+
+    setupUrlChangeListener() {
         let lastUrl = location.href;
         let lastVideoId = new URLSearchParams(window.location.search).get('v');
 
@@ -62,43 +62,37 @@ import AnalysisPanel from './components/analysisPanel';
             const currentUrl = location.href;
             const newVideoId = new URLSearchParams(window.location.search).get('v');
             
-            // 只在视频页面进行处理
             if (!currentUrl.includes('youtube.com/watch')) {
                 if (lastUrl.includes('youtube.com/watch')) {
                     console.log('Leaving video page, cleaning up');
-                    cleanupCurrentSession();
+                    this.cleanupCurrentSession();
                 }
                 lastUrl = currentUrl;
                 lastVideoId = null;
                 return;
             }
 
-            // 检查视频ID是否变化
             if (newVideoId && newVideoId !== lastVideoId) {
                 console.log('Video ID changed from', lastVideoId, 'to', newVideoId);
                 lastVideoId = newVideoId;
                 lastUrl = currentUrl;
                 
-                // 清理当前会话并重新初始化
-                cleanupCurrentSession();
+                this.cleanupCurrentSession();
                 setTimeout(() => {
-                    initializePlugin();
-                }, 1000); // 增加延迟以确保页面完全加载
+                    this.initializePlugin();
+                }, 1000);
 
                 window.location.reload();
             }
         };
 
-        // 添加消息监听器
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        chrome.runtime.onMessage.addListener((message) => {
             if (message.type === 'VIDEO_CHANGED') {
-                console.log('Received VIDEO_CHANGED message:', message);
                 checkForVideoChange();
             }
         });
 
-        // 使用已定义的 throttle 函数
-        const throttledCheck = throttle(checkForVideoChange, 1000);
+        const throttledCheck = this.throttle(checkForVideoChange, 1000);
         
         window.addEventListener('popstate', throttledCheck);
         window.addEventListener('pushstate', throttledCheck);
@@ -106,7 +100,6 @@ import AnalysisPanel from './components/analysisPanel';
         document.addEventListener('yt-navigate-start', throttledCheck);
         document.addEventListener('yt-navigate-finish', throttledCheck);
 
-        // 修改 MutationObserver 配置
         const observer = new MutationObserver((mutations) => {
             if (location.href.includes('youtube.com/watch')) {
                 const hasRelevantChanges = mutations.some(mutation => {
@@ -128,90 +121,91 @@ import AnalysisPanel from './components/analysisPanel';
             attributeFilter: ['data-video-id']
         });
 
-        // 初始检查
         checkForVideoChange();
     }
 
-    // 修改初始化函数
-    function initializeExtension() {
-        // 防止重复初始化
-        // if (window.youtubeSubtitleTranslatorInitialized) {
-        //     console.log('Extension already initialized globally');
-        //     return;
-        // }
-        // window.youtubeSubtitleTranslatorInitialized = true;
+    async initializePluginCore() {
+        this.player = await this.waitForYouTubePlayer();
+        if (!this.player) return;
 
-        console.log("####### contentScript.js initializing");
+        this.uiManager = new UIManager(this.player, this.eventBus);
         
-        // 只设置一次 URL 变化监听器
-        setupUrlChangeListener();
-        
-        // 修改这部分，确保在视频页面时一定会初始化插件
-        if (location.href.includes('youtube.com/watch')) {
-            // 添加延迟确保 DOM 完全加载
-            setTimeout(() => {
-                console.log('Initializing plugin for video page');
-                initializePlugin();
-            }, 1000);
+        const englishTrack = await this.subtitleManager.getEnglishSubtitleTrack();
+        if (!englishTrack) {
+            this.uiManager.showNoSubtitlesNotification();
+            return;
         }
+
+        const subtitles = await this.subtitleManager.fetchAndParseSubtitles(englishTrack);
+        if (!subtitles.length) return;
+
+        this.subtitleManager.setCurrentSubtitles(subtitles);
+        
+        // 修改 timeupdate 事件处理逻辑
+        this.player.addEventListener('timeupdate', () => {
+            const currentTime = this.player.currentTime * 1000;
+            // 只获取当前时间点的字幕
+            const currentSubtitles = subtitles.filter(sub => 
+                currentTime >= sub.startTime && currentTime < sub.endTime
+            ).slice(0, 1); // 只取第一条
+
+            // 只有在有字幕时才更新显示
+            if (currentSubtitles.length > 0) {
+                this.uiManager.updateSubtitleDisplay(currentSubtitles);
+            }
+        });
+
+        await this.translationProcessor.batchProcessSubtitles(subtitles, UIManager.getYouTubeVideoId());
     }
 
-    // 修改 cleanupCurrentSession 函数
-    function cleanupCurrentSession() {
+    cleanupCurrentSession() {
         console.log('Starting cleanup of current session');
         
         try {
-            // 停止所有事件监听
-            if (player) {
-                player.removeEventListener('timeupdate', onTimeUpdate);
+            if (this.player) {
+                this.player.removeEventListener('timeupdate', this.onTimeUpdate);
             }
             
-            // 清理字幕容器
             const subtitleContainer = document.getElementById('yt-subtitle-container');
             if (subtitleContainer) {
                 subtitleContainer.remove();
             }
             
-            // 清理进度条容器
             const progressContainer = document.getElementById('translation-progress');
             if (progressContainer) {
                 progressContainer.remove();
             }
             
-            // 重置全局状态
-            currentChatId = null;
-            subtitleCache = new Map();
-            currentSubtitles = [];
-            player = null;
-            processingStatus = {
-                total: 0,
-                processed: 0,
-                isProcessing: false
-            };
+            if (this.subtitleManager) {
+                this.subtitleManager.currentSubtitles = [];
+                this.subtitleManager.subtitleCache.clear();
+            }
+
+            if (this.translationProcessor) {
+                this.translationProcessor.processingStatus = {
+                    total: 0,
+                    processed: 0,
+                    isProcessing: false
+                };
+            }
+
+            if (this.uiManager) {
+                if (this.uiManager.analysisPanel) {
+                    this.uiManager.analysisPanel.hidePanel();
+                }
+                this.uiManager.analyzer = null;
+                this.uiManager.analysisPanel = null;
+            }
             
-            // 重置初始化标志
-            window.isPluginInitialized = false;
-            window.isPluginInitializing = false;
-            window.currentInitializedVideoId = null;
-        
+            this.player = null;
             
-            // 保持开关按钮
             const switchContainer = document.querySelector('.subtitle-switch-container');
             if (switchContainer) {
                 const switchElement = switchContainer.querySelector('.subtitle-switch');
-                if (!isSubtitleEnabled) {
+                if (!this.isSubtitleEnabled) {
                     switchElement.classList.remove('active');
                 }
             }
-            
-            // 清理分析面板
-            if (analysisPanel) {
-                analysisPanel.hidePanel();
-            }
-            
-            // 重置分析组件
-            analyzer = null;
-            analysisPanel = null;
             
             console.log('Session cleanup completed successfully');
         } catch (error) {
@@ -219,205 +213,9 @@ import AnalysisPanel from './components/analysisPanel';
         }
     }
 
-    // 修改 initializePlugin 函数
-    async function initializePlugin() {
-        const videoId = new URLSearchParams(window.location.search).get('v');
-        
-        // 确保开关按钮存在
-        if (!document.querySelector('.subtitle-switch-container')) {
-            addSubtitleSwitch();
-        }
-
-        // 只有在开关启用时才初始化核心功能
-        if (isSubtitleEnabled) {
-            await initializePluginCore(videoId);
-        }
-    }
-
-    // 将原有的初始化逻辑移到新函数中
-    async function initializePluginCore(videoId) {
-        // 检查是否已添加开关按钮
-        if (!document.querySelector('.subtitle-switch-container')) {
-            addSubtitleSwitch();
-        }
-
-        // 如果开关未启用，不继续初始化
-        if (!isSubtitleEnabled) {
-            return;
-        }
-
-        // 等待YouTube播放器加载
-        player = await waitForYouTubePlayer();
-        console.log("Player loaded:", !!player);
-
-        if (!player) {
-            console.log('Failed to load player');
-            return;
-        }
-
-        // 创建新的容器
-        createSubtitleContainer();
-        createProgressContainer();
-        
-        // 等待一段时间确保YouTube完全加载
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // 初始化字幕数据
-        const englishTrack = await getEnglishSubtitleTrack();
-        console.log("englishTrack:", englishTrack);
-
-        if (!englishTrack) {
-            // 创建提示容器
-            const notificationContainer = document.createElement('div');
-            notificationContainer.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background-color: rgba(0, 0, 0, 0.8);
-                color: white;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-size: 16px;
-                z-index: 2147483647;
-                text-align: center;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            `;
-            notificationContainer.innerHTML = `
-                <div>未找到字幕，请尝试刷新页面</div>
-                <button style="
-                    margin-top: 8px;
-                    padding: 6px 12px;
-                    background: #1a73e8;
-                    border: none;
-                    border-radius: 4px;
-                    color: white;
-                    cursor: pointer;
-                ">刷新页面</button>
-            `;
-            
-            document.body.appendChild(notificationContainer);
-            
-            // 添加刷新按钮点击事件
-            const refreshButton = notificationContainer.querySelector('button');
-            refreshButton.addEventListener('click', () => {
-                location.reload();
-            });
-            
-            // 5秒后自动移除提示
-            setTimeout(() => {
-                notificationContainer.remove();
-            }, 5000);
-            
-            console.error('No English subtitles available');
-            return;
-        }
-
-        // 获取完整字幕数据
-        const subtitleData = await fetchAndParseSubtitles(englishTrack);
-        // console.log("subtitleData:", subtitleData);
-        
-        if (!subtitleData.length) return;
-        
-        // 保存字幕数据到全局变量
-        currentSubtitles = subtitleData;
-
-        // 添加事件监听
-        player.addEventListener('timeupdate', onTimeUpdate);
-
-        // 批量处理字幕
-        await batchProcessSubtitles(currentSubtitles);
-    }
-
-    function createSubtitleContainer() {
-        const container = document.createElement('div');
-        container.className = 'subtitle-container';
-        container.id = 'yt-subtitle-container';
-        
-        // 创建控制面板
-        const controlPanel = document.createElement('div');
-        controlPanel.className = 'subtitle-control-panel';
-        controlPanel.innerHTML = `
-            <div class="subtitle-controls-group">
-                <button class="nav-button prev-button">上一句</button>
-                <button class="nav-button next-button">下一句</button>
-            </div>
-            <div class="subtitle-controls-group">
-                <div class="loop-switch-container">
-                    <div class="loop-switch"></div>
-                </div>
-            </div>
-            <div class="subtitle-controls-group">
-                <button class="analyze-button">AI解析</button>
-            </div>
-        `;
-        container.appendChild(controlPanel);
-        
-        // 初始化分析组件
-        initializeAnalysisPanel();
-        
-        // 设置分析器和字幕数据
-        analysisPanel.setAnalyzer(analyzer);
-        analysisPanel.setVideoId(getYouTubeVideoId());
-
-        // 添加 AI 解析按钮事件处理
-        const analyzeButton = controlPanel.querySelector('.analyze-button');
-        analyzeButton.addEventListener('click', async () => {
-            if (analysisPanel.isVisible) {
-                analysisPanel.hidePanel();
-                return;
-            }
-
-            // 设置当前字幕数据
-            analysisPanel.setSubtitles(currentSubtitles);
-            analysisPanel.showPanel();
-            
-            // 触发初始分析
-            await analysisPanel.triggerAnalysis();
-        });
-        
-        // 创建字幕内容容器
-        const contentContainer = document.createElement('div');
-        contentContainer.className = 'subtitle-content';
-        container.appendChild(contentContainer);
-        
-        // 修改插入位置到播放器容器
-        const playerContainer = document.querySelector('#movie_player');
-        if (playerContainer) {
-            playerContainer.appendChild(container);
-            console.log("Subtitle container created and appended to player container");
-            
-            // 初始化各种功能
-            // initializeDrag(container);
-            // initializeScale(container);
-            initializeHoverControl(container);
-            initializeNavigation(container);
-            initializeLoopControl(container);
-        } else {
-            console.error("Player container not found");
-            // 如果找不到播放器容器，则添加到 body
-            document.body.appendChild(container);
-        }
-    }
-
-    function createProgressContainer() {
-        const container = document.createElement('div');
-        container.className = 'translation-progress-container';
-        container.id = 'translation-progress';
-        
-        const playerContainer = document.querySelector('#movie_player');
-        if (playerContainer) {
-            playerContainer.appendChild(container);
-            console.log("Progress container created and appended to player container");
-        } else {
-            console.error("Player container not found");
-        }
-    }
-
-    async function waitForYouTubePlayer() {
+    async waitForYouTubePlayer() {
         return new Promise(resolve => {
             const checkPlayer = () => {
-                // 获取视频元素而不是播放器容器
                 const videoElement = document.querySelector('video.html5-main-video');
                 if (videoElement) {
                     resolve(videoElement);
@@ -429,730 +227,28 @@ import AnalysisPanel from './components/analysisPanel';
         });
     }
 
-    async function getEnglishSubtitleTrack() {
-        // 最大重试次数
-        const maxRetries = 5;
-        const retryInterval = 1000; // 1秒
-
-        for (let i = 0; i < maxRetries; i++) {
-            const tracks = parseCaptionTracks();
-            console.log(`Attempt ${i + 1}: Found ${tracks.length} caption tracks`);
-            
-            if (tracks.length > 0) {
-                // 优先查找英文字幕
-                const englishTrack = tracks.find(track => 
-                    track.languageCode === 'en' || 
-                    track.name?.simpleText?.toLowerCase().includes('english')
-                );
-                
-                if (englishTrack) {
-                    console.log('Found English track:', englishTrack);
-                    return englishTrack;
-                }
-                
-                // 如果没有找到英文字幕，返回第一个可用的字幕
-                console.log('No English track found, using first available track:', tracks[0]);
-                return tracks[0];
-            }
-            
-            // 等待一段时间后重试
-            await new Promise(resolve => setTimeout(resolve, retryInterval));
-        }
-        
-        console.error('Failed to find any caption tracks after', maxRetries, 'attempts');
-        return null;
-    }
-
-    async function fetchAndParseSubtitles(track) {
-        // console.log("fetchAndParseSubtitles-track:", track);
-
-        const response = await fetch(new URL(track.baseUrl));
-        const xmlText = await response.text();
-        
-        // console.log("fetchAndParseSubtitles-response:", xmlText);
-
-        // 解析 XML
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        
-        // 获取所有字幕文本节点
-        const textNodes = Array.from(xmlDoc.getElementsByTagName('text'));
-        
-        // 先转换为字幕数组
-        const rawSubtitles = textNodes.map((node, index) => {
-            const startTime = parseFloat(node.getAttribute('start')) * 1000;
-            const duration = parseFloat(node.getAttribute('dur')) * 1000;
-            
-            // 计算结束时间
-            let endTime;
-            if (index < textNodes.length - 1) {
-                const nextStart = parseFloat(textNodes[index + 1].getAttribute('start')) * 1000;
-                endTime = Math.min(startTime + duration, nextStart);
-            } else {
-                endTime = startTime + duration;
-            }
-
-            return {
-                startTime,
-                endTime,
-                text: node.textContent.trim()
-            };
-        });
-
-        const MAX_GROUP_DURATION = 15000; // 增加最大合并时长为15秒
-        const MAX_TEXT_LENGTH = 150; // 增加最大文本长度
-        const MAX_GAP = 8000; // 增加允许合并的最大间隔为8秒
-
-        // 合并相近的字幕
-        const mergedSubtitles = [];
-        let currentGroup = null;
-
-        for (const subtitle of rawSubtitles) {
-            if (!currentGroup) {
-                currentGroup = { ...subtitle };
-                continue;
-            }
-
-            const wouldBeDuration = subtitle.endTime - currentGroup.startTime;
-            const wouldBeText = `${currentGroup.text} ${subtitle.text}`;
-            const gap = subtitle.startTime - currentGroup.endTime;
-
-            if (gap <= MAX_GAP && 
-                wouldBeDuration <= MAX_GROUP_DURATION &&
-                wouldBeText.length <= MAX_TEXT_LENGTH) {
-                
-                currentGroup.endTime = subtitle.endTime;
-                currentGroup.text = wouldBeText;
-            } else {
-                mergedSubtitles.push(currentGroup);
-                currentGroup = { ...subtitle };
-            }
-        }
-
-        // 添加最后一组
-        if (currentGroup) {
-            mergedSubtitles.push(currentGroup);
-        }
-
-        console.log("Merged subtitles:", mergedSubtitles);
-        return mergedSubtitles;
-    }
- 
-
-    // 修改批处理函数，确保串行处理
-    async function batchProcessSubtitles(subtitles) {
-        const videoId = new URLSearchParams(window.location.search).get('v');
-        const storageKey = `${SUBTITLE_STORAGE_KEY}${videoId}`;
-        
-        // 检查缓存
-        const cached = await getFromStorage(storageKey);
-        if (cached) {
-            console.log("Using cached subtitles");
-            subtitleCache = new Map(Object.entries(cached));
-            return;
-        }
-
-        // 初始化处理状态
-        processingStatus = {
-            total: subtitles.length,
-            processed: 0,
-            isProcessing: true
-        };
-        updateProcessingStatus();
-
-        // 将字幕分成批次
-        const batches = [];
-        for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
-            batches.push(subtitles.slice(i, i + BATCH_SIZE));
-        }
-
-        console.log(`Total batches: ${batches.length}`);
-
-        // 串行处理每个批次
-        try {
-            for (let i = 0; i < batches.length; i++) {
-
-                console.log(`Processing batch ${i + 1}/${batches.length}`);
-                
-                // 处理当前批次
-                await processBatch(batches[i], i + 1, batches.length);
-
-                // 添加批次间隔
-                if (i < batches.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, BATCH_INTERVAL));
-                }
-            }
-
-            // 保存到存储
-            const cacheObject = Object.fromEntries(subtitleCache);
-            await saveToStorage(storageKey, cacheObject);
-        } catch (error) {
-            console.error('Error in batch processing:', error);
-        } finally {
-            processingStatus.isProcessing = false;
-            updateProcessingStatus();
-        }
-    }
-
-    // 修改现有的 translateWithKimi 函数为通用的翻译函数
-    async function translate(text, translatorType = config.translation.defaultService) {
-        const translator = TranslatorFactory.createTranslator(translatorType, config[translatorType]);
-        try {
-            return await translator.translate(text);
-        } finally {
-            await translator.cleanup();
-        }
-    }
-
-
-    function extractJsonFromString(input) {
-        const jsonRegex = /```json([\s\S]*?)```|```([\s\S]*?)```|(\[[\s\S]*?\])/g;
-        const matches = [];
-        let match;
-      
-        if ((match = jsonRegex.exec(input)) !== null) {
-          let jsonData;
-          if (match[1]) {
-            // 匹配 ```json ... ```
-            jsonData = match[1].trim();
-          } else if (match[2]) {
-            // 匹配 ``` ... ```
-            jsonData = match[2].trim();
-          } else if (match[3]) {
-            // 匹配直接存在的 JSON 数据
-            jsonData = match[3].trim();
-          }
-      
-          try {
-
-            // console.log("extractJsonFromString-jsonData:",jsonData);
-
-            const parsedData = JSON.parse(jsonData);
-
-            // console.log("extractJsonFromString-parsedData:",parsedData);
-
-            if (Array.isArray(parsedData)) {
-              return parsedData;
-            } else {
-              matches.push(parsedData);
-            }
-          } catch (e) {
-            console.error("Invalid JSON found:",e);
-            throw new Error('Invalid JSON found');
-          }
-        }
-      
-        return matches;
-      }
-
-
-    function normalizeText(text) {
-        return text
-            // 解码 HTML 实体
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/&nbsp;/g, ' ')
-            // 标准化空白字符
-            .replace(/\s+/g, ' ')
-            // 移除标点符号
-            .replace(/[.,!?]/g, '')
-            // 转换为小写并去除首尾空格
-            .toLowerCase()
-            .trim();
-    }
-
-    // 修改 processBatch 函数以使用新的翻译系统
-    async function processBatch(batch, currentBatch, totalBatches, retryCount = 0) {
-        try {
-            const prompt = `
-你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
-1. 处理规则：
-- 保持原始时间戳(startTime/endTime)不变
-- 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
-- 生成准确流畅的中文翻译(translation字段)
-- 所有数字时间值保持整数格式
-
-2. 遵守的JSON规范：
-- 使用双引号("")
-- 禁止尾随逗号
-- 确保特殊字符被正确转义
-- 换行符替换为空（即移除原文中的换行符）
-- 严格保持字段顺序：startTime > endTime > correctedText > translation
-3. 输入示例：
-[
-    {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
-]
-4. 输出示例：
-\`\`\`
-[
-    {
-        "startTime": 120,
-        "endTime": 1800,
-        "correctedText": "Hey, welcome back! So this week, the world",
-        "translation": "嘿，欢迎回来！本周我们将讨论"
-    },
-    ...
-]
-\`\`\`
-请现在处理以下输入内容：
-${JSON.stringify(batch, null, 2)}
-`;
-
-            console.log("prompt:", prompt);
-            const response = await translate(prompt);
-            if (!response) {
-                throw new Error('Translation failed');
-            }
-
-            console.log("processBatch-response:", response);
-            const processed = extractJsonFromString(response);
-            // console.log("processBatch-processed:", processed);
-
-            // 使用索引匹配原始文本和翻译结果
-            processed.forEach((item, index) => {
-                const originalText = batch[index].text;
-                subtitleCache.set(originalText, {
-                    correctedText: item.correctedText,
-                    translation: item.translation
-                });
-            });
-
-            // console.log("processBatch-subtitleCache:", subtitleCache);
-
-            // 更新进度
-            processingStatus.processed += batch.length;
-            updateProcessingStatus();
-        } catch (error) {
-            console.error(`Error in batch ${currentBatch}/${totalBatches}:`, error);
-            
-            if (retryCount < config.translation.maxRetries) {
-                const retryDelay = 3000 * (retryCount + 1);
-                console.log(`Batch ${currentBatch}/${totalBatches} failed, retrying in ${retryDelay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, retryDelay));
-                return processBatch(batch, currentBatch, totalBatches, retryCount + 1);
-            }
-            throw error;
-        }
-    }
- 
-
-    function onTimeUpdate() {
-        if (!player) return;
-        
-        const currentTime = player.currentTime * 1000;
-        const relevantSubtitles = currentSubtitles.filter(sub => 
-            currentTime >= sub.startTime && currentTime < sub.endTime
-        ).slice(-MAX_SUBTITLES);
-        
-        updateSubtitleDisplay(relevantSubtitles);
-        
-        // 更新导航按钮状态
-        const container = document.getElementById('yt-subtitle-container');
-        if (container) {
-            const prevButton = container.querySelector('.prev-button');
-            const nextButton = container.querySelector('.next-button');
-            if (prevButton && nextButton) {
-                const currentIndex = getCurrentSubtitleIndex();
-                prevButton.disabled = currentIndex <= 0;
-                nextButton.disabled = currentIndex === -1 || currentIndex >= currentSubtitles.length - 1;
-            }
-        }
-    }
-
-    function updateSubtitleDisplay(subtitles) {
-        const container = document.getElementById('yt-subtitle-container');
-        if (!container) {
-            console.error('Subtitle container not found!');
-            return;
-        }
-
-        let contentContainer = container.querySelector('.subtitle-content');
-        if (!contentContainer) {
-            contentContainer = document.createElement('div');
-            contentContainer.className = 'subtitle-content';
-            container.appendChild(contentContainer);
-        }
-
-        const html = subtitles
-            .map(sub => {
-                let cached = subtitleCache.get(sub.text) || {};
-                // 如果找不到完全匹配的缓存，尝试模糊匹配
-                // if (!cached.correctedText) {
-                //     const fuzzyMatch = Array.from(subtitleCache.entries()).find(([key]) => 
-                //         normalizeText(key) === normalizeText(sub.text)
-                //     );
-                //     if (fuzzyMatch) {
-                //         cached = fuzzyMatch[1];
-                //     }
-                // }
-                
-                return `
-                    <div class="subtitle-item">
-                        <div class="subtitle-english">${cached.correctedText || '原文| '+sub.text}</div>
-                        <div class="subtitle-chinese">${cached.translation || '正在翻译中...'}</div>
-                    </div>
-                `;
-            })
-            .join('');
-
-        contentContainer.innerHTML = html;
-    }
-
-    function parseCaptionTracks() {
-        // 方法1：从 ytInitialPlayerResponse 脚本中获取
-        const scriptContent = Array.from(document.scripts)
-            .find(script => script.text.includes('ytInitialPlayerResponse'))?.text;
-
-        if (scriptContent) {
-            const data = scriptContent.match(/ytInitialPlayerResponse\s*=\s*({.+?});/s)?.[1];
-            if (data) {
-                try {
-                    const { captions } = JSON.parse(data);
-                    const tracks = captions?.playerCaptionsTracklistRenderer?.captionTracks;
-                    if (tracks?.length) {
-                        console.log('Found tracks from ytInitialPlayerResponse:', tracks);
-                        return tracks;
-                    }
-                } catch (e) {
-                    console.error('Failed to parse ytInitialPlayerResponse:', e);
-                }
-            }
-        }
-
-        // 方法2：从 window.ytInitialPlayerResponse 获取
-        if (window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks) {
-            const tracks = window.ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer.captionTracks;
-            console.log('Found tracks from window.ytInitialPlayerResponse:', tracks);
-            return tracks;
-        }
-
-        // 方法3：从视频播放器元素获取
-        const player = document.querySelector('#movie_player');
-        if (player && player.getOption && typeof player.getOption === 'function') {
-            try {
-                const tracks = player.getOption('captions', 'tracklist');
-                if (tracks?.length) {
-                    console.log('Found tracks from player API:', tracks);
-                    return tracks;
-                }
-            } catch (e) {
-                console.error('Failed to get tracks from player API:', e);
-            }
-        }
-
-        console.log('No caption tracks found');
-        return [];
-    }
-
-    async function getFromStorage(key) {
-        try {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : null;
-        } catch (error) {
-            console.error('Storage read error:', error);
-            return null;
-        }
-    }
-
-    async function saveToStorage(key, data) {
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-        } catch (error) {
-            console.error('Storage write error:', error);
-        }
-    }
-
-    function updateProcessingStatus() {
-        const container = document.getElementById('translation-progress');
-        if (!container) return;
-
-        if (processingStatus.isProcessing) {
-            const progress = Math.round((processingStatus.processed / processingStatus.total) * 100);
-            container.innerHTML = `
-                <div class="processing-status">
-                    正在处理字幕 (${progress}%)
-                    <div class="progress-bar">
-                        <div class="progress" style="width: ${progress}%"></div>
-                    </div>
-                </div>
-            `;
-        } else {
-            container.innerHTML = ''; // 处理完成后清空进度显示
-        }
-    }
-
-    // 修改 initializeDrag 函数以存储相对位置
-    function initializeDrag(container) {
-        let isDragging = false;
-        let startX, startY;
-        let originalX, originalY;
-        let lastValidPosition = { x: 0, y: 0 };
-
-        const player = document.querySelector('#movie_player');
-        const playerRect = player.getBoundingClientRect();
-
-        // 修改初始位置的获取和设置，从 localStorage 获取相对位置并转换为绝对像素
-        const savedPosition = localStorage.getItem('subtitle-position');
-        if (savedPosition) {
-            const position = JSON.parse(savedPosition); // { left: relativeLeft, top: relativeTop }（百分比）
-            // 设置内联样式直接使用百分比，让其在播放器尺寸变化时自动调整
-            container.style.left = `${position.left}%`;
-            container.style.top = `${position.top}%`;
-            container.style.bottom = 'auto';
-            container.style.transform = ''; // 移除水平居中时的 transform
-        } else {
-            // 默认居中：水平居中使用 50% + transform 居中，保持固定底部偏移
-            container.style.left = '50%';
-            container.style.bottom = '80px';
-            container.style.transform = 'translateX(-50%)';
-        }
-
-        container.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            isDragging = true;
-            container.classList.add('dragging');
-
-            // 获取当前实际位置（相对于视口的像素值）
-            const rect = container.getBoundingClientRect();
-
-            // 如果使用默认 transform 居中，则转换为绝对定位
-            if (container.style.transform.includes('translateX(-50%)')) {
-                container.style.transform = '';
-                container.style.left = `${rect.left}px`;
-                container.style.bottom = 'auto';
-                container.style.top = `${rect.top}px`;
-            }
-
-            startX = e.clientX;
-            startY = e.clientY;
-            originalX = rect.left;
-            originalY = rect.top;
-            lastValidPosition = { x: rect.left, y: rect.top };
-
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        });
-
-        const handleMouseMove = (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            e.stopPropagation();
-
-            const deltaX = e.clientX - startX;
-            const deltaY = e.clientY - startY;
-            const newX = originalX + deltaX;
-            const newY = originalY + deltaY;
-
-            const playerRect = player.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-
-            if (
-                newX >= playerRect.left &&
-                newX + containerRect.width <= playerRect.right &&
-                newY >= playerRect.top &&
-                newY + containerRect.height <= playerRect.bottom
-            ) {
-                container.style.left = `${newX}px`;
-                container.style.top = `${newY}px`;
-                lastValidPosition = { x: newX, y: newY };
-            } else {
-                container.style.left = `${lastValidPosition.x}px`;
-                container.style.top = `${lastValidPosition.y}px`;
+    throttle(func, limit) {
+        let inThrottle;
+        return (...args) => {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
             }
         };
-
-        const handleMouseUp = (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            e.stopPropagation();
-
-            isDragging = false;
-            container.classList.remove('dragging');
-
-            // 计算字幕容器相对于播放器的百分比位置
-            const playerRect = player.getBoundingClientRect();
-            const currentLeft = parseFloat(container.style.left);
-            const currentTop = parseFloat(container.style.top);
-            const relativeLeft =  ((currentLeft - playerRect.left) / playerRect.width) * 100;
-            const relativeTop = ((currentTop - playerRect.top) / playerRect.height) * 100;
-
-            // 应用百分比定位，让其在播放器调整时能自动计算位置
-            container.style.left = `${relativeLeft}%`;
-            container.style.top = `${relativeTop}%`;
-
-            // 保存相对位置供下次初始化使用
-            localStorage.setItem('subtitle-position', JSON.stringify({ left: relativeLeft, top: relativeTop }));
-
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
     }
 
-    // 修改 initializeScale 函数
-    function initializeScale(container) {
-        const scaleDown = container.querySelector('.scale-down');
-        const scaleUp = container.querySelector('.scale-up');
-        const scaleValue = container.querySelector('.scale-value');
-        const content = container.querySelector('.subtitle-content');
-        
-        let currentScale = 100;
-        const MIN_SCALE = 50;
-        const MAX_SCALE = 200;
-        const SCALE_STEP = 10;
-
-        function updateScale() {
-            // 更新字幕内容和背景的缩放
-            const scale = currentScale / 100;
-            
-            // 更新字体大小而不是使用 transform
-            const subtitleEnglish = container.querySelectorAll('.subtitle-english');
-            const subtitleChinese = container.querySelectorAll('.subtitle-chinese');
-            
-            subtitleEnglish.forEach(el => {
-                el.style.fontSize = `${24 * scale}px`; // 24px 是原始字体大小
-                el.style.padding = `${4 * scale}px ${12 * scale}px`; // 调整内边距
-            });
-            
-            subtitleChinese.forEach(el => {
-                el.style.fontSize = `${24 * scale}px`;
-                el.style.padding = `${4 * scale}px ${12 * scale}px`;
-            });
-
-            // 更新其他相关样式
-            const subtitleItems = container.querySelectorAll('.subtitle-item');
-            subtitleItems.forEach(el => {
-                el.style.marginBottom = `${8 * scale}px`;
-            });
-
-            // 更新显示的缩放值
-            scaleValue.textContent = `${currentScale}%`;
-            
-            // 保存当前缩放值到 localStorage
-            localStorage.setItem('subtitle-scale', currentScale);
-            
-            // 更新按钮状态
-            scaleDown.disabled = currentScale <= MIN_SCALE;
-            scaleUp.disabled = currentScale >= MAX_SCALE;
-        }
-
-        // 从 localStorage 加载保存的缩放值
-        const savedScale = parseInt(localStorage.getItem('subtitle-scale'));
-        if (savedScale && !isNaN(savedScale)) {
-            currentScale = savedScale;
-            updateScale();
-        }
-
-        scaleDown.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (currentScale > MIN_SCALE) {
-                currentScale = Math.max(MIN_SCALE, currentScale - SCALE_STEP);
-                updateScale();
-            }
-        });
-
-        scaleUp.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (currentScale < MAX_SCALE) {
-                currentScale = Math.min(MAX_SCALE, currentScale + SCALE_STEP);
-                updateScale();
-            }
-        });
-
-        // 添加一个 MutationObserver 来监听字幕内容的变化
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && currentScale !== 100) {
-                    updateScale(); // 当内容变化时重新应用缩放
-                }
-            });
-        });
-
-        observer.observe(content, {
-            childList: true,
-            subtree: true
-        });
-    }
-
-    // 添加新的初始化鼠标悬停控制函数
-    function initializeHoverControl(container) {
-        let wasPlaying = false;
-        let pausedByHover = false;
-        let hoverTimeout;
-
-        container.addEventListener('mouseenter', () => {
-            if (!player) return;
-            
-            // 清除任何现有的超时
-            if (hoverTimeout) {
-                clearTimeout(hoverTimeout);
-            }
-
-            // 设置一个小延迟，避免鼠标快速经过时触发暂停
-            hoverTimeout = setTimeout(() => {
-                // 只记录进入时的播放状态
-                wasPlaying = !player.paused;
-                
-                // 如果视频正在播放，则暂停
-                if (wasPlaying) {
-                    player.pause();
-                    pausedByHover = true;
-                    console.log('Video paused by hover');
-                }
-            }, 200); // 200ms 延迟
-        });
-
-        container.addEventListener('mouseleave', () => {
-            // 清除进入时的超时
-            if (hoverTimeout) {
-                clearTimeout(hoverTimeout);
-            }
-
-            // 设置一个小延迟，避免鼠标快速经过时触发播放
-            hoverTimeout = setTimeout(() => {
-                // 只有当视频是被hover暂停的才自动恢复播放
-                if (pausedByHover && wasPlaying) {
-                    player.play();
-                    console.log('Video resumed after hover');
-                }
-                // 重置标志
-                pausedByHover = false;
-            }, 200); // 200ms 延迟
-        });
-
-        // 监听视频播放状态变化
-        player.addEventListener('play', () => {
-            // 视频开始播放时重置标志
-            pausedByHover = false;
-        });
-
-        player.addEventListener('pause', () => {
-            // 如果不是由hover引起的暂停，重置wasPlaying状态
-            if (!pausedByHover) {
-                wasPlaying = false;
-            }
-        });
-    }
-
-    // 修改 addSubtitleSwitch 函数
-    function addSubtitleSwitch() {
-        // 查找YouTube原生字幕按钮
+    addSubtitleSwitch() {
         const ytpRightControls = document.querySelector('.ytp-right-controls');
         if (!ytpRightControls) return;
 
-        // 创建开关容器
         const switchContainer = document.createElement('div');
         switchContainer.className = 'subtitle-switch-container';
-        // 将提示文字更新为"双语字幕"，与YouTube原生提示一致
-        switchContainer.innerHTML = `            <div class="subtitle-switch-tooltip">双语字幕</div>
+        switchContainer.innerHTML = `
+            <div class="subtitle-switch-tooltip">双语字幕</div>
             <div class="subtitle-switch"></div>
         `;
 
-        // 插入到字幕按钮后面
         const captionButton = ytpRightControls.querySelector('.ytp-subtitles-button');
         if (captionButton) {
             captionButton.after(switchContainer);
@@ -1160,189 +256,37 @@ ${JSON.stringify(batch, null, 2)}
             ytpRightControls.prepend(switchContainer);
         }
 
-        // 从 localStorage 读取开关状态
-        isSubtitleEnabled = localStorage.getItem('subtitle-switch-enabled') === 'true';
+        this.isSubtitleEnabled = localStorage.getItem('subtitle-switch-enabled') === 'true';
         const switchElement = switchContainer.querySelector('.subtitle-switch');
-        if (isSubtitleEnabled) {
+        if (this.isSubtitleEnabled) {
             switchElement.classList.add('active');
         }
 
-        // 添加点击事件
         switchContainer.addEventListener('click', async () => {
-            isSubtitleEnabled = !isSubtitleEnabled;
-            localStorage.setItem('subtitle-switch-enabled', isSubtitleEnabled);
+            this.isSubtitleEnabled = !this.isSubtitleEnabled;
+            localStorage.setItem('subtitle-switch-enabled', this.isSubtitleEnabled);
             
-            if (isSubtitleEnabled) {
+            if (this.isSubtitleEnabled) {
                 switchElement.classList.add('active');
-                // 启动字幕功能
                 const videoId = new URLSearchParams(window.location.search).get('v');
-                await initializePluginCore(videoId);
+                await this.initializePluginCore();
             } else {
                 switchElement.classList.remove('active');
-                // 清理当前会话
-                cleanupCurrentSession();
+                this.cleanupCurrentSession();
             }
         });
     }
 
-    function getCurrentSubtitleIndex() {
-        if (!player || !currentSubtitles.length) return -1;
-        
-        const currentTime = player.currentTime * 1000;
-        return currentSubtitles.findIndex(sub => 
-            currentTime >= sub.startTime && currentTime < sub.endTime
-        );
+    handleVideoChange(videoId) {
+        this.cleanupCurrentSession();
+        setTimeout(() => {
+            this.initializePlugin();
+        }, 1000);
     }
-    
-    // 添加新的导航初始化函数
-    function initializeNavigation(container) {
-        const prevButton = container.querySelector('.prev-button');
-        const nextButton = container.querySelector('.next-button');
-        
+}
 
-        
-        function updateButtonStates() {
-            const currentIndex = getCurrentSubtitleIndex();
-            prevButton.disabled = currentIndex <= 0;
-            nextButton.disabled = currentIndex === -1 || currentIndex >= currentSubtitles.length - 1;
-        }
-        
-        prevButton.addEventListener('click', () => {
-            const currentIndex = getCurrentSubtitleIndex();
-            if (currentIndex > 0) {
-                const prevSubtitle = currentSubtitles[currentIndex - 1];
-                player.currentTime = prevSubtitle.startTime / 1000;
-            }
-        });
-        
-        nextButton.addEventListener('click', () => {
-            const currentIndex = getCurrentSubtitleIndex();
-            if (currentIndex !== -1 && currentIndex < currentSubtitles.length - 1) {
-                const nextSubtitle = currentSubtitles[currentIndex + 1];
-                player.currentTime = nextSubtitle.startTime / 1000;
-            }
-        });
-        
-        // 监听视频时间更新以更新按钮状态
-        player.addEventListener('timeupdate', () => {
-            updateButtonStates();
-        });
-        
-        // 初始更新按钮状态
-        updateButtonStates();
-    }
+// 创建实例并初始化
+const app = new YouTubeSubtitleApp();
+app.initializeExtension();
 
-    // 修复循环播放功能
-    function initializeLoopControl(container) {
-        const loopSwitch = container.querySelector('.loop-switch');
-        const loopSwitchContainer = container.querySelector('.loop-switch-container');
-        let isLooping = false;
-        let loopInterval = null;
-        let currentLoopingIndex = -1;
-        
-        function getCurrentSubtitleIndex() {
-            if (!player || !currentSubtitles.length) return -1;
-            
-            const currentTime = player.currentTime * 1000;
-            return currentSubtitles.findIndex(sub => 
-                currentTime >= sub.startTime && currentTime < sub.endTime
-            );
-        }
-        
-        function startLoop() {
-            if (loopInterval) clearInterval(loopInterval);
-            
-            // 获取当前字幕索引
-            currentLoopingIndex = getCurrentSubtitleIndex();
-            if (currentLoopingIndex === -1) return;
-            
-            loopInterval = setInterval(() => {
-                if (!isLooping || !player) return;
-                
-                const currentTime = player.currentTime * 1000;
-                const currentSubtitle = currentSubtitles[currentLoopingIndex];
-                
-                // 如果超出当前字幕时间范围，跳回开始
-                if (currentTime >= currentSubtitle.endTime || currentTime < currentSubtitle.startTime) {
-                    player.currentTime = currentSubtitle.startTime / 1000;
-                }
-            }, 100);
-        }
-        
-        function stopLoop() {
-            if (loopInterval) {
-                clearInterval(loopInterval);
-                loopInterval = null;
-            }
-            currentLoopingIndex = -1;
-        }
-        
-        loopSwitchContainer.addEventListener('click', () => {
-            isLooping = !isLooping;
-            if (isLooping) {
-                loopSwitch.classList.add('active');
-                startLoop();
-            } else {
-                loopSwitch.classList.remove('active');
-                stopLoop();
-            }
-        });
-        
-        // 监听视频时间更新，处理字幕切换
-        player.addEventListener('timeupdate', () => {
-            if (isLooping) {
-                const newIndex = getCurrentSubtitleIndex();
-                if (newIndex !== -1 && newIndex !== currentLoopingIndex) {
-                    currentLoopingIndex = newIndex;
-                    startLoop(); // 重新开始循环新的字幕
-                }
-            }
-        });
-        
-        // 在视频暂停时保持循环状态，但暂停检查
-        player.addEventListener('pause', () => {
-            if (loopInterval) {
-                clearInterval(loopInterval);
-                loopInterval = null;
-            }
-        });
-        
-        // 在视频播放时恢复循环检查
-        player.addEventListener('play', () => {
-            if (isLooping) {
-                startLoop();
-            }
-        });
-        
-        // 在清理时停止循环
-        const originalCleanup = cleanupCurrentSession;
-        cleanupCurrentSession = function() {
-            stopLoop();
-            originalCleanup();
-        };
-    }
-
-    // 在初始化分析面板时设置视频ID
-    function initializeAnalysisPanel() {
-        // 获取视频ID
-        const videoId = getYouTubeVideoId(); // 你需要实现这个函数
-        
-        // 初始化分析组件
-        analyzer = new SubtitleAnalyzer();
-        analysisPanel = new AnalysisPanel();
-        
-        // 设置分析器和字幕数据
-        analysisPanel.setAnalyzer(analyzer);
-        analysisPanel.setVideoId(videoId);
-    }
-
-    // 添加获取视频ID的辅助函数
-    function getYouTubeVideoId() {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('v');
-    }
-
-    // 初始化扩展
-    initializeExtension();
-    console.log("contentScript.js loaded");
-})();
+console.log("contentScript.js loaded");
