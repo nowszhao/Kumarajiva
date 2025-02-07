@@ -73,18 +73,6 @@ import config from './config/config';
         return /^[\x09\x0A\x0D\x20-\x7E]+$/.test(text);
     }
 
-    // 获取段落文本
-    function getParagraphText(element) {
-        // 如果元素本身就是文本节点的父节点，直接返回其文本
-        if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
-            return element.textContent.trim();
-        }
-
-        // 否则尝试获取最近的包含英文的父段落
-        const paragraph = element.closest('p, article, div');
-        return paragraph ? paragraph.textContent.trim() : '';
-    }
-
     // 创建翻译容器
     function createTranslationElement(text) {
         const container = document.createElement('div');
@@ -109,6 +97,7 @@ import config from './config/config';
 
         const text = element.textContent.trim();
         if (!text || !containsEnglish(text)) {
+            console.log("text is not english:", text);
             return;
         }
 

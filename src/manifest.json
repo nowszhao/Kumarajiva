@@ -6,13 +6,21 @@
     "permissions": [
         "storage",
         "scripting",
-        "webNavigation"
+        "webNavigation",
+        "tabs"
     ],
     "host_permissions": [
         "*://*.youtube.com/*",
         "https://kimi.moonshot.cn/*",
         "*://47.121.117.100/*"
     ],
+    "action": {
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
     "options_page": "html/options.html",
     "content_scripts": [{
         "matches": ["*://*.youtube.com/*"],
