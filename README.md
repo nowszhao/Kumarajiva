@@ -2,7 +2,19 @@
 
 ## 概述
 
+<p align="center">
+<img src="images/kumarajiva.png" width="350" height="350"/>
+<p>
+
 Kumarajiva 是一款面YouTube视频和英文网页的实时字幕翻译和解析工具。该插件能够自动抓取视频中的英文字幕，并借助多种翻译服务（如 Kimi、Doubao、Qwen、DeepSeek）将字幕翻译为准确且地道的中文。同时，插件还提供字幕的深度分析面板，帮助用户更好地理解视频内容。
+
+## 产品截图
+
+<div>
+  <img src="images/screenshot1.png"   width="150" height="300">
+  <img src="images/screenshot2.jpg"   width="150" height="300">
+  <img src="images/screenshot3.jpg"   width="150" height="300">
+</div>
 
 ## 主要特性
 
