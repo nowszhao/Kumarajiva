@@ -11,9 +11,9 @@ Kumarajiva 是一款面YouTube视频和英文网页的实时字幕翻译和解�
 ## 产品截图
 
 <div>
-  <img src="images/screenshot1.png"   width="150" height="300">
-  <img src="images/screenshot2.jpg"   width="150" height="300">
-  <img src="images/screenshot3.jpg"   width="150" height="300">
+  <img src="images/screenshot1.png" >
+  <img src="images/screenshot2.png" >
+  <img src="images/screenshot3.png" >
 </div>
 
 ## 主要特性
