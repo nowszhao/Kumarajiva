@@ -70,8 +70,29 @@ import WordCollector from './components/wordCollector';
     }
 
     // 检查元素是否包含英文
-    function containsEnglish(text) {
+    function containsEnglish1(text) {
         return /[a-zA-Z]{2,}/.test(text);
+    }
+
+    // 检查文本是否包含足够多的英文内容
+    function containsEnglish(text) {
+        // 过滤掉可能干扰的符号、数字及换行
+        const cleanText = text.replace(/[\d\n\s'"`]+/g, ' ');
+        
+        // 匹配完整的英文单词（至少3个字母）
+        const wordMatches = cleanText.match(/\b[a-zA-Z]{3,}\b/g) || [];
+        
+        // 统计连续非单词字符（用于计算英文占比）
+        const nonWordChars = cleanText.match(/[^a-zA-Z]/g) || [];
+        const totalChars = cleanText.length;
+        
+        // 判断条件：
+        // 1. 存在至少3个完整英文单词 或
+        // 2. 英文单词字符占比超过30%
+        return (
+            wordMatches.length >= 3 ||
+            (wordMatches.join('').length + nonWordChars.length) / totalChars > 0.3
+        );
     }
 
     // 创建翻译容器
