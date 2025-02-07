@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "YouTube Subtitle Translator",
-    "version": "1.0",
-    "description": "Translates YouTube subtitles in real-time",
+    "name": "Kumarajiva",
+    "version": "0.0.1",
+    "description": "是一款面YouTube视频和英文网页的实时字幕翻译和解析工具",
     "permissions": [
         "storage",
         "scripting",
@@ -35,5 +35,8 @@
         "service_worker": "background.js"
     },
     "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     }
 }

@@ -8,12 +8,10 @@ module.exports = {
         options: './src/js/options.js',
         inlineTranslator: './src/js/inlineTranslator.js',
         background: './src/background.js',
-        subtitleAnalyzer: './src/js/subtitleAnalyzer.js',
-        analysisPanel: './src/js/components/analysisPanel.js'
     },
     output: {
         filename: 'js/[name].js',
-        path: path.resolve(__dirname, 'dist'),
+        path: path.resolve(__dirname, 'dist/Kumarajiva'),
         clean: true // 在每次构建前清理 dist 目录
     },
     module: {
@@ -41,9 +39,7 @@ module.exports = {
                         const manifest = JSON.parse(content);
                         // 更新文件路径
                         manifest.content_scripts[0].js = [
-                            'js/contentScript.js',
-                            'js/subtitleAnalyzer.js',
-                            'js/analysisPanel.js'
+                            'js/contentScript.js'
                         ];
                         manifest.content_scripts[0].css = [
                             'styles/styles.css',
@@ -63,6 +59,10 @@ module.exports = {
                 { 
                     from: "src/html",
                     to: "html"
+                },
+                { 
+                    from: "src/icons",
+                    to: "icons"
                 }
             ],
         }),

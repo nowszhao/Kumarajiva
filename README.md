@@ -24,8 +24,8 @@ Kumarajiva 是一款面YouTube视频和英文网页的实时字幕翻译和解�
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/yourusername/BigManEnglishGuy-Chrome-Plugin.git
-   cd BigManEnglishGuy-Chrome-Plugin
+   git clone https://github.com/nowszhao/Kumarajiva.git
+   cd Kumarajiva
    ```
 
 2. **安装依赖**
