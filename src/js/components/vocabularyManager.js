@@ -42,7 +42,7 @@ export class VocabularyManager {
 
         // 全选/取消全选
         document.getElementById('selectAll').addEventListener('change', (e) => {
-            const checkboxes = document.querySelectorAll('#vocabularyList input[type="checkbox"]');
+            const checkboxes = document.querySelectorAll('#vocabularyList input[type="checkbox"]:not(.status-toggle input)');
             checkboxes.forEach(checkbox => {
                 checkbox.checked = e.target.checked;
                 this.toggleWordSelection(checkbox.dataset.word, e.target.checked);
@@ -162,16 +162,16 @@ export class VocabularyManager {
     createWordRow(word, info) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>
-                <input type="checkbox" data-word="${word}" ${this.selectedWords.has(word) ? 'checked' : ''}>
+            <td class="select-col">
+                <input type="checkbox" class="select-checkbox" data-word="${word}" ${this.selectedWords.has(word) ? 'checked' : ''}>
             </td>
             <td>${word}</td>
             <td>${info.pronunciation.American || '-'}</td>
             <td>${this.formatDefinitions(info.definitions)}</td>
             <td>${this.formatTimestamp(info.timestamp)}</td>
-            <td>
+            <td class="status-col">
                 <label class="status-toggle">
-                    <input type="checkbox" ${info.mastered ? 'checked' : ''}>
+                    <input type="checkbox" class="status-checkbox" data-word="${word}" ${info.mastered ? 'checked' : ''}>
                     <span class="status-slider"></span>
                 </label>
             </td>
@@ -185,14 +185,15 @@ export class VocabularyManager {
         `;
 
         // 添加事件监听
-        const checkbox = tr.querySelector('input[type="checkbox"]');
+        const checkbox = tr.querySelector('.select-checkbox');
         checkbox.addEventListener('change', (e) => {
             this.toggleWordSelection(word, e.target.checked);
         });
 
-        const statusToggle = tr.querySelector('.status-toggle input');
-        statusToggle.addEventListener('change', (e) => {
-            this.toggleWordStatus(word, e.target.checked);
+        const statusToggle = tr.querySelector('.status-checkbox');
+        statusToggle.addEventListener('change', async (e) => {
+            e.stopPropagation();
+            await this.toggleWordStatus(word, e.target.checked);
         });
 
         const deleteBtn = tr.querySelector('.delete-btn');
@@ -219,6 +220,11 @@ export class VocabularyManager {
         if (wordInfo) {
             wordInfo.mastered = mastered;
             await this.saveWords();
+            // 更新状态切换按钮的状态，但不影响选中状态
+            const statusToggle = document.querySelector(`.status-toggle input[data-word="${word}"]`);
+            if (statusToggle) {
+                statusToggle.checked = mastered;
+            }
         }
     }
 

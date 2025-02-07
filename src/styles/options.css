@@ -231,17 +231,36 @@ select, input[type="text"], input[type="number"] {
     width: 40px;
 }
 
+.select-col {
+    text-align: center;
+}
+
+.status-col {
+    text-align: center;
+}
+
+.select-checkbox {
+    cursor: pointer;
+}
+
 .status-toggle {
     position: relative;
     display: inline-block;
     width: 50px;
     height: 24px;
+    margin: 0 auto;
 }
 
-.status-toggle input {
+/* 确保状态切换开关和选择框样式分开 */
+.status-checkbox {
     opacity: 0;
     width: 0;
     height: 0;
+}
+
+.select-checkbox {
+    width: 16px;
+    height: 16px;
 }
 
 .status-slider {
