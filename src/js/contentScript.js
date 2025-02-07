@@ -1,5 +1,5 @@
 
-import { EventBus,SubtitleManager,TranslationProcessor, UIManager, StorageManager} from './youtubeVideoParser';
+import { EventBus,SubtitleManager,TranslationProcessor, UIManager, StorageManager} from './components/youtubeVideoParser';
 
 // 主应用类 - 负责协调各个组件
 class YouTubeSubtitleApp {

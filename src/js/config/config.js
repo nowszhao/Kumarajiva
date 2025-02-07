@@ -24,7 +24,7 @@ export default {
         url: 'http://47.121.117.100:8002/v1/chat/completions'
     },
     translation: {
-        defaultService: 'qwen', 
+        defaultService: 'doubao', 
         batchSize: 10,
         batchInterval: 2000,
         maxSubtitles: 5,

@@ -13,26 +13,23 @@
         "https://kimi.moonshot.cn/*",
         "*://47.121.117.100/*"
     ],
-    "options_page": "dist/options.html",
+    "options_page": "html/options.html",
     "content_scripts": [{
         "matches": ["*://*.youtube.com/*"],
         "css": [
-            "styles.css",
+            "styles/styles.css",
             "styles/analysisPanel.css"
         ],
-        "js": [
-            "dist/contentScript.js",
-            "dist/subtitleAnalyzer.js"
-        ],
+        "js": ["js/contentScript.js"],
         "run_at": "document_idle"
     }, {
         "matches": ["<all_urls>"],
         "css": ["styles/inlineTranslator.css"],
-        "js": ["dist/inlineTranslator.js"],
+        "js": ["js/inlineTranslator.js"],
         "run_at": "document_end"
     }],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "js/background.js"
     },
     "icons": {
         "16": "icons/icon16.png",

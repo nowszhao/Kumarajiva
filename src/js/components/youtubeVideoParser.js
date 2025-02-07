@@ -1,7 +1,7 @@
 import { TranslatorFactory } from '../translators';
 import config from '../config/config';
 import SubtitleAnalyzer from './subtitleAnalyzer';
-import AnalysisPanel from './components/analysisPanel';
+import AnalysisPanel from './analysisPanel';
 
 // 首先添加一个简单的事件总线来处理组件间通信
 class EventBus {

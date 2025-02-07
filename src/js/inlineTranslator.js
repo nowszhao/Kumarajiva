@@ -1,7 +1,7 @@
 // 防止全局变量污染
 
-import { TranslatorFactory } from '../translators';
-import config from '../config/config';
+import { TranslatorFactory } from './translators';
+import config from './config/config';
 
 (function() {
     let hoveredElement = null;
