@@ -1,0 +1,159 @@
+:root {
+    --primary-color: #1a73e8;
+    --hover-color: #1557b0;
+    --border-color: #ddd;
+    --bg-gray: #f8f9fa;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-height: 100vh;
+}
+
+/* 左侧导航样式 */
+.sidebar {
+    background: var(--bg-gray);
+    border-right: 1px solid var(--border-color);
+    padding: 20px 0;
+}
+
+.nav-item {
+    padding: 12px 24px;
+    cursor: pointer;
+    color: #333;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-item.active {
+    background: rgba(26, 115, 232, 0.1);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.nav-item:hover {
+    background: rgba(26, 115, 232, 0.05);
+}
+
+/* 主内容区域样式 */
+.main-content {
+    padding: 30px;
+    background: #fff;
+}
+
+.content-section {
+    display: none;
+}
+
+.content-section.active {
+    display: block;
+}
+
+h1 {
+    color: var(--primary-color);
+    margin-bottom: 24px;
+    font-size: 24px;
+}
+
+.settings-group {
+    margin-bottom: 30px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.settings-group h2 {
+    color: #333;
+    font-size: 18px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+select, input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background: var(--hover-color);
+}
+
+.status {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 4px;
+    display: none;
+}
+
+.success {
+    background: #e6f4ea;
+    color: #1e8e3e;
+}
+
+.error {
+    background: #fce8e6;
+    color: #d93025;
+}
+
+.info {
+    background: #e8f0fe;
+    color: var(--primary-color);
+}
+
+.button-group {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}

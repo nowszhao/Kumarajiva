@@ -141,16 +141,34 @@ import config from './config/config';
 
     // 翻译函数
     async function translate(text) {
-        const translator = TranslatorFactory.createTranslator(
-            config.translation.defaultService, 
-            config[config.translation.defaultService]
-        );
-
         try {
-            const result = await translator.translate("翻译为准确且地道的中文：" + text);
-            return result;
-        } finally {
-            await translator.cleanup();
+            // 从 storage 获取当前的翻译服务设置
+            const { translationService, serviceTokens } = await chrome.storage.sync.get(['translationService', 'serviceTokens']);
+            
+            // 使用保存的设置，如果没有则使用默认值
+            const currentService = translationService || config.translation.defaultService;
+            
+            // 获取对应服务的 token
+            const token = serviceTokens?.[currentService] || config[currentService].apiToken;
+            
+            // 创建翻译器实例时使用保存的设置
+            const translator = TranslatorFactory.createTranslator(
+                currentService,
+                {
+                    ...config[currentService],
+                    apiToken: token
+                }
+            );
+
+            try {
+                const result = await translator.translate("翻译为准确且地道的中文：" + text);
+                return result;
+            } finally {
+                await translator.cleanup();
+            }
+        } catch (error) {
+            console.error('Translation error:', error);
+            throw error;
         }
     }
 

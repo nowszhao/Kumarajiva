@@ -3,11 +3,30 @@ import config from '../config/config';
 
 class SubtitleAnalyzer {
     constructor() {
-        this.translator = TranslatorFactory.createTranslator(
-            config.translation.defaultService,
-            config[config.translation.defaultService]
-        );
+        this.translator = null;
         this.cacheKey = 'yt-subtitle-analysis-';
+    }
+
+    async initialize() {
+        // 从 storage 获取当前的翻译服务设置
+        const { translationService, serviceTokens } = await chrome.storage.sync.get(['translationService', 'serviceTokens']);
+
+        console.log("translationService:", translationService, "serviceTokens:", serviceTokens);
+
+        // 使用保存的设置，如果没有则使用默认值
+        const currentService = translationService || config.translation.defaultService;
+        
+        // 获取对应服务的 token
+        const token = serviceTokens?.[currentService] || config[currentService].apiToken;
+        
+        // 创建翻译器实例时使用保存的设置
+        this.translator = TranslatorFactory.createTranslator(
+            currentService,
+            {
+                ...config[currentService],
+                apiToken: token
+            }
+        );
     }
 
     // 生成缓存键
@@ -29,6 +48,11 @@ class SubtitleAnalyzer {
     }
 
     async analyzeSubtitles(subtitles, type = 'words', videoId) {
+        // 确保translator已经初始化
+        if (!this.translator) {
+            await this.initialize();
+        }
+
         // 首先检查缓存
         const cachedResults = this.getCachedAnalysis(videoId, type);
         if (cachedResults) {

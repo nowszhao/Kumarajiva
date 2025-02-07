@@ -1,90 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>YouTube Subtitle Translator Settings</title>
+    <title>Kumarajiva Settings</title>
     <meta charset="UTF-8">
-    <style>
-        body {
-            width: 100%;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-        .container {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #1a73e8;
-            margin-bottom: 24px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        select, input[type="text"] {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-        .btn {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .btn:hover {
-            background: #1557b0;
-        }
-        .status {
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 4px;
-            display: none;
-        }
-        .success {
-            background: #e6f4ea;
-            color: #1e8e3e;
-        }
-        .error {
-            background: #fce8e6;
-            color: #d93025;
-        }
-    </style>
+    <link rel="stylesheet" href="../styles/options.css">
 </head>
 <body>
     <div class="container">
-        <h1>YouTube Subtitle Translator Settings</h1>
-        <form id="settingsForm">
-            <div class="form-group">
-                <label for="translationService">Translation Service</label>
-                <select id="translationService" required>
-                    <option value="kimi">Kimi</option>
-                    <option value="doubao">Doubao</option>
-                    <option value="qwen">Qwen</option>
-                </select>
+        <div class="sidebar">
+            <div class="nav-item active" data-section="history">
+                <span>📜</span>
+                <span>历史记录</span>
             </div>
-            <div class="form-group">
-                <label for="apiToken">API Token</label>
-                <input type="text" id="apiToken" required>
+            <div class="nav-item" data-section="settings">
+                <span>⚙️</span>
+                <span>设置</span>
             </div>
-            <button type="submit" class="btn">Save Settings</button>
-            <button type="button" id="testConnection" class="btn" style="margin-left: 10px;">Test Connection</button>
-        </form>
-        <div id="status" class="status"></div>
+        </div>
+        
+        <div class="main-content">
+            <!-- 历史记录部分 -->
+            <div id="history" class="content-section active">
+                <h1>历史记录</h1>
+                <div id="historyContent">
+                    <!-- 历史记录内容将通过 JavaScript 动态添加 -->
+                </div>
+            </div>
+            <!-- 设置部分 -->
+            <div id="settings" class="content-section">
+                <h1>设置</h1>
+                <form id="settingsForm">
+                    <!-- 翻译服务设置 -->
+                    <div class="settings-group">
+                        <h2>翻译服务</h2>
+                        <div class="form-group">
+                            <label for="translationService">默认翻译服务</label>
+                            <select id="translationService" required>
+                                <option value="kimi">Kimi</option>
+                                <option value="doubao">Doubao</option>
+                                <option value="qwen">Qwen</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="apiToken">API Token</label>
+                            <input type="text" id="apiToken" required>
+                        </div>
+                    </div>
+
+                    <!-- UI 设置 -->
+                    <div class="settings-group">
+                        <h2>界面设置</h2>
+                        <div class="form-group">
+                            <label for="fontSize">字幕字体大小</label>
+                            <input type="number" id="fontSize" min="12" max="32" value="24">
+                        </div>
+                        <div class="form-group">
+                            <label for="subtitlePosition">字幕位置</label>
+                            <select id="subtitlePosition">
+                                <option value="bottom">底部</option>
+                                <option value="top">顶部</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn">保存设置</button>
+                        <button type="button" id="testConnection" class="btn">测试连接</button>
+                        <button type="button" id="resetDefaults" class="btn btn-secondary">还原默认</button>
+                    </div>
+                </form>
+                <div id="status" class="status"></div>
+            </div>
+
+
+        </div>
     </div>
     <script src="../js/options.js"></script>
 </body>
