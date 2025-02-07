@@ -51,3 +51,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 }); 
+
+
+// 处理有道词典 API 请求
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'FETCH_WORD_INFO') {
+      fetch(`https://dict.youdao.com/jsonapi_s?doctype=json&jsonversion=4&q=${encodeURIComponent(request.word)}`, {
+          headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          sendResponse({ success: true, data });
+      })
+      .catch(error => {
+          sendResponse({ success: false, error: error.message });
+      });
+      return true;
+  }
+
+  // 处理音频数据请求
+  if (request.type === 'FETCH_AUDIO') {
+    fetch(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=${request.audioType || 2}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.arrayBuffer(); // 使用 arrayBuffer 而不是 blob
+        })
+        .then(buffer => {
+            sendResponse({ 
+                success: true, 
+                data: Array.from(new Uint8Array(buffer)) // 转换为数组以便传输
+            });
+        })
+        .catch(error => {
+            console.error('Audio fetch error:', error);
+            sendResponse({ 
+                success: false, 
+                error: error.message 
+            });
+        });
+    return true;
+  }
+});

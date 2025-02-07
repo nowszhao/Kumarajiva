@@ -289,4 +289,5 @@ class YouTubeSubtitleApp {
 const app = new YouTubeSubtitleApp();
 app.initializeExtension();
 
+
 console.log("contentScript.js loaded");

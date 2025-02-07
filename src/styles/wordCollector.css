@@ -1,0 +1,329 @@
+.word-card-container {
+    position: fixed;
+    z-index: 999999;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+}
+
+.word-card {
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    width: 320px;
+    font-size: 14px;
+    line-height: 1.5;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.word-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.word-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.word {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a73e8;
+}
+
+.phonetic {
+    color: #666;
+    font-size: 14px;
+}
+
+.play-audio-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: #1a73e8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.play-audio-btn:hover {
+    background-color: rgba(26, 115, 232, 0.1);
+}
+
+.word-content {
+    margin-bottom: 16px;
+}
+
+.definition {
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.explanation {
+    color: #666;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+
+.examples {
+    border-top: 1px solid #eee;
+    padding-top: 8px;
+}
+
+.example {
+    margin-bottom: 12px;
+    padding-left: 12px;
+    border-left: 2px solid #eee;
+}
+
+.example:last-child {
+    margin-bottom: 0;
+}
+
+.example .en {
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.example .cn {
+    color: #666;
+    font-size: 13px;
+}
+
+.word-card-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.collect-btn {
+    background: #1a73e8;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.collect-btn:hover {
+    background: #1557b0;
+}
+
+.collect-btn.collected {
+    background: #34a853;
+}
+
+.collect-btn.collected:hover {
+    background: #2d8d47;
+}
+
+.collected-word {
+    background-color: rgba(52, 168, 83, 0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    display: inline-block;
+    transition: background-color 0.2s;
+}
+
+/* .collected-word:hover {
+    background-color: rgba(52, 168, 83, 0.25);
+}
+
+.collected-word::after {
+    content: attr(data-pronunciation);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1000;
+} */
+
+/* .collected-word:hover::after {
+    opacity: 1;
+} */
+
+.word-card {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.word-card-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.word-card-loading .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #1a73e8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.word-card-error {
+    padding: 16px;
+    color: #d93025;
+    text-align: center;
+    font-size: 14px;
+}
+
+.play-audio-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: wait;
+}
+
+.definition-item {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.definition-item .pos {
+    color: #1a73e8;
+    font-size: 12px;
+    margin-right: 8px;
+    padding: 2px 6px;
+    background: rgba(26, 115, 232, 0.1);
+    border-radius: 3px;
+}
+
+.definition-item .meaning {
+    color: #333;
+}
+
+/* 添加定义弹出框样式 */
+.word-definition-popup {
+    position: absolute;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    font-size: 14px;
+    max-width: 300px;
+    z-index: 1000;
+    display: none;
+}
+
+.collected-word:hover .word-definition-popup {
+    display: block;
+}
+
+/* 添加或更新以下样式 */
+.word-details-popup {
+    position: fixed;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    min-width: 280px;
+    max-width: 320px;
+    z-index: 1000000;
+    font-size: 14px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.word-details-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.word-details-header .word {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a73e8;
+}
+
+.word-details-header .phonetic {
+    color: #666;
+    font-size: 14px;
+}
+
+.word-details-header .play-audio-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: #1a73e8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.word-details-header .play-audio-btn:hover {
+    background-color: rgba(26, 115, 232, 0.1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 掌握按钮样式 */
+.master-btn {
+    background: #34a853;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+}
+
+.master-btn:hover {
+    background: #2d8d47;
+}
+
+.master-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.word-details-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+} 

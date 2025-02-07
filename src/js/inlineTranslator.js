@@ -2,6 +2,7 @@
 
 import { TranslatorFactory } from './translators';
 import config from './config/config';
+import WordCollector from './components/wordCollector';
 
 (function() {
     let hoveredElement = null;
@@ -235,5 +236,14 @@ import config from './config/config';
     }
 
     // 初始化
-    initializeInlineTranslator();
+    async function initialize() {
+        initializeInlineTranslator();
+        
+        // 初始化单词收藏功能
+        const wordCollector = new WordCollector();
+        await wordCollector.initialize();
+    }
+
+    // 启动应用
+    initialize();
 })(); 

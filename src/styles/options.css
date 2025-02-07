@@ -24,6 +24,29 @@ body {
     padding: 20px 0;
 }
 
+/* Logo 样式 */
+.logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo img {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 10px;
+}
+
+.logo h2 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 18px;
+    font-weight: 500;
+}
+
 .nav-item {
     padding: 12px 24px;
     cursor: pointer;
@@ -156,4 +179,195 @@ select, input[type="text"], input[type="number"] {
 
 .btn-secondary:hover {
     background: #5a6268;
+}
+
+/* 生词表样式 */
+.vocabulary-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.filter-group {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-select {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+.vocabulary-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.vocabulary-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.vocabulary-table th,
+.vocabulary-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.vocabulary-table th {
+    background: #f8f9fa;
+    font-weight: 500;
+}
+
+.checkbox-col {
+    width: 40px;
+}
+
+.status-toggle {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.status-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.status-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.status-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .status-slider {
+    background-color: #34a853;
+}
+
+input:checked + .status-slider:before {
+    transform: translateX(26px);
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-danger:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.word-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.delete-btn {
+    padding: 4px 8px;
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    color: #c82333;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-secondary {
+    background: #5f6368;
+}
+
+.btn-secondary:hover {
+    background: #4a4d51;
+}
+
+/* 添加搜索框样式 */
+.search-input {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 200px;
+    margin-right: 10px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+/* 添加分页样式 */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.pagination-info {
+    color: #666;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pagination-controls button:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.pagination-controls span {
+    color: #666;
 }

@@ -61,13 +61,13 @@ class SubtitleAnalyzer {
         }
 
         // 如果没有缓存，进行新的分析
-        const fullText = subtitles
+        var fullText = subtitles
             .map(sub => sub.text)
             .join('\n');
 
         if(fullText && fullText.length > 10000){
             fullText = fullText.slice(0, 10000);
-            console.log("fullText is too long, truncated to 1000 characters");
+            console.log("fullText is too long, truncated to 10000 characters");
         }
 
         // 根据类型构建不同的分析提示词

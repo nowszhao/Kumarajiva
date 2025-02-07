@@ -1,3 +1,5 @@
+import VocabularyStorage from './vocabularyStorage';
+
 class AnalysisPanel {
     constructor() {
         this.panel = null;
@@ -6,6 +8,13 @@ class AnalysisPanel {
         this.analyzer = null; // 添加 analyzer 引用
         this.currentSubtitles = null; // 添加当前字幕引用
         this.currentVideoId = null; // 添加视频ID属性
+        this.collectedWords = new Set(); // 添加收藏单词集合
+    }
+
+    async initialize() {
+        // 加载已收藏的单词
+        const words = await VocabularyStorage.getWords();
+        this.collectedWords = new Set(Object.keys(words));
     }
 
     createPanel() {
@@ -79,6 +88,48 @@ class AnalysisPanel {
 
         // Add after setupEventListeners method
         this.setupAudioPlayback();
+
+        // 修改收藏按钮事件监听
+        this.panel.addEventListener('click', async (e) => {
+            const collectBtn = e.target.closest('.collect-btn');
+            if (collectBtn) {
+                const word = collectBtn.dataset.word;
+                const card = collectBtn.closest('.analysis-card');
+                const wordInfo = this.extractWordInfo(card);
+
+                try {
+                    if (collectBtn.classList.contains('collected')) {
+                        await VocabularyStorage.removeWord(word);
+                        this.collectedWords.delete(word);
+                        collectBtn.classList.remove('collected');
+                        collectBtn.title = '收藏单词';
+                    } else {
+                        await VocabularyStorage.addWord(word, wordInfo);
+                        this.collectedWords.add(word);
+                        collectBtn.classList.add('collected');
+                        collectBtn.title = '取消收藏';
+                    }
+                } catch (error) {
+                    console.error('Failed to update word collection:', error);
+                    // 可以添加错误提示
+                }
+            }
+        });
+
+        // 批量操作工具栏
+        const toolbarHtml = `
+            <div class="analysis-toolbar">
+                <label>
+                    <input type="checkbox" id="selectAllWords"> 全选
+                </label>
+                <button id="batchCollect" class="batch-btn">批量收藏</button>
+                <button id="batchUncollect" class="batch-btn">批量取消收藏</button>
+            </div>
+        `;
+        this.panel.querySelector('.analysis-search').insertAdjacentHTML('beforebegin', toolbarHtml);
+
+        // 批量操作事件处理
+        this.setupBatchOperations();
     }
 
     handleFullscreenChange() {
@@ -116,30 +167,43 @@ class AnalysisPanel {
         resultsContainer.style.display = loading ? 'none' : 'block';
     }
 
-    renderResults(results) {
+    async renderResults(results) {
         if (!this.panel) return;
+
+        // 确保在渲染前已加载收藏状态
+        if (this.collectedWords.size === 0) {
+            await this.initialize();
+        }
 
         const resultsContainer = this.panel.querySelector('.analysis-results');
         
-        // 根据不同类型渲染不同的结果
         if (this.currentTab === 'summary') {
             resultsContainer.innerHTML = this.createSummaryCard(results);
         } else {
             resultsContainer.innerHTML = results.map(item => this.createAnalysisCard(item)).join('');
-            // Setup audio playback after rendering cards
             this.setupAudioPlayback();
         }
     }
 
     createAnalysisCard(item) {
+        const isCollected = this.collectedWords.has(item.expression);
+        
         return `
             <div class="analysis-card">
                 <div class="card-header">
                     <div class="expression-container">
+                        <input type="checkbox" class="word-checkbox" data-word="${item.expression}">
                         <span class="expression">${item.expression}</span>
                         <button class="play-audio-btn" data-text="${item.expression}">
                             <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor" d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+                        <button class="collect-btn ${isCollected ? 'collected' : ''}" 
+                                data-word="${item.expression}" 
+                                title="${isCollected ? '取消收藏' : '收藏单词'}">
+                            <svg viewBox="0 0 24 24" width="14" height="14">
+                                <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
                             </svg>
                         </button>
                     </div>
@@ -243,6 +307,12 @@ class AnalysisPanel {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
 
+        // 根据标签显示/隐藏工具栏
+        const toolbar = this.panel.querySelector('.analysis-toolbar');
+        if (toolbar) {
+            toolbar.style.display = tab === 'summary' ? 'none' : 'flex';
+        }
+
         this.currentTab = tab;
         // 触发重新分析
         this.triggerAnalysis();
@@ -334,6 +404,109 @@ class AnalysisPanel {
     // 添加设置视频ID的方法
     setVideoId(videoId) {
         this.currentVideoId = videoId;
+    }
+
+    setupBatchOperations() {
+        // 全选功能
+        this.panel.querySelector('#selectAllWords').addEventListener('change', (e) => {
+            const checkboxes = this.panel.querySelectorAll('.word-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+            });
+        });
+
+        // 批量收藏
+        this.panel.querySelector('#batchCollect').addEventListener('click', async () => {
+            const selectedWords = this.getSelectedWords();
+            for (const word of selectedWords) {
+                const card = this.panel.querySelector(`[data-word="${word}"]`).closest('.analysis-card');
+                const wordInfo = this.extractWordInfo(card);
+                await VocabularyStorage.addWord(word, wordInfo);
+                
+                // 更新UI
+                const collectBtn = card.querySelector('.collect-btn');
+                collectBtn.classList.add('collected');
+                collectBtn.title = '取消收藏';
+            }
+        });
+
+        // 批量取消收藏
+        this.panel.querySelector('#batchUncollect').addEventListener('click', async () => {
+            const selectedWords = this.getSelectedWords();
+            for (const word of selectedWords) {
+                await VocabularyStorage.removeWord(word);
+                
+                // 更新UI
+                const collectBtn = this.panel.querySelector(`[data-word="${word}"]`).closest('.analysis-card').querySelector('.collect-btn');
+                collectBtn.classList.remove('collected');
+                collectBtn.title = '收藏单词';
+            }
+        });
+
+        // 设置工具栏的初始显示状态
+        const toolbar = this.panel.querySelector('.analysis-toolbar');
+        if (toolbar) {
+            toolbar.style.display = this.currentTab === 'summary' ? 'none' : 'flex';
+        }
+    }
+
+    getSelectedWords() {
+        const selectedWords = [];
+        const checkboxes = this.panel.querySelectorAll('.word-checkbox');
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                selectedWords.push(checkbox.dataset.word);
+            }
+        });
+        return selectedWords;
+    }
+
+    extractWordInfo(card) {
+
+        /***
+         * {
+            "definitions": [
+                {
+                "meaning": "事情，问题；事态，情况；困境，麻烦（the matter）；物质；材料，物品，东西；书面材料，印刷品；（身体感染部位排出的）脓，黄水；命题内容；（表示数量或时间之少）大约，左右；（法庭审问或证明的）事项，案件",
+                "pos": "n."
+                },
+                {
+                "meaning": "要紧，有关系；（伤口）化脓，流脓",
+                "pos": "v."
+                },
+                {
+                "meaning": "【名】 （Matter）（英、法）马特，（西）马特尔（人名）"
+                }
+            ],
+            "mastered": false,
+            "pronunciation": {
+                "American": "/ˈmætər/",
+                "British": "/ˈmætə(r)/"
+            },
+            "timestamp": 1738942406912,
+            "word": "matter"
+            }
+         */
+        const ret = {
+            "definitions": [
+              {
+                "meaning": card.querySelector('.meaning').textContent,
+                "pos": card.querySelector('.tag.speech').textContent
+              }
+            ],
+            "mastered": false,
+            "pronunciation": {
+              "American": card.querySelector('.phonetic').textContent,
+              "British": ""
+            },
+            "timestamp": new Date().getTime(),
+            "word": "matter",
+            memory_method: card.querySelector('.memory-method p').textContent,
+          }
+
+        console.log("ret:", ret);
+
+        return ret;
     }
 }
 

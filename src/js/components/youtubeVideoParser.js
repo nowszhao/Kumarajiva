@@ -494,6 +494,7 @@ class UIManager {
         container.appendChild(controlPanel);
         
         this.initializeAnalysisPanel();
+
         this.analysisPanel.setAnalyzer(this.analyzer);
         this.analysisPanel.setVideoId(UIManager.getYouTubeVideoId());
 
@@ -699,6 +700,7 @@ class UIManager {
     initializeAnalysisPanel() {
         this.analyzer = new SubtitleAnalyzer();
         this.analysisPanel = new AnalysisPanel();
+
     }
 
     showNoSubtitlesNotification() {

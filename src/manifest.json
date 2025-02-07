@@ -12,7 +12,9 @@
     "host_permissions": [
         "*://*.youtube.com/*",
         "https://kimi.moonshot.cn/*",
-        "*://47.121.117.100/*"
+        "*://47.121.117.100/*",
+        "https://cdn.jsdelivr.net/*",
+        "https://dict.youdao.com/*"
     ],
     "action": {
         "default_icon": {
@@ -32,7 +34,10 @@
         "run_at": "document_idle"
     }, {
         "matches": ["<all_urls>"],
-        "css": ["styles/inlineTranslator.css"],
+        "css": [
+            "styles/inlineTranslator.css",
+            "styles/wordCollector.css"
+        ],
         "js": ["js/inlineTranslator.js"],
         "run_at": "document_end"
     }],

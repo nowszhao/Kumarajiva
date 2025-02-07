@@ -8,9 +8,13 @@
 <body>
     <div class="container">
         <div class="sidebar">
-            <div class="nav-item active" data-section="history">
-                <span>📜</span>
-                <span>历史记录</span>
+            <div class="logo">
+                <img src="../icons/icon128.png" alt="Kumarajiva">
+                <h2>Kumarajiva</h2>
+            </div>
+            <div class="nav-item active" data-section="vocabulary">
+                <span>📚</span>
+                <span>生词表</span>
             </div>
             <div class="nav-item" data-section="settings">
                 <span>⚙️</span>
@@ -19,14 +23,6 @@
         </div>
         
         <div class="main-content">
-            <!-- 历史记录部分 -->
-            <div id="history" class="content-section active">
-                <h1>历史记录</h1>
-                <div id="historyContent">
-                    <!-- 历史记录内容将通过 JavaScript 动态添加 -->
-                     敬请期待...
-                </div>
-            </div>
             <!-- 设置部分 -->
             <div id="settings" class="content-section">
                 <h1>设置</h1>
@@ -74,7 +70,62 @@
                 <div id="status" class="status"></div>
             </div>
 
-
+            <!-- 添加生词表部分 -->
+            <div id="vocabulary" class="content-section active">
+                <h1>生词表</h1>
+                <div class="vocabulary-toolbar">
+                    <div class="filter-group">
+                        <input type="search" id="wordSearch" class="search-input" placeholder="搜索单词...">
+                        <select id="wordStatus" class="filter-select">
+                            <option value="all">全部</option>
+                            <option value="unmastered">未掌握</option>
+                            <option value="mastered">已掌握</option>
+                        </select>
+                        <select id="sortOrder" class="filter-select">
+                            <option value="timeDesc">添加时间 ↓</option>
+                            <option value="timeAsc">添加时间 ↑</option>
+                        </select>
+                    </div>
+                    <div class="action-group">
+                        <button id="deleteSelected" class="btn btn-danger" disabled>
+                            删除选中
+                        </button>
+                    </div>
+                </div>
+                <div class="vocabulary-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="checkbox-col">
+                                    <input type="checkbox" id="selectAll">
+                                </th>
+                                <th>生词</th>
+                                <th>音标</th>
+                                <th>释义</th>
+                                <th>添加时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vocabularyList">
+                            <!-- 词汇列表将通过 JavaScript 动态添加 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <div class="pagination-info">
+                        显示 <span id="startIndex">0</span>-<span id="endIndex">0</span> 项，共 <span id="totalItems">0</span> 项
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="prevPage" class="btn btn-secondary" disabled>上一页</button>
+                        <span id="currentPage">1</span> / <span id="totalPages">1</span>
+                        <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
+                    </div>
+                </div>
+                <div id="vocabularyEmpty" class="empty-state" style="display: none;">
+                    <p>还没有收藏任何单词</p>
+                </div>
+            </div>
         </div>
     </div>
     <script src="../js/options.js"></script>

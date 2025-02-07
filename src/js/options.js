@@ -1,4 +1,5 @@
 import config from './config/config';
+import { VocabularyManager } from './components/vocabularyManager';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 初始化导航切换功能
@@ -6,6 +7,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 加载所有保存的设置
     await loadSettings();
+
+    // 初始化生词表管理
+    const vocabularyManager = new VocabularyManager();
+    await vocabularyManager.initialize();
 
     // 设置表单提交处理
     document.getElementById('settingsForm').addEventListener('submit', handleSettingsSubmit);
@@ -306,28 +311,6 @@ function showStatus(message, type) {
         status.style.display = 'none';
     }, 3000);
 }
-
-// 在 CSS 中添加新的按钮样式
-const styles = `
-.button-group {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.btn-secondary {
-    background: #5f6368;
-}
-
-.btn-secondary:hover {
-    background: #4a4d51;
-}
-`;
-
-// 添加样式到页面
-const styleSheet = document.createElement('style');
-styleSheet.textContent = styles;
-document.head.appendChild(styleSheet);
 
 // 添加服务切换处理函数
 async function handleServiceChange(e) {
