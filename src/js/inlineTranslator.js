@@ -68,9 +68,9 @@ import config from './config/config';
         return null;
     }
 
-    // 检查文本是否全部是英文（允许数字、符号和空白字符）
+    // 检查元素是否包含英文
     function containsEnglish(text) {
-        return /^[\x09\x0A\x0D\x20-\x7E]+$/.test(text);
+        return /[a-zA-Z]{2,}/.test(text);
     }
 
     // 创建翻译容器

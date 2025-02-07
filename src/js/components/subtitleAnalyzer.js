@@ -65,6 +65,11 @@ class SubtitleAnalyzer {
             .map(sub => sub.text)
             .join('\n');
 
+        if(fullText && fullText.length > 10000){
+            fullText = fullText.slice(0, 10000);
+            console.log("fullText is too long, truncated to 1000 characters");
+        }
+
         // 根据类型构建不同的分析提示词
         let prompt;
         switch (type) {
