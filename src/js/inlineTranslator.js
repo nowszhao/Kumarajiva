@@ -3,6 +3,7 @@
 import { TranslatorFactory } from './translators';
 import config from './config/config';
 import WordCollector from './components/wordCollector';
+import VocabularyStorage from './components/vocabularyStorage';
 
 (function() {
     let hoveredElement = null;
@@ -70,37 +71,130 @@ import WordCollector from './components/wordCollector';
     }
 
     // 检查元素是否包含英文
-    function containsEnglish1(text) {
+    function containsEnglish(text) {
         return /[a-zA-Z]{2,}/.test(text);
     }
 
-    // 检查文本是否包含足够多的英文内容
-    function containsEnglish(text) {
-        // 过滤掉可能干扰的符号、数字及换行
-        const cleanText = text.replace(/[\d\n\s'"`]+/g, ' ');
-        
-        // 匹配完整的英文单词（至少3个字母）
-        const wordMatches = cleanText.match(/\b[a-zA-Z]{3,}\b/g) || [];
-        
-        // 统计连续非单词字符（用于计算英文占比）
-        const nonWordChars = cleanText.match(/[^a-zA-Z]/g) || [];
-        const totalChars = cleanText.length;
-        
-        // 判断条件：
-        // 1. 存在至少3个完整英文单词 或
-        // 2. 英文单词字符占比超过30%
-        return (
-            wordMatches.length >= 3 ||
-            (wordMatches.join('').length + nonWordChars.length) / totalChars > 0.3
-        );
+    // 创建翻译容器
+    function createTranslationElement(translationResult) {
+        try {
+            const result = typeof translationResult === 'string' ? 
+                JSON.parse(translationResult) : translationResult;
+
+            const container = document.createElement('div');
+            container.className = 'inline-translation-result';
+
+            // 主翻译区域
+            const mainTranslation = document.createElement('div');
+            mainTranslation.className = 'translation-main';
+            mainTranslation.textContent = result.translation;
+            container.appendChild(mainTranslation);
+
+            // 仅当有难词数据时才显示展开按钮
+            if (result.difficultVocabulary && result.difficultVocabulary.length > 0) {
+                // 展开按钮
+                const expandBtn = document.createElement('div');
+                expandBtn.className = 'translation-expand-btn';
+                expandBtn.textContent = '显示难词解析';
+                container.appendChild(expandBtn);
+
+                // 难词区域
+                const difficultWords = document.createElement('div');
+                difficultWords.className = 'difficult-words';
+                
+                result.difficultVocabulary.forEach(word => {
+                    const wordItem = createWordItem(word);
+                    difficultWords.appendChild(wordItem);
+                });
+                container.appendChild(difficultWords);
+
+                // 添加展开/收起功能
+                expandBtn.addEventListener('click', () => {
+                    const isExpanded = difficultWords.classList.contains('visible');
+                    difficultWords.classList.toggle('visible');
+                    expandBtn.textContent = isExpanded ? '显示难词解析' : '收起难词解析';
+                });
+            }
+
+            return container;
+        } catch (error) {
+            console.error('Error creating translation element:', error);
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'inline-translation-result';
+            errorContainer.textContent = translationResult; // 降级显示原始文本
+            return errorContainer;
+        }
     }
 
-    // 创建翻译容器
-    function createTranslationElement(text) {
-        const container = document.createElement('div');
-        container.className = 'inline-translation-result';
-        container.textContent = text;
-        return container;
+    // 创建单个词条展示
+    function createWordItem(word) {
+        const wordItem = document.createElement('div');
+        wordItem.className = 'word-item';
+
+        const wordHeader = document.createElement('div');
+        wordHeader.className = 'word-header';
+
+        const vocabulary = document.createElement('span');
+        vocabulary.className = 'word-vocabulary';
+        vocabulary.textContent = word.vocabulary;
+        wordHeader.appendChild(vocabulary);
+
+        const collectBtn = document.createElement('span');
+        collectBtn.className = 'word-collect-btn';
+        collectBtn.textContent = '收藏';
+        collectBtn.addEventListener('click', async () => {
+            const isCollected = collectBtn.classList.contains('collected');
+            if (!isCollected) {
+                const ret = {
+                    "definitions": [
+                      {
+                        "meaning": word.chinese_meaning,
+                        "pos": word.part_of_speech,
+                      }
+                    ],
+                    "mastered": false,
+                    "pronunciation": {
+                      "American":  word.phonetic,
+                      "British": ""
+                    },
+                    "timestamp": new Date().getTime(),
+                    "word": word.vocabulary,
+                    "memory_method": word.chinese_english_sentence
+                  }
+
+                await VocabularyStorage.addWord(word.vocabulary,ret);
+                collectBtn.classList.add('collected');
+                collectBtn.textContent = '已收藏';
+            } else {
+                await VocabularyStorage.removeWord(word.vocabulary);
+                collectBtn.classList.remove('collected');
+                collectBtn.textContent = '收藏';
+            }
+        });
+        wordHeader.appendChild(collectBtn);
+
+        const wordDetails = document.createElement('div');
+        wordDetails.className = 'word-details';
+
+        const type = document.createElement('span');
+        type.className = 'word-type';
+        type.textContent = `${word.type} ${word.part_of_speech}`;
+        wordDetails.appendChild(type);
+
+        const phonetic = document.createElement('span');
+        phonetic.className = 'word-phonetic';
+        phonetic.textContent = word.phonetic;
+        wordDetails.appendChild(phonetic);
+
+        const meaning = document.createElement('div');
+        meaning.className = 'word-meaning';
+        meaning.textContent = word.chinese_meaning;
+        wordDetails.appendChild(meaning);
+
+        wordItem.appendChild(wordHeader);
+        wordItem.appendChild(wordDetails);
+
+        return wordItem;
     }
 
     // 创建翻译状态指示器
@@ -183,7 +277,36 @@ import WordCollector from './components/wordCollector';
             );
 
             try {
-                const result = await translator.translate("翻译为准确且地道的中文：" + text);
+                //"翻译为准确且地道的中文：" + text;
+                var prompt = `
+                你现在是一位专业的翻译专家，现在正帮我翻译一个英文句子，要求如下：
+                1、翻译和解析我提供的英语内容，同时帮我从中筛选出5个最难理解的短语/词块、俚语、缩写。
+                2、输出请遵循以下要求：
+                - 中文翻译：根据字幕语境给出最贴切的含义
+                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
+                - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
+                - 词性：使用n., v., adj., adv., phrase等标准缩写
+                - 音标：提供美式音标
+                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义
+                3、输出示例如下,严格按照json格式输出：
+                {
+                    "translation":"xxxx"
+                    "difficultVocabulary":[
+                        {
+                            "vocabulary": "benchmark",
+                            "type": "Words",
+                            "part_of_speech": "n.",
+                            "phonetic": "/ˈbentʃmɑːrk/",
+                            "chinese_meaning": "基准；参照标准",
+                            "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。"
+                        },
+                        ...
+                    ]
+                }    
+                处理内容如下：
+                ${text}`;
+                
+                const result = await translator.translate(prompt);
                 return result;
             } finally {
                 await translator.cleanup();

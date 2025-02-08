@@ -108,22 +108,18 @@ class SubtitleAnalyzer {
  - 词性：使用n., v., adj., adv., phrase等标准缩写
  - 音标：提供美式音标
  - 中文解释：根据字幕语境给出最贴切的含义
- - 记忆方法：包括但不限于中文发音联想、词根词缀分析、语境联想等
- - 出处：难点在原文中的完整句子，用**粗体**标记难点，可用省略号(...)表示省略内容
- - 出处翻译：将出处翻译成地道的中文
+ - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义
 
 3、输出格式为json数组，示例如下：
 [
     {
         "type": "Words",
-        "expression": "ubiquitous",
+        "vocabulary": "ubiquitous",
         "difficulty": "C1",
         "part_of_speech": "adj.",
         "phonetic": "/juːˈbɪkwɪtəs/",
         "chinese_meaning": "无处不在的",
-        "memory_method": "联想记忆：u（你）+bi（比）+quit（退出）+ous（形容词后缀）= 你比退出还要无处不在",
-        "source_sentence": "In the modern world, smartphones have become **ubiquitous**.",
-        "source_translation": "在现代世界，智能手机已经变得无处不在。"
+        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。"
     }
 ]
 
@@ -144,21 +140,17 @@ ${subtitleText}`;
  - 词性：使用n., v., adj., adv., phrase等标准缩写
  - 音标：提供美式音标
  - 中文解释：根据字幕语境给出最贴切的含义
- - 记忆方法：包括但不限于中文发音联想、词根词缀分析、语境联想等
- - 出处：难点在原文中的完整句子，用**粗体**标记难点，可用省略号(...)表示省略内容
- - 出处翻译：将出处翻译成地道的中文
+ - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义
 3、输出格式为json数组，示例如下：
 [
     {
         "type": "Phrases",
-        "expression": "sandwich transactions",
+        "vocabulary": "sandwich transactions",
         "difficulty": "C1",
         "part_of_speech": "n.",
         "phonetic": "/ˈsænwɪtʃ trænsˈækʃənz/",
         "chinese_meaning": "夹心交易（一种在区块链交易中利用时间差获利的策略）",
-        "memory_method": "sandwich 意为 "三明治"，可以联想成在交易过程中像三明治一样把某些交易夹在中间来获利，结合语境理解这种交易策略。",
-        "source_sentence": "the last step is to click the start button this will enable the bot to start snipping the mempool to find different liquidity pairs in order for you to **sandwich transactions**...",
-        "source_translation": "最后一步是点击开始按钮。这将使机器人开始在内存池中筛选，以找到不同的流动性对，以便你进行夹心交易……"
+        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。"
     }
 ]
 字幕内容如下：

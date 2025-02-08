@@ -186,45 +186,41 @@ class AnalysisPanel {
     }
 
     createAnalysisCard(item) {
-        const isCollected = this.collectedWords.has(item.expression);
+        const isCollected = this.collectedWords.has(item.vocabulary);
         
         return `
             <div class="analysis-card">
                 <div class="card-header">
                     <div class="expression-container">
-                        <input type="checkbox" class="word-checkbox" data-word="${item.expression}">
-                        <span class="expression">${item.expression}</span>
-                        <button class="play-audio-btn" data-text="${item.expression}">
+                        <input type="checkbox" class="word-checkbox" data-word="${item.vocabulary}">
+                        <span class="expression">${item.vocabulary}</span>
+                        <button class="play-audio-btn" data-text="${item.vocabulary}" title="播放发音">
                             <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor" d="M8 5v14l11-7z"/>
                             </svg>
                         </button>
                         <button class="collect-btn ${isCollected ? 'collected' : ''}" 
-                                data-word="${item.expression}" 
+                                data-word="${item.vocabulary}" 
                                 title="${isCollected ? '取消收藏' : '收藏单词'}">
-                            <svg viewBox="0 0 24 24" width="14" height="14">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
                             </svg>
                         </button>
                     </div>
                     <div class="tags">
                         <span class="tag type">${item.type}</span>
-                        <span class="tag difficulty">${item.difficulty}</span>
+                        <span class="tag difficulty">${item.difficulty || 'C1'}</span>
                         <span class="tag speech">${item.part_of_speech}</span>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="phonetic">${item.phonetic}</div>
                     <div class="meaning">${item.chinese_meaning}</div>
-                    <div class="memory-method">
-                        <strong>记忆方法：</strong>
-                        <p>${item.memory_method}</p>
-                    </div>
-                    <div class="source">
-                        <strong>出处：</strong>
-                        <p>${item.source_sentence}</p>
-                        <p class="translation">${item.source_translation}</p>
-                    </div>
+                    ${item.chinese_english_sentence ? `
+                        <div class="memory-method">
+                            <p>${item.chinese_english_sentence}</p>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -462,31 +458,6 @@ class AnalysisPanel {
     }
 
     extractWordInfo(card) {
-
-        /***
-         * {
-            "definitions": [
-                {
-                "meaning": "事情，问题；事态，情况；困境，麻烦（the matter）；物质；材料，物品，东西；书面材料，印刷品；（身体感染部位排出的）脓，黄水；命题内容；（表示数量或时间之少）大约，左右；（法庭审问或证明的）事项，案件",
-                "pos": "n."
-                },
-                {
-                "meaning": "要紧，有关系；（伤口）化脓，流脓",
-                "pos": "v."
-                },
-                {
-                "meaning": "【名】 （Matter）（英、法）马特，（西）马特尔（人名）"
-                }
-            ],
-            "mastered": false,
-            "pronunciation": {
-                "American": "/ˈmætər/",
-                "British": "/ˈmætə(r)/"
-            },
-            "timestamp": 1738942406912,
-            "word": "matter"
-            }
-         */
         const ret = {
             "definitions": [
               {
@@ -501,7 +472,7 @@ class AnalysisPanel {
             },
             "timestamp": new Date().getTime(),
             "word": "matter",
-            memory_method: card.querySelector('.memory-method p').textContent,
+            "memory_method": card.querySelector('.memory-method p').textContent,
           }
 
         console.log("ret:", ret);
