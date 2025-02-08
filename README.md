@@ -10,10 +10,19 @@ Kumarajiva 是一款面YouTube视频和英文网页的实时字幕翻译和解�
 
 ## 产品截图
 
-<div>
-  <img src="images/screenshot1.png" >
-  <img src="images/screenshot2.png" >
-  <img src="images/screenshot3.png" >
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin: 20px 0;">
+  <div>
+    <img src="images/screenshot1.png" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="YouTube视频翻译界面">
+    <p align="center">YouTube视频实时翻译</p>
+  </div>
+  <div>
+    <img src="images/screenshot2.png" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="字幕分析面板">
+    <p align="center">AI字幕深度分析</p>
+  </div>
+  <div>
+    <img src="images/screenshot3.png" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="网页翻译界面">
+    <p align="center">英文网页段落翻译</p>
+  </div>
 </div>
 
 ## 主要特性
