@@ -1,17 +1,21 @@
 export function extractJsonFromString(input) {
-    const jsonRegex = /```json([\s\S]*?)```|```([\s\S]*?)```|(\[[\s\S]*?\])/g;
+    const jsonRegex = /```json([\s\S]*?)```|```([\s\S]*?)```/g;
     let match;
-  
-    if ((match = jsonRegex.exec(input)) !== null) {
-        let jsonData;
+    let jsonData = '';
+
+    while ((match = jsonRegex.exec(input)) !== null) {
         if (match[1]) {
-            jsonData = match[1].trim();
+            jsonData += match[1].trim();
         } else if (match[2]) {
-            jsonData = match[2].trim();
+            jsonData += match[2].trim();
         } else if (match[3]) {
-            jsonData = match[3].trim();
+            jsonData += match[3].trim();
         }
-        return  jsonData;
     }
+
+    if (jsonData) {
+        return jsonData;
+    }
+
     return input;
 }

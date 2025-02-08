@@ -119,7 +119,7 @@ import { extractJsonFromString } from './utils';
 
             return container;
         } catch (error) {
-            console.error('Error creating translation element:', error);
+            console.error('Error creating translation element,translationResult:',translationResult, error);
             const errorContainer = document.createElement('div');
             errorContainer.className = 'inline-translation-result';
             errorContainer.textContent = translationResult; // 降级显示原始文本
