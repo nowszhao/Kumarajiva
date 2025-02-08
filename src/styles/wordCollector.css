@@ -247,7 +247,14 @@
     max-width: 320px;
     z-index: 1000000;
     font-size: 14px;
-    animation: fadeIn 0.2s ease-out;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.word-details-popup.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .word-details-header {
@@ -325,5 +332,24 @@
     padding-top: 12px;
     border-top: 1px solid #eee;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 添加取消收藏按钮样式 */
+.uncollect-btn {
+    background: #fff;
+    color: #d93025;
+    border: 1px solid #d93025;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.uncollect-btn:hover {
+    background: #d93025;
+    color: white;
 } 

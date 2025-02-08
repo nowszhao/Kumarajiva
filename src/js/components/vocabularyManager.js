@@ -5,7 +5,8 @@ export class VocabularyManager {
         this.words = new Map();
         this.selectedWords = new Set();
         this.currentFilter = 'all';
-        this.currentSort = 'timeDesc';
+        this.currentSort = 'time';
+        this.sortDirection = 'desc';
         this.pageSize = 10;
         this.currentPage = 1;
         this.searchQuery = '';
@@ -31,12 +32,6 @@ export class VocabularyManager {
         // 状态筛选
         document.getElementById('wordStatus').addEventListener('change', (e) => {
             this.currentFilter = e.target.value;
-            this.renderWordList();
-        });
-
-        // 排序
-        document.getElementById('sortOrder').addEventListener('change', (e) => {
-            this.currentSort = e.target.value;
             this.renderWordList();
         });
 
@@ -80,6 +75,35 @@ export class VocabularyManager {
                 this.renderWordList();
             }
         });
+
+        // 添加刷新按钮事件监听
+        document.getElementById('refreshList').addEventListener('click', async () => {
+            await this.loadWords();
+            this.renderWordList();
+        });
+
+        // 添加表头排序事件监听
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.addEventListener('click', () => {
+                const sortType = header.dataset.sort;
+                if (this.currentSort === sortType) {
+                    // 切换排序方向
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // 切换排序字段
+                    this.currentSort = sortType;
+                    this.sortDirection = 'desc';
+                }
+                
+                // 更新表头样式
+                document.querySelectorAll('.sortable').forEach(h => {
+                    h.classList.remove('active', 'asc', 'desc');
+                });
+                header.classList.add('active', this.sortDirection);
+                
+                this.renderWordList();
+            });
+        });
     }
 
     getFilteredWords() {
@@ -95,15 +119,24 @@ export class VocabularyManager {
 
         // 应用状态过滤
         if (this.currentFilter !== 'all') {
-            filteredWords = filteredWords.filter(([_, word]) => {
-                return this.currentFilter === 'mastered' ? word.mastered : !word.mastered;
+            filteredWords = filteredWords.filter(([_, info]) => {
+                return this.currentFilter === 'mastered' ? info.mastered : !info.mastered;
             });
         }
 
         // 应用排序
-        filteredWords.sort(([, a], [, b]) => {
-            const sortValue = this.currentSort === 'timeDesc' ? -1 : 1;
-            return sortValue * (a.timestamp - b.timestamp);
+        filteredWords.sort(([wordA, infoA], [wordB, infoB]) => {
+            const direction = this.sortDirection === 'desc' ? -1 : 1;
+            
+            switch (this.currentSort) {
+                case 'word':
+                    return direction * wordA.localeCompare(wordB);
+                case 'status':
+                    return direction * (Number(infoA.mastered) - Number(infoB.mastered));
+                case 'time':
+                default:
+                    return direction * (infoA.timestamp - infoB.timestamp);
+            }
         });
 
         return filteredWords;
@@ -151,8 +184,9 @@ export class VocabularyManager {
         const pageWords = filteredWords.slice(startIndex, endIndex);
 
         pageWords.forEach(([word, info]) => {
-            const row = this.createWordRow(word, info);
+            const [row, exampleRow] = this.createWordRow(word, info);
             tbody.appendChild(row);
+            tbody.appendChild(exampleRow);
         });
 
         this.updatePaginationControls(totalItems);
@@ -162,6 +196,13 @@ export class VocabularyManager {
     createWordRow(word, info) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td class="expand-col">
+                <button class="toggle-example-btn" title="查看例句">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                </button>
+            </td>
             <td class="select-col">
                 <input type="checkbox" class="select-checkbox" data-word="${word}" ${this.selectedWords.has(word) ? 'checked' : ''}>
             </td>
@@ -175,7 +216,7 @@ export class VocabularyManager {
                     <span class="status-slider"></span>
                 </label>
             </td>
-            <td>
+            <td class="actions-col">
                 <button class="delete-btn" title="删除">
                     <svg viewBox="0 0 24 24" width="16" height="16">
                         <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
@@ -184,7 +225,31 @@ export class VocabularyManager {
             </td>
         `;
 
+        // 创建例句行（默认隐藏）
+        const exampleRow = document.createElement('tr');
+        exampleRow.className = 'example-row';
+        exampleRow.style.display = 'none';
+        exampleRow.innerHTML = `
+            <td colspan="8">
+                <div class="example-content">
+                    <strong>例句：</strong>
+                    <p>${info.memory_method || '暂无例句'}</p>
+                </div>
+            </td>
+        `;
+
         // 添加事件监听
+        const toggleBtn = tr.querySelector('.toggle-example-btn');
+        toggleBtn.addEventListener('click', () => {
+            const isExpanded = toggleBtn.classList.contains('expanded');
+            toggleBtn.classList.toggle('expanded');
+            toggleBtn.innerHTML = isExpanded ? 
+                '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>' :
+                '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>';
+            exampleRow.style.display = isExpanded ? 'none' : 'table-row';
+        });
+
+        // 其他事件监听保持不变...
         const checkbox = tr.querySelector('.select-checkbox');
         checkbox.addEventListener('change', (e) => {
             this.toggleWordSelection(word, e.target.checked);
@@ -203,7 +268,7 @@ export class VocabularyManager {
             }
         });
 
-        return tr;
+        return [tr, exampleRow];
     }
 
     toggleWordSelection(word, selected) {

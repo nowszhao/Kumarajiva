@@ -86,8 +86,10 @@ class SubtitleAnalyzer {
         console.log("prompt:", prompt,",  type:", type);
 
         try {
-            const result = await this.translator.translate(prompt);
-            const parsedResult = type === 'summary' ? result : JSON.parse(result);
+            var result = await this.translator.translate(prompt);
+            result = extractJsonFromString(result);
+
+            const parsedResult = JSON.parse(result);
             
             // 保存结果到缓存
             this.saveAnalysisToCache(videoId, type, parsedResult);
@@ -140,7 +142,7 @@ ${subtitleText}`;
  - 词性：使用n., v., adj., adv., phrase等标准缩写
  - 音标：提供美式音标
  - 中文解释：根据字幕语境给出最贴切的含义
- - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义
+ - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义，需要保证语法正确
 3、输出格式为json数组，示例如下：
 [
     {
@@ -150,7 +152,7 @@ ${subtitleText}`;
         "part_of_speech": "n.",
         "phonetic": "/ˈsænwɪtʃ trænsˈækʃənz/",
         "chinese_meaning": "夹心交易（一种在区块链交易中利用时间差获利的策略）",
-        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。"
+        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。(I recently used sandwich transactions in blockchain transactions and was successful and profitable.)"
     }
 ]
 字幕内容如下：

@@ -54,7 +54,10 @@ async function loadSettings() {
             'batchSize',
             'batchInterval',
             'maxSubtitles',
-            'maxRetries'
+            'maxRetries',
+            'triggerKey',
+            'enableTriggerKey',
+            'autoShowWordDetails'
         ]);
 
         // 设置默认值
@@ -66,7 +69,10 @@ async function loadSettings() {
             batchSize: config.translation.batchSize,
             batchInterval: config.translation.batchInterval,
             maxSubtitles: config.translation.maxSubtitles,
-            maxRetries: config.translation.maxRetries
+            maxRetries: config.translation.maxRetries,
+            triggerKey: config.translation.interaction.triggerKey,
+            enableTriggerKey: config.translation.interaction.enableTriggerKey,
+            autoShowWordDetails: config.translation.interaction.autoShowWordDetails
         };
 
         // 合并默认值和已保存的设置
@@ -95,6 +101,11 @@ async function loadSettings() {
             document.getElementById('apiToken').value = storedToken || defaultToken || '';
         }
 
+        // 更新交互设置
+        document.getElementById('triggerKey').value = mergedSettings.triggerKey;
+        document.getElementById('enableTriggerKey').checked = mergedSettings.enableTriggerKey;
+        document.getElementById('autoShowWordDetails').checked = mergedSettings.autoShowWordDetails;
+
     } catch (error) {
         showStatus('Error loading settings: ' + error.message, 'error');
     }
@@ -109,6 +120,9 @@ async function handleSettingsSubmit(e) {
         const token = document.getElementById('apiToken').value;
         const fontSize = parseInt(document.getElementById('fontSize').value);
         const subtitlePosition = document.getElementById('subtitlePosition').value;
+        const triggerKey = document.getElementById('triggerKey').value;
+        const enableTriggerKey = document.getElementById('enableTriggerKey').checked;
+        const autoShowWordDetails = document.getElementById('autoShowWordDetails').checked;
 
         // 验证设置
         if (!token) {
@@ -138,7 +152,10 @@ async function handleSettingsSubmit(e) {
             batchSize: batchSize || config.translation.batchSize,
             batchInterval: batchInterval || config.translation.batchInterval,
             maxSubtitles: maxSubtitles || config.translation.maxSubtitles,
-            maxRetries: maxRetries || config.translation.maxRetries
+            maxRetries: maxRetries || config.translation.maxRetries,
+            triggerKey,
+            enableTriggerKey,
+            autoShowWordDetails
         };
 
         // 保存到 storage
@@ -158,6 +175,13 @@ async function handleSettingsSubmit(e) {
             config[service] = {};
         }
         config[service].apiToken = token;
+
+        // 更新交互设置
+        Object.assign(config.translation.interaction, {
+            triggerKey,
+            enableTriggerKey,
+            autoShowWordDetails
+        });
 
         showStatus('设置已保存', 'success');
     } catch (error) {
@@ -243,7 +267,10 @@ async function handleResetDefaults() {
             maxRetries: config.translation.maxRetries,
             // UI 设置
             fontSize: 24,
-            subtitlePosition: 'bottom'
+            subtitlePosition: 'bottom',
+            triggerKey: config.translation.interaction.triggerKey,
+            enableTriggerKey: config.translation.interaction.enableTriggerKey,
+            autoShowWordDetails: config.translation.interaction.autoShowWordDetails
         };
 
         // 更新表单值
@@ -271,6 +298,11 @@ async function handleResetDefaults() {
         if (positionSelect) {
             positionSelect.value = defaultSettings.subtitlePosition;
         }
+
+        // 更新交互设置
+        document.getElementById('triggerKey').value = defaultSettings.triggerKey;
+        document.getElementById('enableTriggerKey').checked = defaultSettings.enableTriggerKey;
+        document.getElementById('autoShowWordDetails').checked = defaultSettings.autoShowWordDetails;
 
         // 保存到 storage
         await chrome.storage.sync.set(defaultSettings);

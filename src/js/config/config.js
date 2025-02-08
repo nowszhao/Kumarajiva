@@ -24,10 +24,15 @@ export default {
         url: 'http://47.121.117.100:8002/v1/chat/completions'
     },
     translation: {
-        defaultService: 'doubao', 
+        defaultService: 'doubao',
         batchSize: 10,
         batchInterval: 2000,
         maxSubtitles: 5,
-        maxRetries: 30
+        maxRetries: 30,
+        interaction: {
+            triggerKey: 'Control',
+            enableTriggerKey: true,
+            autoShowWordDetails: true
+        }
     }
 }; 

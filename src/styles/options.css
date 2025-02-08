@@ -186,45 +186,204 @@ select, input[type="text"], input[type="number"] {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     margin-bottom: 20px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 6px;
 }
 
 .filter-group {
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.search-input {
+    width: 400px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
 .filter-select {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    width: 100px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     background: white;
 }
 
+/* 添加排序表头样式 */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 24px !important;
+    user-select: none;
+}
+
+.sort-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    opacity: 0.3;
+}
+
+.sortable:hover .sort-icon {
+    opacity: 0.7;
+}
+
+.sortable.active .sort-icon {
+    opacity: 1;
+}
+
+.sortable .sort-icon::before,
+.sortable .sort-icon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+.sortable .sort-icon::before {
+    top: 0;
+    border-bottom: 4px solid #666;
+}
+
+.sortable .sort-icon::after {
+    bottom: 0;
+    border-top: 4px solid #666;
+}
+
+.sortable.active.asc .sort-icon::before {
+    border-bottom-color: var(--primary-color);
+}
+
+.sortable.active.desc .sort-icon::after {
+    border-top-color: var(--primary-color);
+}
+
+/* 优化表格样式 */
+.vocabulary-table th {
+    white-space: nowrap;
+    position: relative;
+}
+
 .vocabulary-table {
-    width: 100%;
-    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .vocabulary-table table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
-}
-
-.vocabulary-table th,
-.vocabulary-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
+    background: white;
 }
 
 .vocabulary-table th {
     background: #f8f9fa;
+    padding: 12px;
     font-weight: 500;
+    text-align: left;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.vocabulary-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.expand-col {
+    width: 40px;
+    text-align: center;
+}
+
+.toggle-example-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--primary-color);
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.toggle-example-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.toggle-example-btn.expanded {
+    transform: rotate(45deg);
+}
+
+.action-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.example-row {
+    background-color: #f8f9fa;
+}
+
+.example-content {
+    padding: 16px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.example-content strong {
+    color: #333;
+    margin-right: 8px;
+}
+
+.status-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 22px;
+}
+
+.status-slider {
+    border-radius: 22px;
+    background-color: #ccc;
+}
+
+.status-slider:before {
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+}
+
+input:checked + .status-slider {
+    background-color: #34a853;
 }
 
 .checkbox-col {
@@ -243,15 +402,6 @@ select, input[type="text"], input[type="number"] {
     cursor: pointer;
 }
 
-.status-toggle {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-    margin: 0 auto;
-}
-
-/* 确保状态切换开关和选择框样式分开 */
 .status-checkbox {
     opacity: 0;
     width: 0;
@@ -346,21 +496,6 @@ input:checked + .status-slider:before {
     background: #4a4d51;
 }
 
-/* 添加搜索框样式 */
-.search-input {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    width: 200px;
-    margin-right: 10px;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
-}
-
 /* 添加分页样式 */
 .pagination {
     display: flex;
@@ -389,4 +524,24 @@ input:checked + .status-slider:before {
 
 .pagination-controls span {
     color: #666;
+}
+
+/* 刷新按钮样式 */
+#refreshList {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#refreshList svg {
+    transition: transform 0.3s;
+}
+
+#refreshList:hover svg {
+    transform: rotate(180deg);
+}
+
+.actions-col {
+    width: 50px;
+    text-align: center;
 }

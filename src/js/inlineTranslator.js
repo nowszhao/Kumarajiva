@@ -4,6 +4,7 @@ import { TranslatorFactory } from './translators';
 import config from './config/config';
 import WordCollector from './components/wordCollector';
 import VocabularyStorage from './components/vocabularyStorage';
+import { extractJsonFromString } from './utils';
 
 (function() {
     let hoveredElement = null;
@@ -147,28 +148,40 @@ import VocabularyStorage from './components/vocabularyStorage';
             if (!isCollected) {
                 const ret = {
                     "definitions": [
-                      {
-                        "meaning": word.chinese_meaning,
-                        "pos": word.part_of_speech,
-                      }
+                        {
+                            "meaning": word.chinese_meaning,
+                            "pos": word.part_of_speech,
+                        }
                     ],
                     "mastered": false,
                     "pronunciation": {
-                      "American":  word.phonetic,
-                      "British": ""
+                        "American":  word.phonetic,
+                        "British": ""
                     },
                     "timestamp": new Date().getTime(),
                     "word": word.vocabulary,
                     "memory_method": word.chinese_english_sentence
-                  }
+                }
 
-                await VocabularyStorage.addWord(word.vocabulary,ret);
+                await VocabularyStorage.addWord(word.vocabulary, ret);
                 collectBtn.classList.add('collected');
                 collectBtn.textContent = '已收藏';
+                
+                // 添加：收藏后立即触发页面重新高亮
+                const wordCollector = new WordCollector();
+                await wordCollector.initialize();
+                await wordCollector.highlightCollectedWords(document.body);
             } else {
                 await VocabularyStorage.removeWord(word.vocabulary);
                 collectBtn.classList.remove('collected');
                 collectBtn.textContent = '收藏';
+                
+                // 添加：取消收藏后移除高亮
+                document.querySelectorAll(`.collected-word[data-word="${word.vocabulary.toLowerCase()}"]`)
+                    .forEach(el => {
+                        const textNode = document.createTextNode(el.textContent);
+                        el.parentNode.replaceChild(textNode, el);
+                    });
             }
         });
         wordHeader.appendChild(collectBtn);
@@ -287,7 +300,7 @@ import VocabularyStorage from './components/vocabularyStorage';
                 - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
                 - 词性：使用n., v., adj., adv., phrase等标准缩写
                 - 音标：提供美式音标
-                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义
+                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义，需要保证语法正确
                 3、输出示例如下,严格按照json格式输出：
                 {
                     "translation":"xxxx"
@@ -298,7 +311,7 @@ import VocabularyStorage from './components/vocabularyStorage';
                             "part_of_speech": "n.",
                             "phonetic": "/ˈbentʃmɑːrk/",
                             "chinese_meaning": "基准；参照标准",
-                            "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。"
+                            "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。(DeepSeek recently released its reasoning model, which outperformed many top AI companies in common benchmarks.)"
                         },
                         ...
                     ]
@@ -307,7 +320,7 @@ import VocabularyStorage from './components/vocabularyStorage';
                 ${text}`;
                 
                 const result = await translator.translate(prompt);
-                return result;
+                return extractJsonFromString(result);
             } finally {
                 await translator.cleanup();
             }
@@ -327,7 +340,19 @@ import VocabularyStorage from './components/vocabularyStorage';
     }
 
     // 主要功能初始化
-    function initializeInlineTranslator() {
+    async function initializeInlineTranslator() {
+        // 获取交互设置
+        const { triggerKey, enableTriggerKey } = await chrome.storage.sync.get([
+            'triggerKey',
+            'enableTriggerKey'
+        ]);
+
+        // 使用设置值或默认值
+        const currentTriggerKey = triggerKey || config.translation.interaction.triggerKey;
+        const isEnabled = enableTriggerKey ?? config.translation.interaction.enableTriggerKey;
+
+        if (!isEnabled) return;
+
         // 监听鼠标移动（使用 mousemove 以确保在段落内的任何位置都能正确检测）
         document.addEventListener('mousemove', throttle((e) => {
             const element = findTextContainer(e.target);
@@ -355,24 +380,20 @@ import VocabularyStorage from './components/vocabularyStorage';
             }
         });
 
-        // 监听 Ctrl 键
+        // 修改键盘事件监听
         document.addEventListener('keydown', (e) => {
-            console.log("initializeInlineTranslator-keydown-e:", e);
-            if (e.key === 'Control' && !isCtrlPressed) {
-                console.log("initializeInlineTranslator-keydown-e.key:", e.key);
+            if (e.key === currentTriggerKey && !isCtrlPressed) {
                 isCtrlPressed = true;
                 if (hoveredElement) {
-                    console.log("initializeInlineTranslator-keydown-hoveredElement:", hoveredElement);
                     handleTranslation(hoveredElement);
                 }
             }
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.key === 'Control') {
+            if (e.key === currentTriggerKey) {
                 isCtrlPressed = false;
                 if (hoveredElement) {
-                    // removeTranslation(hoveredElement);
                     hoveredElement = null;
                 }
             }
