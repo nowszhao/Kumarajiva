@@ -78,47 +78,57 @@
 
 .inline-translation-result {
     margin: 8px 0;
-    padding: 12px;
+    padding: 5px;
     background-color: #f8f9fa;
-    border-left: 3px solid #9611f0;
+    border-left: 3px solid #1a73e8;
     font-size: 14px;
     line-height: 1.6;
-    border-radius: 0 4px 4px 0;
-    animation: slideIn 0.3s ease;
+    border-radius: 4px;
+    transition: all 0.3s ease;
 }
 
 /* 新增翻译结果容器样式 */
 .translation-main {
-    color: #114ebd;
+    color: #1a73e8;
+    font-size: 15px;
+    line-height: 1.6;
     margin-bottom: 8px;
 }
 
 .translation-expand-btn {
-    display: inline-block;
-    color: #666;
+    display: inline;
+    color: #1a73e8;
     font-size: 13px;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: #eee;
-    margin-top: 8px;
-    transition: all 0.2s ease;
+    padding: 0;
+    background: none;
+    border: none;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+    margin-top: 4px;
+    opacity: 0.8;
 }
 
 .translation-expand-btn:hover {
-    background: #e0e0e0;
-    color: #333;
+    background: none;
+    opacity: 1;
+    text-decoration: underline;
 }
 
 .difficult-words {
-    display: none;
     margin-top: 12px;
     border-top: 1px solid #eee;
     padding-top: 12px;
+    display: none;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
 }
 
 .difficult-words.visible {
     display: block;
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .word-item {
@@ -205,8 +215,8 @@
 }
 
 .loading-spinner {
-    width: 16px;
-    height: 16px;
+    width: 5px;
+    height: 5px;
     border: 2px solid #ffc107;
     border-top-color: transparent;
     border-radius: 50%;
@@ -217,4 +227,202 @@
     to {
         transform: rotate(360deg);
     }
-} 
+}
+
+/* 翻译按钮样式优化 */
+.page-translate-button {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.page-translate-button:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.page-translate-button.active {
+    background: #1a73e8;
+    border-color: #1a73e8;
+}
+
+.page-translate-button.active svg {
+    fill: #fff;
+}
+
+/* 翻译进度指示器 */
+.translation-progress {
+    position: fixed;
+    right: 70px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff;
+    padding: 6px 12px;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-size: 13px;
+    color: #666;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    z-index: 9999;
+}
+
+.translation-progress.visible {
+    display: flex;
+}
+
+.progress-spinner {
+    width: 4px;
+    height: 4px;
+    border: 1.5px solid #e5e5e5;
+    border-top-color: #1a73e8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* 翻译结果样式优化 */
+.translating {
+    background: rgba(26, 115, 232, 0.05);
+    border-left: 3px solid #1a73e8;
+    padding-left: 16px;
+    transition: all 0.3s ease;
+}
+
+.translated {
+    background: rgba(26, 115, 232, 0.02);
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .page-translate-button {
+        background: #202124;
+        border-color: #5f6368;
+    }
+
+    .page-translate-button.active {
+        background: #8ab4f8;
+        border-color: #8ab4f8;
+    }
+
+    .translation-progress {
+        background: #202124;
+        color: #e8eaed;
+    }
+
+    .inline-translation-result {
+        background-color: #202124;
+        border-left-color: #8ab4f8;
+    }
+
+    .translation-main {
+        color: #8ab4f8;
+    }
+
+    .translation-expand-btn {
+        color: #8ab4f8;
+    }
+
+    .progress-spinner {
+        border-color: #5f6368;
+        border-top-color: #8ab4f8;
+    }
+}
+
+.page-translate-button {
+    position: fixed;
+    right: 20px;
+    bottom: 20%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.page-translate-button:hover {
+    background: #1557b0;
+    transform: translateY(-1px);
+}
+
+.page-translate-button.active {
+    background: #d93025;
+}
+
+.page-translate-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.page-translate-button span {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+    .page-translate-button {
+        background: #8ab4f8;
+        color: #202124;
+    }
+
+    .page-translate-button:hover {
+        background: #aecbfa;
+    }
+
+    .page-translate-button.active {
+        background: #f28b82;
+    }
+}
+
+.translating {
+    position: relative;
+    background: rgba(26, 115, 232, 0.05);
+    transition: background-color 0.3s ease;
+}
+
+.translating::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: #1a73e8;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+@media (prefers-color-scheme: dark) {
+    .translating {
+        background: rgba(138, 180, 248, 0.05);
+    }
+    
+    .translating::before {
+        background: #8ab4f8;
+    }
+}

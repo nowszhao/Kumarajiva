@@ -12,6 +12,8 @@ import { extractJsonFromString } from './utils';
     let translationCache = new Map();
     let translatedElements = new WeakSet();
     let isTranslating = false;
+    let translationQueue = [];
+    let isProcessingQueue = false;
 
     // 节流函数
     function throttle(func, limit) {
@@ -215,7 +217,6 @@ import { extractJsonFromString } from './utils';
         const indicator = document.createElement('div');
         indicator.className = 'translation-loading';
         indicator.innerHTML = `
-            <div class="loading-spinner"></div>
             <span>正在翻译...</span>
         `;
         return indicator;
@@ -400,13 +401,240 @@ import { extractJsonFromString } from './utils';
         });
     }
 
-    // 初始化
+    // 修改 createTranslateButton 函数，优化按钮点击逻辑
+    function createTranslateButton() {
+        const button = document.createElement('button');
+        button.className = 'page-translate-button';
+        button.innerHTML = `
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+            </svg>
+        `;
+
+        const progress = document.createElement('div');
+        progress.className = 'translation-progress';
+        progress.innerHTML = `
+            <div class="progress-spinner"></div>
+            <span class="progress-text">正在翻译...</span>
+        `;
+
+        document.body.appendChild(button);
+        document.body.appendChild(progress);
+
+        button.addEventListener('click', () => {
+            if (isTranslating) {
+                stopTranslation();
+            } else {
+                startTranslation();
+            }
+        });
+
+        return { button, progress };
+    }
+
+    // 修改 startTranslation 函数
+    function startTranslation() {
+        const button = document.querySelector('.page-translate-button');
+        const progress = document.querySelector('.translation-progress');
+        
+        button.classList.add('active');
+        progress.classList.add('visible');
+        isTranslating = true;
+        translationQueue = []; // 清空之前的队列
+        isProcessingQueue = false; // 重置处理状态
+        translateVisibleContent();
+    }
+
+    // 修改 stopTranslation 函数
+    function stopTranslation() {
+        const button = document.querySelector('.page-translate-button');
+        const progress = document.querySelector('.translation-progress');
+        
+        button.classList.remove('active');
+        progress.classList.remove('visible');
+        isTranslating = false;
+        
+        // 清理状态
+        document.querySelectorAll('.translating').forEach(el => {
+            el.classList.remove('translating');
+        });
+    }
+
+    // 修改 findVisibleTextContainers 函数
+    function findVisibleTextContainers() {
+        // 1. 首先尝试查找常见的文章主体容器
+        const mainContentSelectors = [
+            'article', '[role="main"]', 'main',
+            '.post-content', '.article-content', '.entry-content',
+            '#content-main', '.main-content', '.post-body', '.article-body'
+        ];
+
+        let mainContent = null;
+        for (const selector of mainContentSelectors) {
+            const element = document.querySelector(selector);
+            if (element && containsEnglish(element.textContent)) {
+                mainContent = element;
+                break;
+            }
+        }
+
+        // 如果没找到主容器，尝试使用 body
+        if (!mainContent) {
+            mainContent = document.body;
+        }
+
+        // 获取所有可能的文本容器
+        const containers = [];
+        const paragraphs = mainContent.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
+        
+        // 获取视窗信息
+        const viewportHeight = window.innerHeight;
+        const scrollTop = window.scrollY;
+        const viewportBottom = scrollTop + viewportHeight;
+
+        // 筛选可见的段落
+        paragraphs.forEach(p => {
+            const rect = p.getBoundingClientRect();
+            const elementTop = scrollTop + rect.top;
+            const elementBottom = scrollTop + rect.bottom;
+
+            // 检查元素是否在可见区域内
+            const isVisible = (
+                elementBottom > scrollTop &&
+                elementTop < viewportBottom &&
+                !p.classList.contains('translated') &&
+                !p.classList.contains('inline-translation-result') &&
+                containsEnglish(p.textContent) &&
+                p.textContent.trim().length > 10
+            );
+
+            if (isVisible) {
+                containers.push(p);
+            }
+        });
+
+        return containers;
+    }
+
+    // 检查元素是否在可视区域内
+    function isElementVisible(element) {
+        const rect = element.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        
+        return (
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            style.opacity !== '0' &&
+            rect.width > 0 &&
+            rect.height > 0
+            // 移除了对元素位置的限制检查
+        );
+    }
+
+    // 修改 translateVisibleContent 函数
+    async function translateVisibleContent() {
+        if (!isTranslating) return;
+        
+        const visibleContainers = findVisibleTextContainers();
+        if (visibleContainers.length === 0) return;
+
+        // 将新的容器添加到队列中
+        const newContainers = visibleContainers.filter(container => 
+            !container.classList.contains('translated') && 
+            !translationQueue.includes(container)
+        );
+        
+        if (newContainers.length > 0) {
+            translationQueue = translationQueue.concat(newContainers);
+            
+            // 如果队列未在处理中，开始处理
+            if (!isProcessingQueue) {
+                processTranslationQueue();
+            }
+        }
+    }
+
+    // 修改 processTranslationQueue 函数
+    async function processTranslationQueue() {
+        if (!isTranslating || translationQueue.length === 0) return;
+        
+        isProcessingQueue = true;
+        const progress = document.querySelector('.translation-progress');
+        const progressText = progress.querySelector('.progress-text');
+        
+        let processed = 0;
+        const total = translationQueue.length;
+        
+        while (translationQueue.length > 0 && isTranslating) {
+            const container = translationQueue[0];
+            
+            if (document.body.contains(container)) {
+                container.classList.add('translating');
+                progressText.textContent = `翻译进度: ${++processed}/${total}`;
+                
+                try {
+                    await handleTranslation(container);
+                    container.classList.add('translated');
+                } catch (error) {
+                    console.error('Translation failed:', error);
+                    showTranslationError(container, error);
+                } finally {
+                    container.classList.remove('translating');
+                }
+                
+                translationQueue.shift();
+                
+                // 检查是否需要加载更多可见内容
+                if (translationQueue.length === 0) {
+                    const newContainers = findVisibleTextContainers();
+                    if (newContainers.length > 0) {
+                        translationQueue = translationQueue.concat(newContainers);
+                        total += newContainers.length;
+                    }
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+            } else {
+                translationQueue.shift();
+            }
+        }
+        
+        if (translationQueue.length === 0 && isTranslating) {
+            stopTranslation();
+        }
+        
+        isProcessingQueue = false;
+    }
+
+    // 添加错误提示函数
+    function showTranslationError(container, error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'translation-error';
+        errorDiv.textContent = '翻译失败，请稍后重试';
+        container.appendChild(errorDiv);
+        
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 3000);
+    }
+
+    // 修改初始化函数
     async function initialize() {
         initializeInlineTranslator();
         
         // 初始化单词收藏功能
         const wordCollector = new WordCollector();
         await wordCollector.initialize();
+
+        // 添加全文翻译按钮
+        const { button, progress } = createTranslateButton();
+
+        // 修改滚动监听
+        window.addEventListener('scroll', throttle(() => {
+            if (isTranslating && !isProcessingQueue) {
+                translateVisibleContent();
+            }
+        }, 500));
     }
 
     // 启动应用
