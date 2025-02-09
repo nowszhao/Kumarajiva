@@ -111,7 +111,7 @@ class SubtitleAnalyzer {
  - 词性：使用n., v., adj., adv., phrase等标准缩写
  - 音标：提供美式音标
  - 中文解释：根据字幕语境给出最贴切的含义
- - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义
+ - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
 
 3、输出格式为json数组，示例如下：
 [
@@ -122,7 +122,7 @@ class SubtitleAnalyzer {
         "part_of_speech": "adj.",
         "phonetic": "/juːˈbɪkwɪtəs/",
         "chinese_meaning": "无处不在的",
-        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。"
+        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。(I recently used sandwich transactions in blockchain transactions and was successful and profitable.)"
     }
 ]
 
@@ -143,7 +143,7 @@ ${subtitleText}`;
  - 词性：使用n., v., adj., adv., phrase等标准缩写
  - 音标：提供美式音标
  - 中文解释：根据字幕语境给出最贴切的含义
- - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，方便用户在真实语境中掌握该词汇的含义，需要保证语法正确
+ - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
 3、输出格式为json数组，示例如下：
 [
     {
