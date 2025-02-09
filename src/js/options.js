@@ -106,8 +106,26 @@ async function loadSettings() {
         document.getElementById('enableTriggerKey').checked = mergedSettings.enableTriggerKey;
         document.getElementById('autoShowWordDetails').checked = mergedSettings.autoShowWordDetails;
 
+        // 加载同步设置
+        const syncSettings = await chrome.storage.sync.get([
+            'syncServerUrl',
+            'enableAutoSync',
+            'syncInterval',
+            'lastSyncTime'
+        ]);
+
+        document.getElementById('syncServerUrl').value = syncSettings.syncServerUrl || '';
+        document.getElementById('enableAutoSync').checked = syncSettings.enableAutoSync || false;
+        document.getElementById('syncInterval').value = syncSettings.syncInterval || 60;
+
+        // 更新上次同步时间显示
+        const lastSyncTime = document.getElementById('lastSyncTime');
+        if (syncSettings.lastSyncTime) {
+            lastSyncTime.textContent = new Date(syncSettings.lastSyncTime).toLocaleString('zh-CN');
+        }
     } catch (error) {
-        showStatus('Error loading settings: ' + error.message, 'error');
+        console.error('Failed to load settings:', error);
+        showStatus('加载设置失败: ' + error.message, 'error');
     }
 }
 
@@ -183,8 +201,20 @@ async function handleSettingsSubmit(e) {
             autoShowWordDetails
         });
 
+        // 保存同步设置
+        const syncSettings = {
+            syncServerUrl: document.getElementById('syncServerUrl').value,
+            enableAutoSync: document.getElementById('enableAutoSync').checked,
+            syncInterval: parseInt(document.getElementById('syncInterval').value, 10)
+        };
+
+        // 更新同步设置
+        const vocabularyManager = new VocabularyManager();
+        await vocabularyManager.sync.updateSettings(syncSettings);
+
         showStatus('设置已保存', 'success');
     } catch (error) {
+        console.error('Save settings error:', error);
         showStatus('保存设置失败: ' + error.message, 'error');
     }
 }

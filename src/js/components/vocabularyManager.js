@@ -1,4 +1,5 @@
 import VocabularyStorage from './vocabularyStorage';
+import { VocabularySync } from './vocabularySync';
 
 export class VocabularyManager {
     constructor() {
@@ -10,10 +11,12 @@ export class VocabularyManager {
         this.pageSize = 10;
         this.currentPage = 1;
         this.searchQuery = '';
+        this.sync = new VocabularySync();
     }
 
     async initialize() {
         await this.loadWords();
+        await this.sync.initialize();
         this.setupEventListeners();
         this.renderWordList();
     }
@@ -103,6 +106,11 @@ export class VocabularyManager {
                 
                 this.renderWordList();
             });
+        });
+
+        // 添加同步按钮事件监听
+        document.getElementById('syncVocabulary').addEventListener('click', () => {
+            this.sync.syncToCloud();
         });
     }
 

@@ -75,7 +75,11 @@ import { extractJsonFromString } from './utils';
 
     // 检查元素是否包含英文
     function containsEnglish(text) {
-        return /[a-zA-Z]{2,}/.test(text);
+        // 1. 匹配完整的英文单词
+        // 2. 单词前后必须是空格、标点或字符串边界
+        // 3. 排除常见的缩写和单字母单词 (如 a, I)
+        // 4. 单词长度至少3个字母
+        return /(?:^|[^a-zA-Z])[a-zA-Z]{3,}(?:[^a-zA-Z]|$)/.test(text);
     }
 
     // 创建翻译容器

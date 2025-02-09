@@ -87,6 +87,30 @@
                         </div>
                     </div>
 
+                    <!-- 同步设置 -->
+                    <div class="settings-group">
+                        <h2>同步设置</h2>
+                        <div class="form-group">
+                            <label for="syncServerUrl">同步服务器地址</label>
+                            <input type="text" id="syncServerUrl" placeholder="http://localhost:3000/api/vocab/import">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableAutoSync">
+                                启用自动同步
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="syncInterval">同步间隔（分钟）</label>
+                            <input type="number" id="syncInterval" min="5" max="1440" value="60">
+                        </div>
+                        <div class="sync-status">
+                            <span>上次同步时间：</span>
+                            <span id="lastSyncTime">从未同步</span>
+                            <span id="syncStatus" class="status-badge"></span>
+                        </div>
+                    </div>
+
                     <div class="button-group">
                         <button type="submit" class="btn">保存设置</button>
                         <button type="button" id="testConnection" class="btn">测试连接</button>
@@ -101,19 +125,25 @@
                 <h1>生词表</h1>
                 <div class="vocabulary-toolbar">
                     <div class="filter-group">
-                        <input type="search" id="wordSearch" class="search-input" placeholder="搜索单词...">
-                        <select id="wordStatus" class="filter-select">
+                        <select id="wordStatus">
                             <option value="all">全部</option>
                             <option value="unmastered">未掌握</option>
                             <option value="mastered">已掌握</option>
                         </select>
+                        <input type="text" id="wordSearch" placeholder="搜索单词...">
                     </div>
                     <div class="action-group">
                         <button id="deleteSelected" class="btn btn-danger" disabled>
                             删除选中
                         </button>
+                        <button id="syncVocabulary" class="btn btn-primary">
+                            <svg class="sync-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                            </svg>
+                            同步到云端
+                        </button>
                         <button id="refreshList" class="btn btn-secondary">
-                            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                             </svg>
                             刷新

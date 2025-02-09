@@ -44,7 +44,7 @@ class WordCollector {
                     <div class="examples"></div>
                 </div>
                 <div class="word-card-footer">
-                    <button class="collect-btn">收藏单词</button>
+                    <button class="collect-btn">收藏</button>
                 </div>
             </div>
         `;
@@ -90,10 +90,19 @@ class WordCollector {
             this.playWordAudio(word);
         });
 
-        // 点击其他区域关闭卡片
+        // 修改文档点击事件监听
         document.addEventListener('mousedown', (e) => {
-            if (!this.cardContainer.contains(e.target)) {
+            if (this.cardContainer && 
+                !this.cardContainer.contains(e.target) && 
+                !e.target.classList.contains('collected-word')) {
                 this.hideCard();
+            }
+        });
+
+        // 防止卡片内的点击事件触发文本选择
+        this.cardContainer.addEventListener('mousedown', (e) => {
+            if (e.target.matches('button, .play-audio-btn, .collect-btn')) {
+                e.preventDefault();
             }
         });
     }
@@ -181,6 +190,10 @@ class WordCollector {
 
     showCard(wordInfo, event) {
         this.currentWordInfo = wordInfo;
+        
+        // 阻止事件冒泡，防止触发文档点击事件
+        event.stopPropagation();
+        
         const { clientX, clientY } = event;
         
         // 先计算位置，再显示卡片
@@ -199,7 +212,7 @@ class WordCollector {
             // 设置单词和音标
             const wordElem = this.cardContainer.querySelector('.word');
             wordElem.textContent = wordInfo.word;
-            wordElem.dataset.word = wordInfo.word; // 存储单词用于音频播放
+            wordElem.dataset.word = wordInfo.word;
             
             const phonetic = wordInfo.pronunciation.American || wordInfo.pronunciation.British;
             this.cardContainer.querySelector('.phonetic').textContent = phonetic;
@@ -227,6 +240,12 @@ class WordCollector {
 
             // 重新绑定事件监听器
             this.setupCardEventListeners();
+            
+            // 阻止卡片内的点击事件冒泡
+            this.cardContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            
         } catch (error) {
             console.error('Error showing word card:', error);
             this.cardContainer.querySelector('.word-card').innerHTML = `
@@ -581,7 +600,7 @@ class WordCollector {
         `;
     }
 
-    // 添加卡片事件监听器设置方法
+    // 修改 setupCardEventListeners 方法
     setupCardEventListeners() {
         // 播放音频按钮
         const playButton = this.cardContainer.querySelector('.play-audio-btn');

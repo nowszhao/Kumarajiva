@@ -178,21 +178,44 @@ class SubtitleManager {
 // 翻译处理器 - 负责字幕的翻译和批处理
 class TranslationProcessor {
     constructor(storageManager, eventBus, subtitleManager) {
-        this.eventBus = eventBus;
         this.storageManager = storageManager;
+        this.eventBus = eventBus;
         this.subtitleManager = subtitleManager;
-        this.BATCH_SIZE = 5;
+        this.BATCH_SIZE = 10;
         this.BATCH_INTERVAL = 2000;
         this.processingStatus = {
             total: 0,
             processed: 0,
             isProcessing: false
         };
+        // 添加 AbortController
+        this.abortController = null;
     }
 
+    // 添加停止翻译的方法
+    stopTranslation() {
+        // 停止当前的翻译进程
+        this.processingStatus.isProcessing = false;
+        
+        // 如果存在 AbortController，中止所有请求
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+
+        // 发送状态更新事件
+        this.eventBus.emit('processingStatusUpdated', this.processingStatus);
+    }
+
+    // 修改 batchProcessSubtitles 方法
     async batchProcessSubtitles(subtitles, videoId) {
+        // 创建新的 AbortController
+        this.abortController = new AbortController();
+        const signal = this.abortController.signal;
+
         const storageKey = `${this.storageManager.SUBTITLE_STORAGE_KEY}${videoId}`;
         
+        // 检查缓存
         const cached = await this.storageManager.getFromStorage(storageKey);
         if (cached) {
             console.log("Using cached subtitles");
@@ -205,6 +228,7 @@ class TranslationProcessor {
             return;
         }
 
+        // 初始化处理状态
         this.processingStatus = {
             total: subtitles.length,
             processed: 0,
@@ -212,30 +236,57 @@ class TranslationProcessor {
         };
         this.eventBus.emit('processingStatusUpdated', this.processingStatus);
 
-        const batches = [];
-        for (let i = 0; i < subtitles.length; i += this.BATCH_SIZE) {
-            batches.push(subtitles.slice(i, i + this.BATCH_SIZE));
-        }
-
         try {
+            // 将字幕分成批次
+            const batches = [];
+            for (let i = 0; i < subtitles.length; i += this.BATCH_SIZE) {
+                batches.push(subtitles.slice(i, i + this.BATCH_SIZE));
+            }
+
+            // 处理每个批次
             for (let i = 0; i < batches.length; i++) {
+                // 检查是否已中止
+                if (signal.aborted) {
+                    console.log('Translation aborted');
+                    break;
+                }
+
+                // 如果不再处理中，退出循环
+                if (!this.processingStatus.isProcessing) {
+                    console.log('Translation stopped');
+                    break;
+                }
+
                 await this.processBatch(batches[i], i + 1, batches.length);
+                
+                // 在批次之间添加延迟
                 if (i < batches.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, this.BATCH_INTERVAL));
                 }
             }
 
-            const cacheObject = Object.fromEntries(this.subtitleManager.subtitleCache);
-            await this.storageManager.saveToStorage(storageKey, cacheObject);
+            // 如果没有被中止，保存到缓存
+            if (!signal.aborted && this.processingStatus.isProcessing) {
+                const cacheObject = Object.fromEntries(this.subtitleManager.subtitleCache);
+                await this.storageManager.saveToStorage(storageKey, cacheObject);
+            }
         } catch (error) {
-            console.error('Error in batch processing:', error);
+            if (error.name === 'AbortError') {
+                console.log('Translation was aborted');
+            } else {
+                console.error('Error in batch processing:', error);
+            }
         } finally {
             this.processingStatus.isProcessing = false;
             this.eventBus.emit('processingStatusUpdated', this.processingStatus);
+            this.abortController = null;
         }
     }
 
-    async processBatch(batch, currentBatch, totalBatches, retryCount = 0) {
+    // 修改 processBatch 方法
+    async processBatch(batch, currentBatch, totalBatches) {
+        if (!this.processingStatus.isProcessing) return;
+
         try {
             const prompt = this.generateTranslationPrompt(batch);
             const response = await this.translate(prompt);
@@ -260,12 +311,19 @@ class TranslationProcessor {
         } catch (error) {
             console.error(`Error in batch ${currentBatch}/${totalBatches}:`, error);
             
-            if (retryCount < config.translation.maxRetries) {
-                const retryDelay = 3000 * (retryCount + 1);
-                await new Promise(resolve => setTimeout(resolve, retryDelay));
-                return this.processBatch(batch, currentBatch, totalBatches, retryCount + 1);
+            if (error.name === 'AbortError') {
+                console.log('Translation was aborted');
+            } else {
+                if (error.name === 'TranslationError') {
+                    console.error('Translation error:', error);
+                } else {
+                    if (error.name === 'TranslationTimeoutError') {
+                        console.error('Translation timed out');
+                    } else {
+                        console.error('Error processing batch:', error);
+                    }
+                }
             }
-            throw error;
         }
     }
 

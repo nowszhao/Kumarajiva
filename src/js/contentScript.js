@@ -1,4 +1,3 @@
-
 import { EventBus,SubtitleManager,TranslationProcessor, UIManager, StorageManager} from './components/youtubeVideoParser';
 
 // 主应用类 - 负责协调各个组件
@@ -15,6 +14,7 @@ class YouTubeSubtitleApp {
         this.uiManager = null;
         this.player = null;
         this.isSubtitleEnabled = false;
+        this.isTranslating = false;
 
         // 绑定方法
         this.initializeExtension = this.initializeExtension.bind(this);
@@ -125,6 +125,8 @@ class YouTubeSubtitleApp {
     }
 
     async initializePluginCore() {
+        if (!this.isTranslating) return;
+
         this.player = await this.waitForYouTubePlayer();
         if (!this.player) return;
 
@@ -137,25 +139,26 @@ class YouTubeSubtitleApp {
         }
 
         const subtitles = await this.subtitleManager.fetchAndParseSubtitles(englishTrack);
-        if (!subtitles.length) return;
+        if (!subtitles.length || !this.isTranslating) return;
 
         this.subtitleManager.setCurrentSubtitles(subtitles);
         
-        // 修改 timeupdate 事件处理逻辑
         this.player.addEventListener('timeupdate', () => {
+            if (!this.isTranslating) return;
+            
             const currentTime = this.player.currentTime * 1000;
-            // 只获取当前时间点的字幕
             const currentSubtitles = subtitles.filter(sub => 
                 currentTime >= sub.startTime && currentTime < sub.endTime
-            ).slice(0, 1); // 只取第一条
+            ).slice(0, 1);
 
-            // 只有在有字幕时才更新显示
             if (currentSubtitles.length > 0) {
                 this.uiManager.updateSubtitleDisplay(currentSubtitles);
             }
         });
 
-        await this.translationProcessor.batchProcessSubtitles(subtitles, UIManager.getYouTubeVideoId());
+        if (this.isTranslating) {
+            await this.translationProcessor.batchProcessSubtitles(subtitles, UIManager.getYouTubeVideoId());
+        }
     }
 
     cleanupCurrentSession() {
@@ -256,22 +259,28 @@ class YouTubeSubtitleApp {
             ytpRightControls.prepend(switchContainer);
         }
 
-        this.isSubtitleEnabled = localStorage.getItem('subtitle-switch-enabled') === 'true';
         const switchElement = switchContainer.querySelector('.subtitle-switch');
+        
         if (this.isSubtitleEnabled) {
             switchElement.classList.add('active');
+        } else {
+            switchElement.classList.remove('active');
         }
 
         switchContainer.addEventListener('click', async () => {
             this.isSubtitleEnabled = !this.isSubtitleEnabled;
-            localStorage.setItem('subtitle-switch-enabled', this.isSubtitleEnabled);
             
             if (this.isSubtitleEnabled) {
                 switchElement.classList.add('active');
+                this.isTranslating = true;
                 const videoId = new URLSearchParams(window.location.search).get('v');
                 await this.initializePluginCore();
             } else {
                 switchElement.classList.remove('active');
+                this.isTranslating = false;
+                if (this.translationProcessor) {
+                    this.translationProcessor.stopTranslation();
+                }
                 this.cleanupCurrentSession();
             }
         });

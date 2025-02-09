@@ -1,5 +1,6 @@
 import { TranslatorFactory } from '../translators';
 import config from '../config/config';
+import { extractJsonFromString } from '../utils';
 
 class SubtitleAnalyzer {
     constructor() {

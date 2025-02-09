@@ -4,6 +4,7 @@
     pointer-events: auto;
     transform: translate3d(0, 0, 0);
     will-change: transform;
+    user-select: none;
 }
 
 .word-card {
@@ -16,6 +17,7 @@
     line-height: 1.5;
     border: 1px solid rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
+    user-select: text;
 }
 
 .word-card-header {
@@ -53,10 +55,16 @@
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .play-audio-btn:hover {
     background-color: rgba(26, 115, 232, 0.1);
+}
+
+.play-audio-btn:active {
+    transform: none;
 }
 
 .word-content {
@@ -114,10 +122,16 @@
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .collect-btn:hover {
     background: #1557b0;
+}
+
+.collect-btn:active {
+    transform: none;
 }
 
 .collect-btn.collected {
