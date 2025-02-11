@@ -122,7 +122,7 @@ class SubtitleAnalyzer {
         "part_of_speech": "adj.",
         "phonetic": "/juːˈbɪkwɪtəs/",
         "chinese_meaning": "无处不在的",
-        "chinese_english_sentence": "我最近在区块链交易中使用了sandwich transactions，成功获利。(I recently used sandwich transactions in blockchain transactions and was successful and profitable.)"
+        "chinese_english_sentence": "在当今的数字时代，智能手机已经ubiquitous，使人们更容易保持联系。"
     }
 ]
 

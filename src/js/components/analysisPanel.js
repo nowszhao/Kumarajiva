@@ -471,9 +471,9 @@ class AnalysisPanel {
               "British": ""
             },
             "timestamp": new Date().getTime(),
-            "word": "matter",
+            "word": card.querySelector('.expression').textContent,
             "memory_method": card.querySelector('.memory-method p').textContent,
-          }
+        };
 
         console.log("ret:", ret);
 
