@@ -12,7 +12,7 @@ class VocabularyStorage {
             // 如果是扩展上下文失效，等待一段时间后重新加载扩展
             if (error.message.includes('Extension context invalidated')) {
                 // 通知用户
-                this.notifyUserAndReload('扩展需要重新加载以确保正常工作');
+                // this.notifyUserAndReload('扩展需要重新加载以确保正常工作');
             }
             return {};
         }
@@ -27,7 +27,7 @@ class VocabularyStorage {
             
             // 如果是扩展上下文失效，等待一段时间后重新加载扩展
             if (error.message.includes('Extension context invalidated')) {
-                this.notifyUserAndReload('扩展需要重新加载以确保正常工作');
+                // this.notifyUserAndReload('扩展需要重新加载以确保正常工作');
             }
             return false;
         }

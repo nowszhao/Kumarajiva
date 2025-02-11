@@ -567,11 +567,15 @@ import { extractJsonFromString } from './utils';
         const progressText = progress.querySelector('.progress-text');
         
         let processed = 0;
-        const total = translationQueue.length;
+        let total = translationQueue.length;
         
-        while (translationQueue.length > 0 && isTranslating) {
+        console.log("processTranslationQueue-translationQueue1:", translationQueue);
+
+        while (translationQueue.length > 0) {
             const container = translationQueue[0];
             
+            console.log("processTranslationQueue-container:", container);
+
             if (document.body.contains(container)) {
                 container.classList.add('translating');
                 progressText.textContent = `翻译进度: ${++processed}/${total}`;
@@ -588,6 +592,8 @@ import { extractJsonFromString } from './utils';
                 
                 translationQueue.shift();
                 
+                console.log("processTranslationQueue-translationQueue2:", translationQueue);
+
                 // 检查是否需要加载更多可见内容
                 if (translationQueue.length === 0) {
                     const newContainers = findVisibleTextContainers();
@@ -596,17 +602,21 @@ import { extractJsonFromString } from './utils';
                         total += newContainers.length;
                     }
                 }
-                
-                await new Promise(resolve => setTimeout(resolve, 300));
+                console.log("processTranslationQueue-translationQueue3:", translationQueue);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                console.log("processTranslationQueue-translationQueue4:", translationQueue);
             } else {
                 translationQueue.shift();
             }
         }
+
+        console.log("processTranslationQueue-translationQueue5:", translationQueue);
         
-        if (translationQueue.length === 0 && isTranslating) {
+        if (translationQueue.length === 0) {
             stopTranslation();
         }
-        
+        console.log("processTranslationQueue-translationQueue6:", translationQueue);
+
         isProcessingQueue = false;
     }
 
