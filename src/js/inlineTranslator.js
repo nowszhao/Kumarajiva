@@ -14,6 +14,7 @@ import { extractJsonFromString } from './utils';
     let isTranslating = false;
     let translationQueue = [];
     let isProcessingQueue = false;
+    let isOriginalTextHidden = false;
 
     // 节流函数
     function throttle(func, limit) {
@@ -88,8 +89,17 @@ import { extractJsonFromString } from './utils';
             const result = typeof translationResult === 'string' ? 
                 JSON.parse(translationResult) : translationResult;
 
+            console.log('Creating translation element with result:', result); // 添加日志
+
             const container = document.createElement('div');
             container.className = 'inline-translation-result';
+
+            // 原文区域 - 保存原始文本
+            // const originalText = document.createElement('div');
+            // originalText.className = 'original-text';
+            // originalText.textContent = result.original || result.text || ''; // 确保获取原文
+            // console.log('Original text content:', originalText.textContent); // 添加日志
+            // container.appendChild(originalText);
 
             // 主翻译区域
             const mainTranslation = document.createElement('div');
@@ -125,10 +135,10 @@ import { extractJsonFromString } from './utils';
 
             return container;
         } catch (error) {
-            console.error('Error creating translation element,translationResult:',translationResult, error);
+            console.error('Error creating translation element:', error);
             const errorContainer = document.createElement('div');
             errorContainer.className = 'inline-translation-result';
-            errorContainer.textContent = translationResult; // 降级显示原始文本
+            errorContainer.textContent = translationResult;
             return errorContainer;
         }
     }
@@ -228,15 +238,15 @@ import { extractJsonFromString } from './utils';
 
     // 处理翻译
     async function handleTranslation(element) {
-
         const text = element.textContent.trim();
         if (!text || !containsEnglish(text)) {
-            console.log("text is not english:", text);
+            console.log("Text is not English:", text);
             return;
         }
 
         try {
-            // isTranslating = true;
+            // 为原始文本元素添加标识类
+            element.classList.add('original-content');
             
             // 添加加载指示器
             const loadingIndicator = createLoadingIndicator();
@@ -246,9 +256,41 @@ import { extractJsonFromString } from './utils';
             if (translationCache.has(text)) {
                 translation = translationCache.get(text);
             } else {
-                translation = await translate(text);
+                // 在调用 translate 之前保存原文
+                const translationPrompt = `
+                你现在是一位专业的翻译专家，现在正帮我翻译一个英文句子，要求如下：
+                1、翻译和解析我提供的英语内容，同时帮我从中筛选出5个最难理解的短语/词块、俚语、缩写。
+                2、输出请遵循以下要求：
+                - 中文翻译：根据字幕语境给出最贴切的含义
+                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
+                - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
+                - 词性：使用n., v., adj., adv., phrase等标准缩写
+                - 音标：提供美式音标
+                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
+                3、输出示例如下,严格按照json格式输出：
+                {
+                    "original": "${text}",
+                    "translation":"xxxx",
+                    "difficultVocabulary":[
+                        {
+                            "vocabulary": "benchmark",
+                            "type": "Words",
+                            "part_of_speech": "n.",
+                            "phonetic": "/ˈbentʃmɑːrk/",
+                            "chinese_meaning": "基准；参照标准",
+                            "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。"
+                        },
+                        ...
+                    ]
+                }    
+                处理内容如下：
+                ${text}`;
+
+                translation = await translate(translationPrompt);
                 translationCache.set(text, translation);
             }
+
+            console.log('Translation result:', translation); // 添加日志
 
             // 移除加载指示器
             loadingIndicator.remove();
@@ -259,17 +301,15 @@ import { extractJsonFromString } from './utils';
             // 显示翻译结果
             const translationElement = createTranslationElement(translation);
             element.insertAdjacentElement('afterend', translationElement);
-            // 不再将元素添加到 translatedElements 集合中
             
         } catch (error) {
             console.error('Translation failed:', error);
+            element.classList.remove('original-content');  // 如果翻译失败，移除标识类
             const errorIndicator = document.createElement('div');
             errorIndicator.className = 'translation-error';
             errorIndicator.textContent = '翻译失败，请重试';
             element.insertAdjacentElement('afterend', errorIndicator);
             setTimeout(() => errorIndicator.remove(), 2000);
-        } finally {
-            // isTranslating = false;
         }
     }
 
@@ -405,57 +445,106 @@ import { extractJsonFromString } from './utils';
         });
     }
 
-    // 修改 createTranslateButton 函数，优化按钮点击逻辑
-    function createTranslateButton() {
-        const button = document.createElement('button');
-        button.className = 'page-translate-button';
-        button.innerHTML = `
+    // 修改 createTranslationToolbar 函数，添加进度条元素
+    function createTranslationToolbar() {
+        const toolbar = document.createElement('div');
+        toolbar.className = 'translation-toolbar';
+
+        // 创建进度条容器
+        const progress = document.createElement('div');
+        progress.className = 'translation-progress';
+        progress.innerHTML = `
+            <div class="progress-spinner"></div>
+            <span class="progress-text">分析进度: 0/0</span>
+        `;
+        document.body.appendChild(progress);
+
+        // 翻译按钮
+        const translateButton = document.createElement('button');
+        translateButton.className = 'toolbar-button translate-button';
+        translateButton.innerHTML = `
             <svg viewBox="0 0 24 24" width="20" height="20">
                 <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
             </svg>
         `;
 
-        const progress = document.createElement('div');
-        progress.className = 'translation-progress';
-        progress.innerHTML = `
-            <div class="progress-spinner"></div>
-            <span class="progress-text">正在翻译...</span>
+        // 原文切换按钮
+        const toggleOriginalButton = document.createElement('button');
+        toggleOriginalButton.className = 'toolbar-button toggle-original-button';
+        toggleOriginalButton.innerHTML = `
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
         `;
 
-        document.body.appendChild(button);
-        document.body.appendChild(progress);
+        toolbar.appendChild(translateButton);
+        toolbar.appendChild(toggleOriginalButton);
+        document.body.appendChild(toolbar);
 
-        button.addEventListener('click', () => {
+        // 翻译按钮点击事件
+        translateButton.addEventListener('click', () => {
             if (isTranslating) {
                 stopTranslation();
+                translateButton.classList.remove('active');
             } else {
                 startTranslation();
+                translateButton.classList.add('active');
             }
         });
 
-        return { button, progress };
+        // 原文切换按钮点击事件
+        toggleOriginalButton.addEventListener('click', () => {
+            isOriginalTextHidden = !isOriginalTextHidden;
+            console.log('Toggle original text, isHidden:', isOriginalTextHidden);
+
+            // 查找所有已翻译的原始文本元素
+            const translatedElements = document.querySelectorAll('.inline-translation-result');
+            console.log('Found translated elements:', translatedElements.length);
+
+            translatedElements.forEach(translationResult => {
+                // 获取原始文本元素（翻译结果的前一个兄弟元素）
+                const originalElement = translationResult.previousElementSibling;
+                if (originalElement) {
+                    if (isOriginalTextHidden) {
+                        originalElement.style.display = 'none';
+                    } else {
+                        originalElement.style.display = '';  // 恢复默认显示
+                    }
+                }
+            });
+
+            toggleOriginalButton.classList.toggle('active');
+        });
+
+        return { toolbar, progress };
     }
 
     // 修改 startTranslation 函数
     function startTranslation() {
-        const button = document.querySelector('.page-translate-button');
         const progress = document.querySelector('.translation-progress');
-        
-        button.classList.add('active');
-        progress.classList.add('visible');
+        if (progress) {
+            progress.classList.add('visible');
+        }
         isTranslating = true;
-        translationQueue = []; // 清空之前的队列
-        isProcessingQueue = false; // 重置处理状态
+        translationQueue = [];
+        isProcessingQueue = false;
+
+        // 如果当前是隐藏原文状态，对新翻译的内容也应用相同的规则
+        if (isOriginalTextHidden) {
+            document.querySelectorAll('.original-content').forEach(element => {
+                element.style.display = 'none';
+            });
+        }
+
         translateVisibleContent();
     }
 
     // 修改 stopTranslation 函数
     function stopTranslation() {
-        const button = document.querySelector('.page-translate-button');
         const progress = document.querySelector('.translation-progress');
-        
-        button.classList.remove('active');
-        progress.classList.remove('visible');
+        if (progress) {
+            progress.classList.remove('visible');
+        }
         isTranslating = false;
         
         // 清理状态
@@ -653,8 +742,19 @@ import { extractJsonFromString } from './utils';
         const wordCollector = new WordCollector();
         await wordCollector.initialize();
 
-        // 添加全文翻译按钮
-        const { button, progress } = createTranslateButton();
+        // 创建工具栏和进度条
+        createTranslationToolbar();
+
+        // 添加快捷键支持
+        document.addEventListener('keydown', (e) => {
+            // 添加切换原文显示的快捷键 (Alt + H)
+            if (e.altKey && e.key === 'h') {
+                const toggleButton = document.querySelector('.toggle-original-button');
+                if (toggleButton) {
+                    toggleButton.click();
+                }
+            }
+        });
 
         // 修改滚动监听
         window.addEventListener('scroll', throttle(() => {

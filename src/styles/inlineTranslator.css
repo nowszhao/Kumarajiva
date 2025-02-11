@@ -26,6 +26,11 @@
     color: #f70505;
     padding-bottom: 8px;
     border-bottom: 1px solid #eee;
+    transition: opacity 0.3s ease;
+}
+
+.hide-original .original-text {
+    display: none;
 }
 
 .translated-text {
@@ -424,5 +429,69 @@
     
     .translating::before {
         background: #8ab4f8;
+    }
+}
+
+/* 修改工具栏容器样式 */
+.translation-toolbar {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 工具栏按钮通用样式 */
+.toolbar-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.toolbar-button:hover {
+    background: #f5f5f5;
+    transform: scale(1.05);
+}
+
+.toolbar-button.active {
+    background: #1a73e8;
+    border-color: #1a73e8;
+    color: #fff;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .translation-toolbar {
+        background: #202124;
+    }
+
+    .toolbar-button {
+        background: #202124;
+        border-color: #5f6368;
+        color: #e8eaed;
+    }
+
+    .toolbar-button:hover {
+        background: #303134;
+    }
+
+    .toolbar-button.active {
+        background: #8ab4f8;
+        border-color: #8ab4f8;
+        color: #202124;
     }
 }
