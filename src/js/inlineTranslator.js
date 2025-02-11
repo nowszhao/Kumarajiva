@@ -645,7 +645,7 @@ import { extractJsonFromString } from './utils';
 
         // 修改滚动监听
         window.addEventListener('scroll', throttle(() => {
-            if (isTranslating && !isProcessingQueue) {
+            if (!isProcessingQueue) {
                 translateVisibleContent();
             }
         }, 500));
