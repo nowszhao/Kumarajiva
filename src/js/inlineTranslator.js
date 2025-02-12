@@ -710,7 +710,7 @@ import { extractJsonFromString } from './utils';
                 }
 
                 // 添加延迟以避免过快处理
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
         } finally {
             isProcessingQueue = false;
