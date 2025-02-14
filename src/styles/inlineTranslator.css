@@ -62,7 +62,7 @@
     background-color: rgba(255, 255, 0, 0.2);
 }
 
-.hoverable-text::after {
+/* .hoverable-text::after {
     content: '按Ctrl翻译';
     position: absolute;
     right: -70px;
@@ -75,7 +75,7 @@
     font-size: 12px;
     opacity: 0;
     transition: opacity 0.2s ease;
-}
+} */
 
 .hoverable-text:hover::after {
     opacity: 1;
@@ -493,5 +493,128 @@
         background: #8ab4f8;
         border-color: #8ab4f8;
         color: #202124;
+    }
+}
+
+/* 修改悬停工具栏样式 */
+.hover-toolbar {
+    position: absolute;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 999999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+    right: 8px;
+    bottom: 8px;
+}
+
+.hover-toolbar::after {
+    display: none;
+}
+
+.hover-toolbar.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.hover-toolbar-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.hover-toolbar-button:hover {
+    background: #f5f5f5;
+    color: #1a73e8;
+}
+
+.hover-toolbar-button svg {
+    width: 14px;
+    height: 14px;
+}
+
+.hoverable-text {
+    position: relative !important;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .hover-toolbar {
+        background: #202124;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .hover-toolbar-button {
+        color: #e8eaed;
+    }
+
+    .hover-toolbar-button:hover {
+        background: #303134;
+        color: #8ab4f8;
+    }
+}
+
+/* 分析结果样式 */
+.analysis-result {
+    margin-top: 12px;
+    border-left: 3px solid #9611f0 !important; /* 使用不同的强调色 */
+}
+
+.analysis-section {
+    margin: 8px 0;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.analysis-section strong {
+    color: #1a73e8;
+    margin-right: 8px;
+}
+
+.technique-list {
+    margin: 8px 0 0 20px;
+    padding: 0;
+}
+
+.technique-list li {
+    margin: 4px 0;
+    color: #444;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .analysis-result {
+        border-left-color: #b388ff !important;
+    }
+
+    .analysis-section {
+        background: #202124;
+    }
+
+    .analysis-section strong {
+        color: #8ab4f8;
+    }
+
+    .technique-list li {
+        color: #e8eaed;
     }
 }
