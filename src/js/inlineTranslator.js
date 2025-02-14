@@ -601,7 +601,7 @@ class Analyzer {
         element.insertAdjacentElement('afterend', loadingIndicator);
 
         const analyzePrompt = `
-            使用中文详细解读下这段文本，按照html标签格式输出，保证阅读简洁：
+            你现在是专业的英语老师，请对这个句子进行深度解析以便非英语母语的学生能理解句子的所有的难点，按照HTML格式输出，保证阅读简洁：
             ${element.textContent}`;
 
         try {
