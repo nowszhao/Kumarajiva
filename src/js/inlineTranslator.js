@@ -601,7 +601,7 @@ class Analyzer {
         element.insertAdjacentElement('afterend', loadingIndicator);
 
         const analyzePrompt = `
-            你现在是专业的英语老师，请对这个句子进行深度解析以便非英语母语的学生能理解句子的所有的难点，按照HTML格式输出，保证阅读简洁：
+            你现在是专业的英语老师，请找出句子中所有非英语为母语学生所有难点，，包括难的单词、短语、俚语、缩写、简写、网络用语等按照HTML格式输出，保证阅读简洁：
             ${element.textContent}`;
 
         try {
