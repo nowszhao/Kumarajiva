@@ -6,7 +6,8 @@ module.exports = {
         background: './src/background.js',
         contentScript: './src/js/contentScript.js',
         inlineTranslator: './src/js/inlineTranslator.js',
-        options: './src/js/options.js'
+        options: './src/js/options.js',
+        popup: './src/js/popup.js'
     },
     output: {
         filename: 'js/[name].js',

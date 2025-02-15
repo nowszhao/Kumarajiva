@@ -16,6 +16,10 @@ class YouTubeSubtitleApp {
         this.isSubtitleEnabled = false;
         this.isTranslating = false;
         this.lastDisplayedSubtitle = null;
+        this.boundHandlers = {
+            timeupdate: null,
+            videoChange: null
+        };
 
         // 绑定方法
         this.initializeExtension = this.initializeExtension.bind(this);
@@ -25,7 +29,69 @@ class YouTubeSubtitleApp {
         this.eventBus.on('videoChanged', this.handleVideoChange);
     }
 
+    async initializeExtension() {
+        console.log('[YouTube] Initializing extension...');
+        const domain = window.location.hostname;
+        console.log('[YouTube] Current domain:', domain);
+        
+        const { pluginStatus = {} } = await chrome.storage.sync.get('pluginStatus');
+        const isEnabled = pluginStatus[domain] ?? true;
+        console.log('[YouTube] Plugin status:', isEnabled);
+        
+        if (!isEnabled) {
+            console.log('[YouTube] Plugin disabled, skipping initialization');
+            return;
+        }
+
+        console.log('[YouTube] Starting feature initialization');
+        await this.initializeFeatures();
+    }
+
+    async initializeFeatures() {
+        console.log('[YouTube] Setting up event listeners');
+        this.setupEventListeners();
+        this.setupUrlChangeListener();
+        
+        if (location.href.includes('youtube.com/watch')) {
+            console.log('[YouTube] Initializing plugin for video page');
+            await this.initializePlugin();
+        }
+        
+        this.setupMessageListener();
+    }
+
+    setupMessageListener() {
+        console.log('[YouTube] Setting up message listener');
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            console.log('[YouTube] Received message:', message);
+            if (message.type === 'PLUGIN_STATUS_CHANGED') {
+                if (!message.isEnabled) {
+                    console.log('[YouTube] Disabling plugin features');
+                    this.cleanupCurrentSession();
+                    this.removeEventListeners();
+                } else {
+                    console.log('[YouTube] Re-enabling plugin features');
+                    // 重要：使用 setTimeout 确保清理操作完成后再初始化
+                    setTimeout(() => {
+                        this.initializeFeatures();
+                    }, 100);
+                }
+            }
+        });
+    }
+
     setupEventListeners() {
+        // 存储事件处理函数引用
+        this.boundHandlers.videoChange = this.handleVideoChange.bind(this);
+        this.eventBus.on('videoChanged', this.boundHandlers.videoChange);
+
+        if (this.player) {
+            this.boundHandlers.timeupdate = () => {
+                // 时间更新处理逻辑
+            };
+            this.player.addEventListener('timeupdate', this.boundHandlers.timeupdate);
+        }
+
         this.eventBus.on('translationCompleted', ({ originalText, translatedData }) => {
             this.subtitleManager.updateSubtitleCache(originalText, translatedData);
         });
@@ -35,14 +101,6 @@ class YouTubeSubtitleApp {
                 this.uiManager.updateSubtitleDisplay(subtitles);
             }
         });
-    }
-
-    async initializeExtension() {
-        this.setupEventListeners();
-        this.setupUrlChangeListener();
-        if (location.href.includes('youtube.com/watch')) {
-            setTimeout(() => this.initializePlugin(), 1000);
-        }
     }
 
     async initializePlugin() {
@@ -174,64 +232,29 @@ class YouTubeSubtitleApp {
     }
 
     cleanupCurrentSession() {
-        console.log('Starting cleanup of current session');
-        
-        try {
-            if (this.player) {
-                this.player.removeEventListener('timeupdate', this.onTimeUpdate);
-            }
-            
-            const subtitleContainer = document.getElementById('yt-subtitle-container');
-            if (subtitleContainer) {
-                subtitleContainer.remove();
-            }
-            
-            const progressContainer = document.getElementById('translation-progress');
-            if (progressContainer) {
-                progressContainer.remove();
-            }
-            
-            if (this.subtitleManager) {
-                this.subtitleManager.currentSubtitles = [];
-                this.subtitleManager.subtitleCache.clear();
-            }
+        console.log('[YouTube] Starting cleanup');
+        this.removeEventListeners();
 
-            if (this.translationProcessor) {
-                this.translationProcessor.processingStatus = {
-                    total: 0,
-                    processed: 0,
-                    isProcessing: false
-                };
-            }
+        const elementsToRemove = [
+            '.subtitle-switch-container',
+            '.analyze-switch-container',
+            '#yt-subtitle-container',
+            '#translation-progress'
+        ];
 
-            if (this.uiManager) {
-                if (this.uiManager.analysisPanel) {
-                    this.uiManager.analysisPanel.hidePanel();
-                }
-                this.uiManager.analyzer = null;
-                this.uiManager.analysisPanel = null;
+        elementsToRemove.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                console.log('[YouTube] Removing element:', selector);
+                element.remove();
             }
-            
-            this.player = null;
-            
-            const switchContainer = document.querySelector('.subtitle-switch-container');
-            if (switchContainer) {
-                const switchElement = switchContainer.querySelector('.subtitle-switch');
-                if (!this.isSubtitleEnabled) {
-                    switchElement.classList.remove('active');
-                }
-            }
-            
-            // 添加新按钮的清理
-            const analyzeContainer = document.querySelector('.analyze-switch-container');
-            if (analyzeContainer) {
-                analyzeContainer.remove();
-            }
-            
-            console.log('Session cleanup completed successfully');
-        } catch (error) {
-            console.error('Error during cleanup:', error);
-        }
+        });
+
+        this.isSubtitleEnabled = false;
+        this.isTranslating = false;
+        this.player = null;
+        this.uiManager = null;
+        console.log('[YouTube] Cleanup completed');
     }
 
     async waitForYouTubePlayer() {
@@ -309,6 +332,23 @@ class YouTubeSubtitleApp {
         setTimeout(() => {
             this.initializePlugin();
         }, 1000);
+    }
+
+    removeEventListeners() {
+        // 移除事件总线监听器
+        if (this.boundHandlers.videoChange) {
+            this.eventBus.off('videoChanged', this.boundHandlers.videoChange);
+        }
+
+        // 移除播放器事件监听器
+        if (this.player && this.boundHandlers.timeupdate) {
+            this.player.removeEventListener('timeupdate', this.boundHandlers.timeupdate);
+        }
+
+        // 清空处理函数引用
+        Object.keys(this.boundHandlers).forEach(key => {
+            this.boundHandlers[key] = null;
+        });
     }
 }
 

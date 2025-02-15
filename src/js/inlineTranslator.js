@@ -21,9 +21,10 @@ class Utils {
         };
     }
 
-    static containsThreeWords(text) {
-        return /\b\w+\b[^\w\s]*\s+\b\w+\b[^\w\s]*\s+\b\w+\b/.test(text);
+    static containsEnglish(text) {
+        return /(?:^|[^a-zA-Z])[a-zA-Z]{3,}(?:[^a-zA-Z]|$)/.test(text);
     }
+
 
     static findTextContainer(element) {
         // 忽略标签
@@ -601,7 +602,7 @@ class Analyzer {
         element.insertAdjacentElement('afterend', loadingIndicator);
 
         const analyzePrompt = `
-            你现在是专业的英语老师，请找出句子中所有非英语为母语学生所有难点，，包括难的单词、短语、俚语、缩写、简写、网络用语等，请按照HTML格式输出，保证阅读简洁：
+            你现在是专业的英语老师，请找出句子中所有非英语为母语学生所有难点，，包括难的单词、短语、俚语、缩写、简写、网络用语等，请使用中文并按照HTML格式输出，保证阅读简洁：
             ${element.textContent}`;
 
         try {
@@ -647,6 +648,15 @@ class InlineTranslator {
         this.translationQueueManager = null;
         this.analyzer = new Analyzer(this.uiManager);
         this.currentTriggerKey = null;
+        // 存储事件处理函数的引用
+        this.boundHandlers = {
+            mousemove: null,
+            mouseout: null,
+            keydown: null,
+            keyup: null,
+            scroll: null,
+            selectionchange: null
+        };
     }
 
     static findVisibleTextContainers() {
@@ -708,43 +718,40 @@ class InlineTranslator {
         if (!isEnabled) return;
 
         // 鼠标移动监听，高亮可翻译的文本
-        document.addEventListener(
-            'mousemove',
-            Utils.throttle((e) => {
-                const element = Utils.findTextContainer(e.target);
-                if (element && Utils.containsEnglish(element.textContent)) {
-                    if (this.hoveredElement !== element) {
-                        if (this.hoveredElement) {
-                            this.hoveredElement.classList.remove('hoverable-text');
-                        }
-                        this.hoveredElement = element;
-                        element.classList.add('hoverable-text');
+        this.boundHandlers.mousemove = Utils.throttle((e) => {
+            const element = Utils.findTextContainer(e.target);
+            if (element && Utils.containsEnglish(element.textContent)) {
+                if (this.hoveredElement !== element) {
+                    if (this.hoveredElement) {
+                        this.hoveredElement.classList.remove('hoverable-text');
                     }
+                    this.hoveredElement = element;
+                    element.classList.add('hoverable-text');
                 }
-            }, 100)
-        );
+            }
+        }, 100);
+        document.addEventListener('mousemove', this.boundHandlers.mousemove);
 
         // 鼠标移出时移除高亮
-        document.addEventListener('mouseout', (e) => {
-            if (
-                this.hoveredElement &&
-                (!e.relatedTarget || !this.hoveredElement.contains(e.relatedTarget))
-            ) {
+        this.boundHandlers.mouseout = (e) => {
+            if (this.hoveredElement && (!e.relatedTarget || !this.hoveredElement.contains(e.relatedTarget))) {
                 this.hoveredElement.classList.remove('hoverable-text');
                 if (!this.isTranslating) {
                     this.hoveredElement = null;
                 }
             }
-        });
+        };
+        document.addEventListener('mouseout', this.boundHandlers.mouseout);
 
         // 键盘事件触发翻译
-        document.addEventListener('keydown', (e) => {
+        this.boundHandlers.keydown = (e) => {
             if (e.key === this.currentTriggerKey && !e.ctrlKey) {
                 if (this.hoveredElement) {
                     this.handleTranslationOnElement(this.hoveredElement);
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this.boundHandlers.keydown);
 
         document.addEventListener('keyup', (e) => {
             if (e.key === this.currentTriggerKey) {
@@ -753,67 +760,64 @@ class InlineTranslator {
         });
 
         // 滚动时检查新增的可翻译内容
-        window.addEventListener(
-            'scroll',
-            Utils.throttle(() => {
-                if (this.isTranslating && this.translationQueueManager && !this.translationQueueManager.isProcessingQueue) {
-                    const containers = InlineTranslator.findVisibleTextContainers();
-                    this.translationQueueManager.addToQueue(containers);
-                }
-            }, 500)
-        );
+        this.boundHandlers.scroll = Utils.throttle(() => {
+            if (this.isTranslating && this.translationQueueManager && !this.translationQueueManager.isProcessingQueue) {
+                const containers = InlineTranslator.findVisibleTextContainers();
+                this.translationQueueManager.addToQueue(containers);
+            }
+        }, 500);
+        window.addEventListener('scroll', this.boundHandlers.scroll);
 
         // 选择文本时显示选择工具栏
-        document.addEventListener('selectionchange', () => {
+        this.boundHandlers.selectionchange = () => {
             this.handleSelection();
-        });
+        };
+        document.addEventListener('selectionchange', this.boundHandlers.selectionchange);
 
         // 悬停工具栏监听
-        document.addEventListener(
-            'mousemove',
-            Utils.throttle((e) => {
-                const element = Utils.findTextContainer(e.target);
-                if (element && Utils.containsEnglish(element.textContent)) {
-                    if (this.currentHoverElement !== element) {
-                        if (this.currentHoverElement && this.uiManager.hoverToolbar) {
-                            this.uiManager.hoverToolbar.remove();
-                            this.uiManager.hoverToolbar = null;
-                        }
-                        this.currentHoverElement = element;
-                        if (!this.uiManager.hoverToolbar) {
-                            this.uiManager.hoverToolbar = this.uiManager.createHoverToolbar();
-                        }
-                        element.style.position = 'relative';
-                        if (this.uiManager.hoverToolbar.parentElement !== element) {
-                            element.appendChild(this.uiManager.hoverToolbar);
-                        }
-                        this.uiManager.hoverToolbar.classList.add('visible');
-                        // 为悬停工具栏按钮绑定事件
-                        const copyButton = this.uiManager.hoverToolbar.querySelector(
-                            '.hover-toolbar-button[title="复制"]'
-                        );
-                        const analyzeButton = this.uiManager.hoverToolbar.querySelector(
-                            '.hover-toolbar-button[title="深度解析"]'
-                        );
-                        const translateButtonHov = this.uiManager.hoverToolbar.querySelector(
-                            '.hover-toolbar-button[title="翻译"]'
-                        );
-                        if (copyButton) {
-                            copyButton.onclick = () => this.uiManager.handleCopy(element.textContent);
-                        }
-                        if (analyzeButton) {
-                            analyzeButton.onclick = () => this.analyzer.analyze(element);
-                        }
-                        if (translateButtonHov) {
-                            translateButtonHov.onclick = () => this.handleTranslationOnElement(element);
-                        }
+        this.boundHandlers.mousemove = Utils.throttle((e) => {
+            const element = Utils.findTextContainer(e.target);
+            if (element && Utils.containsEnglish(element.textContent)) {
+                if (this.currentHoverElement !== element) {
+                    if (this.currentHoverElement && this.uiManager.hoverToolbar) {
+                        this.uiManager.hoverToolbar.remove();
+                        this.uiManager.hoverToolbar = null;
+                    }
+                    this.currentHoverElement = element;
+                    if (!this.uiManager.hoverToolbar) {
+                        this.uiManager.hoverToolbar = this.uiManager.createHoverToolbar();
+                    }
+                    element.style.position = 'relative';
+                    if (this.uiManager.hoverToolbar.parentElement !== element) {
+                        element.appendChild(this.uiManager.hoverToolbar);
+                    }
+                    this.uiManager.hoverToolbar.classList.add('visible');
+                    // 为悬停工具栏按钮绑定事件
+                    const copyButton = this.uiManager.hoverToolbar.querySelector(
+                        '.hover-toolbar-button[title="复制"]'
+                    );
+                    const analyzeButton = this.uiManager.hoverToolbar.querySelector(
+                        '.hover-toolbar-button[title="深度解析"]'
+                    );
+                    const translateButtonHov = this.uiManager.hoverToolbar.querySelector(
+                        '.hover-toolbar-button[title="翻译"]'
+                    );
+                    if (copyButton) {
+                        copyButton.onclick = () => this.uiManager.handleCopy(element.textContent);
+                    }
+                    if (analyzeButton) {
+                        analyzeButton.onclick = () => this.analyzer.analyze(element);
+                    }
+                    if (translateButtonHov) {
+                        translateButtonHov.onclick = () => this.handleTranslationOnElement(element);
                     }
                 }
-            }, 100)
-        );
+            }
+        }, 100);
+        document.addEventListener('mousemove', this.boundHandlers.mousemove);
 
         // 悬停工具栏隐藏
-        document.addEventListener('mouseout', (e) => {
+        this.boundHandlers.mouseout = (e) => {
             if (
                 !e.relatedTarget ||
                 (!this.currentHoverElement?.contains(e.relatedTarget) &&
@@ -830,17 +834,19 @@ class InlineTranslator {
                 }
                 this.currentHoverElement = null;
             }
-        });
+        };
+        document.addEventListener('mouseout', this.boundHandlers.mouseout);
 
         // 快捷键：Alt + H 切换原文显示
-        document.addEventListener('keydown', (e) => {
+        this.boundHandlers.keydown = (e) => {
             if (e.altKey && e.key === 'h') {
                 const toggleButton = document.querySelector('.toggle-original-button');
                 if (toggleButton) {
                     toggleButton.click();
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this.boundHandlers.keydown);
     }
 
     handleTranslationOnElement(element) {
@@ -909,36 +915,97 @@ class InlineTranslator {
     }
 
     async initialize() {
-        // 初始化翻译队列管理器
-        this.translationQueueManager = new TranslationQueueManager(this.uiManager);
-        // 初始化单词收藏功能
-        const wordCollector = new WordCollector();
-        await wordCollector.initialize();
-        await wordCollector.highlightCollectedWords(document.body);
+        console.log('[Translator] Initializing...');
+        const domain = window.location.hostname;
+        console.log('[Translator] Current domain:', domain);
+        
+        const { pluginStatus = {} } = await chrome.storage.sync.get('pluginStatus');
+        const isEnabled = pluginStatus[domain] ?? true;
+        console.log('[Translator] Plugin status:', isEnabled);
+        
+        if (!isEnabled) {
+            console.log('[Translator] Plugin disabled, skipping initialization');
+            return;
+        }
 
-        // 创建翻译工具栏（包括翻译按钮及进度条）
-        this.uiManager.createTranslationToolbar();
+        console.log('[Translator] Starting feature initialization');
+        await this.initializeFeatures();
+    }
 
-        // 从 chrome.storage 读取交互设置
-        chrome.storage.sync.get(
-            ['triggerKey', 'enableTriggerKey', 'translationService', 'serviceTokens'],
-            (configData) => {
-                this.initializeEvents(configData);
+    async initializeFeatures() {
+        console.log('[Translator] Initializing features');
+        try {
+            this.translationQueueManager = new TranslationQueueManager(this.uiManager);
+            const wordCollector = new WordCollector();
+            await wordCollector.initialize();
+            await wordCollector.highlightCollectedWords(document.body);
+
+            this.uiManager.createTranslationToolbar();
+
+            await new Promise((resolve) => {
+                chrome.storage.sync.get(
+                    ['triggerKey', 'enableTriggerKey', 'translationService', 'serviceTokens'],
+                    (configData) => {
+                        this.initializeEvents(configData);
+                        resolve();
+                    }
+                );
+            });
+
+            const translateButton = document.querySelector('.translate-button');
+            if (translateButton) {
+                translateButton.addEventListener('click', () => {
+                    if (this.isTranslating) {
+                        this.stopTranslation();
+                        translateButton.classList.remove('active');
+                    } else {
+                        this.startTranslation();
+                        translateButton.classList.add('active');
+                    }
+                });
             }
-        );
 
-        // 翻译工具栏按钮：点击切换翻译开关
+            this.setupMessageListener();
+            console.log('[Translator] Features initialized successfully');
+        } catch (error) {
+            console.error('[Translator] Error initializing features:', error);
+        }
+    }
+
+    setupMessageListener() {
+        console.log('[Translator] Setting up message listener');
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            console.log('[Translator] Received message:', message);
+            if (message.type === 'PLUGIN_STATUS_CHANGED') {
+                if (!message.isEnabled) {
+                    console.log('[Translator] Disabling plugin features');
+                    this.stopTranslation();
+                    this.cleanup();
+                    this.removeEventListeners();
+                } else {
+                    console.log('[Translator] Re-enabling plugin features');
+                    // 重要：使用 setTimeout 确保清理操作完成后再初始化
+                    setTimeout(() => {
+                        this.initializeFeatures();
+                    }, 100);
+                }
+            }
+        });
+    }
+
+    removeEventListeners() {
+        // 移除所有已绑定的事件监听器
+        Object.entries(this.boundHandlers).forEach(([event, handler]) => {
+            if (handler) {
+                document.removeEventListener(event, handler);
+                this.boundHandlers[event] = null;
+            }
+        });
+
+        // 移除工具栏按钮的事件监听器
         const translateButton = document.querySelector('.translate-button');
         if (translateButton) {
-            translateButton.addEventListener('click', () => {
-                if (this.isTranslating) {
-                    this.stopTranslation();
-                    translateButton.classList.remove('active');
-                } else {
-                    this.startTranslation();
-                    translateButton.classList.add('active');
-                }
-            });
+            translateButton.replaceWith(translateButton.cloneNode(true));
         }
     }
 
@@ -973,6 +1040,39 @@ class InlineTranslator {
         document.querySelectorAll('.translating').forEach((el) => {
             el.classList.remove('translating');
         });
+    }
+
+    cleanup() {
+        console.log('[Translator] Starting cleanup');
+        this.removeEventListeners();
+        
+        const elementsToRemove = [
+            '.translation-toolbar',
+            '.translation-progress',
+            '.inline-translation-result',
+            '.selection-toolbar',
+            '.hover-toolbar',
+            '.hoverable-text',
+            '.translating',
+            '.translated'
+        ];
+
+        document.querySelectorAll(elementsToRemove.join(',')).forEach(el => {
+            if (el.classList.contains('hoverable-text') || 
+                el.classList.contains('translating') || 
+                el.classList.contains('translated')) {
+                console.log('[Translator] Removing classes from element:', el);
+                el.classList.remove('hoverable-text', 'translating', 'translated');
+            } else {
+                console.log('[Translator] Removing element:', el);
+                el.remove();
+            }
+        });
+
+        this.hoveredElement = null;
+        this.currentHoverElement = null;
+        this.isTranslating = false;
+        console.log('[Translator] Cleanup completed');
     }
 }
 

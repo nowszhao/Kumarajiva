@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            width: 280px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            background: #ffffff;
+            color: #1d1d1f;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #d2d2d7;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            margin-right: 12px;
+            border-radius: 8px;
+        }
+
+        .title {
+            font-size: 17px;
+            font-weight: 500;
+            margin: 0;
+            color: #1d1d1f;
+        }
+
+        .site-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            margin-bottom: 20px;
+        }
+
+        .site-name {
+            font-size: 15px;
+            font-weight: 400;
+            color: #1d1d1f;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 51px;
+            height: 31px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e3e3e5;
+            transition: .2s;
+            border-radius: 31px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        input:checked + .slider {
+            background-color: #34c759;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .settings-link {
+            display: block;
+            padding: 12px 0;
+            color: #06c;
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .settings-link:hover {
+            color: #0077ed;
+        }
+
+        .divider {
+            height: 1px;
+            background: #d2d2d7;
+            margin: 0 -20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="../icons/icon48.png" alt="Kumarajiva" class="logo">
+        <h1 class="title">Kumarajiva</h1>
+    </div>
+    <div class="site-control">
+        <span class="site-name">该网站启用插件功能</span>
+        <label class="switch">
+            <input type="checkbox" id="pluginSwitch">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <div class="divider"></div>
+    <a href="options.html" class="settings-link" target="_blank">访问插件首页</a>
+    <script src="../js/popup.js"></script>
+</body>
+</html> 
