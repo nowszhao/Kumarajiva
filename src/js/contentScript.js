@@ -222,6 +222,12 @@ class YouTubeSubtitleApp {
                 }
             }
             
+            // 添加新按钮的清理
+            const analyzeContainer = document.querySelector('.analyze-switch-container');
+            if (analyzeContainer) {
+                analyzeContainer.remove();
+            }
+            
             console.log('Session cleanup completed successfully');
         } catch (error) {
             console.error('Error during cleanup:', error);

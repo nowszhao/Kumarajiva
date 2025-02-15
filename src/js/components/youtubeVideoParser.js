@@ -558,14 +558,7 @@ class UIManager {
 
         const analyzeButton = controlPanel.querySelector('.analyze-button');
         analyzeButton.addEventListener('click', async () => {
-            if (this.analysisPanel.isVisible) {
-                this.analysisPanel.hidePanel();
-                return;
-            }
-
-            this.analysisPanel.setSubtitles(this.currentSubtitles);
-            this.analysisPanel.showPanel();
-            await this.analysisPanel.triggerAnalysis();
+            console.log("you have clicked the analyze button");
         });
         
         const contentContainer = document.createElement('div');
@@ -758,7 +751,9 @@ class UIManager {
     initializeAnalysisPanel() {
         this.analyzer = new SubtitleAnalyzer();
         this.analysisPanel = new AnalysisPanel();
-
+        
+        // 在初始化完成后添加控制区按钮
+        this.addAnalyzeButtonToControls();
     }
 
     showNoSubtitlesNotification() {
@@ -826,6 +821,44 @@ class UIManager {
             nextButton.disabled = currentIndex === -1 || currentIndex >= this.currentSubtitles.length - 1;
         }
     }
+
+    // 添加新方法
+    addAnalyzeButtonToControls = () => {
+        const ytpRightControls = document.querySelector('.ytp-right-controls');
+        if (!ytpRightControls) return;
+
+        const analyzeContainer = document.createElement('div');
+        analyzeContainer.className = 'analyze-switch-container';
+        analyzeContainer.innerHTML = `
+            <div class="analyze-switch-tooltip">AI解析</div>
+            <div class="analyze-switch"></div>
+        `;
+
+        // 找到字幕开关容器并在其后插入
+        const subtitleSwitchContainer = ytpRightControls.querySelector('.subtitle-switch-container');
+        if (subtitleSwitchContainer) {
+            subtitleSwitchContainer.after(analyzeContainer);
+        }
+
+        const analyzeSwitch = analyzeContainer.querySelector('.analyze-switch');
+        analyzeSwitch.addEventListener('click', async () => {
+            if (this.analysisPanel.isVisible) {
+                this.analysisPanel.hidePanel();
+                analyzeSwitch.classList.remove('active');
+                return;
+            }
+
+            analyzeSwitch.classList.add('active');
+            this.analysisPanel.setSubtitles(this.currentSubtitles);
+            this.analysisPanel.showPanel();
+            await this.analysisPanel.triggerAnalysis();
+        });
+
+        // 当分析面板关闭时，更新按钮状态
+        this.analysisPanel.onPanelClose = () => {
+            analyzeSwitch.classList.remove('active');
+        };
+    };
 }
 
 // 存储管理器 - 负责数据的存储和读取

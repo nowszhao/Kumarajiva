@@ -163,13 +163,14 @@ ${subtitleText}`;
     buildSummaryAnalysisPrompt(subtitleText) {
         return `请使用中文总结概括当前字幕的内容，并列出当前字幕提到的核心观点及支持论据，返回Json格式如下：
 {
-    "Summary":"",
+    "Summary":"该视频主要探讨了学习英语与学习其他语言的不...",
     "Viewpoints":[
         {
-            "Viewpoint":"xxxx",
+            "Viewpoint":" 学习英语与学习其他语言...",
             "Argument":[
-                "论据 1：xxx",
-                "论据 2：xxx"
+                "论据 2： 许多人学习英语是一...",
+                "论据 2： 学习英语常带来压力...",
+                ...
             ]
         }
     ]

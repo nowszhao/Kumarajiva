@@ -274,8 +274,8 @@
     width: 40px; /* switch 宽度 调小 */
     height: 20px; /* switch 高度 调小 */
     margin-top: 15px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(156, 39, 176, 0.2);  /* 更新：统一为紫色调（#9c27b0）的浅色版 */
+    border: 1px solid rgba(156, 39, 176, 0.8); /* 更新：统一为紫色调 */
     border-radius: 8px;
     position: relative;
     transition: background-color 0.3s, border-color 0.3s;
@@ -287,20 +287,25 @@
     position: absolute;
     width: 16px;
     height: 16px;
-    background: white;
+    background:  transparent;
     border-radius: 50%;
     top: 2px;
     left: 2px;
     transition: left 0.3s;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239c27b0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>');
+
 }
 
 .subtitle-switch.active {
-    background-color: rgba(255, 255, 255, 0.8);
-    border-color: rgba(255, 255, 255, 1);
+    background-color: rgba(156, 39, 176, 0.8); /* 更新：绿色调激活状态 */
+    border-color: rgba(156, 39, 176, 0.8); /* 更新：绿色调 */
+    /* background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239c27b0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>'); */
 }
 
 .subtitle-switch.active::after {
     left: 22px; /* 当 active 时，将滑块移动到右侧 */
+    background-color: transparent; /* 保持背景透明 */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239c27b0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>');
 }
 
 /* 新增工具提示样式，位置及风格参考 YouTube 原生提示 */
@@ -446,7 +451,7 @@
 
 /* 添加 AI 解析按钮样式 */
 .analyze-button {
-    background: #1a73e8;
+    background: #9c27b0; /* 更新：改为紫色调 */
     color: white;
     border: none;
     padding: 6px 16px; /* 增加内边距 */
@@ -458,11 +463,11 @@
 }
 
 .analyze-button:hover {
-    background: #1557b0;
+    background: #7b1fa2; /* 更新：hover 状态为稍暗的紫色 */
 }
 
 .analyze-button:active {
-    background: #174ea6;
+    background: #6a1b9a; /* 更新：active 状态为更深的紫色 */
 }
 
 /* Add these styles for the play button */
@@ -504,3 +509,248 @@
     font-weight: 500;
     color: #1a73e8;
 } 
+
+
+/* 修改播放器控制区的 AI 解析按钮样式 */
+.analyze-switch-container {
+    position: relative;
+    display: inline-block; /* 使用 inline-flex 保持与相邻控件同行 */
+    padding: 0 2px;
+    align-items: center;
+    justify-content: center; 
+    margin-left: 4px;          /* 调整左边距，以匹配原生按钮 */
+    height: 100%;              /* 使用100%高度，填充父容器 */
+    cursor: pointer;
+}
+
+
+.analyze-switch {
+    width: 36px;
+    height: 36px;
+    margin-top: 8px;
+    background-color: transparent; /* 更新：默认状态透明，仅激活时显示紫色 */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>');
+    background-size: 24px;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.7;
+    transition: background-color 0.3s, opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+
+.analyze-switch:hover {
+    opacity: 1;
+}
+
+.analyze-switch.active {
+    opacity: 1;
+    background-color: transparent; /* 保持背景透明 */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239c27b0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>');
+}
+
+.analyze-switch-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(28, 28, 28, 0.9);
+    color: white;
+    padding: 5px 9px;
+    border-radius: 2px;
+    font-size: 13px;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    margin-bottom: 5px;
+}
+
+.analyze-switch-container:hover .analyze-switch-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .subtitle-analysis-panel {
+        background: #0f0f0f;
+        border-color: #333;
+    }
+
+    .analysis-header,
+    .analysis-search,
+    .analysis-content {
+        background: #0f0f0f;
+    }
+
+    .analysis-header {
+        border-bottom-color: #333;
+    }
+
+    .analysis-search input {
+        background: #272727;
+        border-color: #333;
+        color: white;
+    }
+
+    .analysis-card {
+        background: #202124;
+        border-color: #333;
+    }
+
+    .card-header {
+        background: #2d2d2d;
+        border-bottom-color: #333;
+    }
+
+    .analysis-header h3,
+    .card-body {
+        color: #fff;
+    }
+
+    .analysis-tabs {
+        background: #202124;
+    }
+
+    .tab-btn {
+        color: #aaa;
+    }
+
+    .tab-btn:hover {
+        color: #fff;
+    }
+
+    .tab-btn.active {
+        color: #0f0f0f;
+    }
+
+    .analysis-toolbar {
+        background: #202124;
+        border-bottom-color: #333;
+    }
+
+    .batch-btn {
+        background: #8ab4f8;
+        color: #202124;
+    }
+
+    .batch-btn:hover {
+        background: #aecbfa;
+    }
+
+    .analysis-toolbar label {
+        color: #aaa;
+    }
+
+    .summary-card {
+        background: #282828;
+    }
+
+    .summary-content {
+        color: #fff;
+    }
+
+    .summary-section {
+        border-bottom-color: #333;
+    }
+
+    .summary-title {
+        color: #3ea6ff;
+    }
+
+    .summary-text,
+    .viewpoint-title {
+        color: #fff;
+    }
+
+    .argument-text {
+        color: #9aa0a6;
+    }
+
+    .viewpoint-item {
+        border-left-color: #3ea6ff;
+    }
+
+    .summary-error {
+        background: #3c1514;
+        color: #ff8a83;
+    }
+
+    .expression {
+        color: #8ab4f8;
+    }
+
+    .play-audio-btn {
+        background: #313235;
+        color: #8ab4f8;
+    }
+
+    .play-audio-btn:hover {
+        background: #3c4043;
+    }
+
+    .collect-btn {
+        background: #31272a;
+        color: #f28b82;
+    }
+
+    .collect-btn:hover {
+        background: #3c2f32;
+    }
+
+    .collect-btn.collected {
+        background: #c5221f;
+        color: white;
+    }
+
+    .tag.type { 
+        background: #1a237e20; 
+        color: #8ab4f8;
+    }
+
+    .tag.difficulty { 
+        background: #b7131320; 
+        color: #f28b82;
+    }
+
+    .tag.speech { 
+        background: #0f513020; 
+        color: #81c995;
+    }
+
+    .phonetic {
+        background: #2d2d2d;
+        color: #9aa0a6;
+    }
+
+    .meaning {
+        color: #e8eaed;
+    }
+
+    .memory-method {
+        background: #2d2d2d;
+    }
+
+    .memory-method p {
+        color: #9aa0a6;
+    }
+
+    .analyze-switch {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>');
+    }
+}
+
+@media (max-width: 1000px) {
+    .subtitle-analysis-panel {
+        max-height: 400px;
+    }
+
+    .analysis-content {
+        max-height: calc(400px - 120px);
+    }
+}
