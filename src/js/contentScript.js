@@ -15,6 +15,7 @@ class YouTubeSubtitleApp {
         this.player = null;
         this.isSubtitleEnabled = false;
         this.isTranslating = false;
+        this.lastDisplayedSubtitle = null;
 
         // 绑定方法
         this.initializeExtension = this.initializeExtension.bind(this);
@@ -147,12 +148,23 @@ class YouTubeSubtitleApp {
             if (!this.isTranslating) return;
             
             const currentTime = this.player.currentTime * 1000;
-            const currentSubtitles = subtitles.filter(sub => 
+            let activeSubtitle = subtitles.find(sub => 
                 currentTime >= sub.startTime && currentTime < sub.endTime
-            ).slice(0, 1);
+            );
 
-            if (currentSubtitles.length > 0) {
-                this.uiManager.updateSubtitleDisplay(currentSubtitles);
+            const epsilon = 100;
+            if (!activeSubtitle && this.lastDisplayedSubtitle) {
+                if (currentTime < this.lastDisplayedSubtitle.endTime + epsilon) {
+                    activeSubtitle = this.lastDisplayedSubtitle;
+                }
+            }
+    
+            if (activeSubtitle) {
+                this.lastDisplayedSubtitle = activeSubtitle;
+                this.uiManager.updateSubtitleDisplay([activeSubtitle]);
+            } else {
+                this.lastDisplayedSubtitle = null;
+                this.uiManager.updateSubtitleDisplay([]);
             }
         });
 
