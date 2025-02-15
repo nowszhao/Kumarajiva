@@ -21,8 +21,8 @@ class Utils {
         };
     }
 
-    static containsEnglish(text) {
-        return /(?:^|[^a-zA-Z])[a-zA-Z]{3,}(?:[^a-zA-Z]|$)/.test(text);
+    static containsThreeWords(text) {
+        return /\b\w+\b[^\w\s]*\s+\b\w+\b[^\w\s]*\s+\b\w+\b/.test(text);
     }
 
     static findTextContainer(element) {
