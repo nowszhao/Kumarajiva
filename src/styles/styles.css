@@ -646,41 +646,6 @@
     .analysis-toolbar label {
         color: #aaa;
     }
-
-    .summary-card {
-        background: #282828;
-    }
-
-    .summary-content {
-        color: #fff;
-    }
-
-    .summary-section {
-        border-bottom-color: #333;
-    }
-
-    .summary-title {
-        color: #3ea6ff;
-    }
-
-    .summary-text,
-    .viewpoint-title {
-        color: #fff;
-    }
-
-    .argument-text {
-        color: #9aa0a6;
-    }
-
-    .viewpoint-item {
-        border-left-color: #3ea6ff;
-    }
-
-    .summary-error {
-        background: #3c1514;
-        color: #ff8a83;
-    }
-
     .expression {
         color: #8ab4f8;
     }

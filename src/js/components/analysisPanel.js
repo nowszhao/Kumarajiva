@@ -234,28 +234,47 @@ class AnalysisPanel {
             let html = '<div class="summary-card">';
             
             // 添加总结部分
-            if (data.Summary) {
+            if (data.summary) {
                 html += `
                     <div class="summary-section">
-                        <h4 class="summary-title">总结</h4>
-                        <p class="summary-text">${data.Summary}</p>
+                        <h4 class="summary-title">内容总结</h4>
+                        <p class="summary-text">${data.summary}</p>
+                    </div>
+                `;
+            }
+            
+            // 添加核心概念部分
+            if (data.coreConcepts && data.coreConcepts.length > 0) {
+                html += `
+                    <div class="concepts-section">
+                        <h4 class="summary-title">核心概念</h4>
+                        <div class="concepts-list">
+                            ${data.coreConcepts.map(concept => `
+                                <div class="concept-item">
+                                    <h5 class="concept-term">${concept.term}</h5>
+                                    <p class="concept-definition">${concept.definition}</p>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
             }
             
             // 添加观点部分
-            if (data.Viewpoints && data.Viewpoints.length > 0) {
+            if (data.viewpoints && data.viewpoints.length > 0) {
                 html += `
                     <div class="viewpoints-section">
-                        <h4 class="summary-title">观点</h4>
-                        ${data.Viewpoints.map((point, index) => `
+                        <h4 class="summary-title">核心观点</h4>
+                        ${data.viewpoints.map((point, index) => `
                             <div class="viewpoint-item">
-                                <h5 class="viewpoint-title">${index + 1}. ${point.Viewpoint}</h5>
-                                ${point.Argument.map(arg => `
-                                    <div class="argument-item">
-                                        <p class="argument-text">${arg}</p>
-                                    </div>
-                                `).join('')}
+                                <h5 class="viewpoint-title">${index + 1}. ${point.viewpoint}</h5>
+                                <div class="arguments-list">
+                                    ${point.arguments.map(arg => `
+                                        <div class="argument-item">
+                                            <p class="argument-text">• ${arg}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                         `).join('')}
                     </div>

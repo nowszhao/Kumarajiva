@@ -16,10 +16,10 @@ class SubtitleAnalyzer {
 
         // 使用保存的设置，如果没有则使用默认值
         const currentService = translationService || config.translation.defaultService;
-        
+
         // 获取对应服务的 token
         const token = serviceTokens?.[currentService] || config[currentService].apiToken;
-        
+
         // 创建翻译器实例时使用保存的设置
         this.translator = TranslatorFactory.createTranslator(
             currentService,
@@ -66,40 +66,155 @@ class SubtitleAnalyzer {
             .map(sub => sub.text)
             .join('\n');
 
-        if(fullText && fullText.length > 100000){
+        if (fullText && fullText.length > 100000) {
             fullText = fullText.slice(0, 100000);
             console.log("fullText is too long, truncated to 100000 characters");
         }
 
-        // 根据类型构建不同的分析提示词
-        let prompt;
-        switch (type) {
-            case 'summary':
-                prompt = this.buildSummaryAnalysisPrompt(fullText);
-                break;
-            case 'phrases':
-                prompt = this.buildPhrasesAnalysisPrompt(fullText);
-                break;
-            default:
-                prompt = this.buildWordsAnalysisPrompt(fullText);
+        // 添加重试相关变量
+        const maxRetries = 3;
+        const retryDelay = 2000; // 2秒延迟
+        let attempt = 0;
+        let lastError = null;
+
+        while (attempt < maxRetries) {
+            try {
+                // 根据类型构建不同的分析提示词
+                let prompt;
+                switch (type) {
+                    case 'summary':
+                        prompt = this.buildSummaryAnalysisPrompt(fullText);
+                        break;
+                    case 'phrases':
+                        prompt = this.buildPhrasesAnalysisPrompt(fullText);
+                        break;
+                    default:
+                        prompt = this.buildWordsAnalysisPrompt(fullText);
+                }
+
+                if (attempt > 0) {
+                    console.log(`Retry attempt ${attempt + 1}/${maxRetries}`);
+                    // 在重试时添加额外的提示
+                    prompt = `${prompt}\n\n注意：这是第${attempt + 1}次尝试，请特别注意JSON格式的正确性。`;
+                }
+
+                console.log("prompt:", prompt, ", type:", type);
+
+                var result = await this.translator.translate(prompt);
+                console.log("Raw translation result:", result);
+
+                // 尝试清理和修复 JSON 字符串
+                result = this.cleanJsonString(result);
+
+                // 从字符串中提取 JSON
+                result = extractJsonFromString(result);
+                console.log("Extracted JSON string:", result);
+
+                const parsedResult = JSON.parse(result);
+                console.log("Parsed result:", parsedResult);
+
+                // 验证结果格式
+                if (type === 'summary') {
+                    if (!this.validateSummaryFormat(parsedResult)) {
+                        throw new Error('Invalid summary format');
+                    }
+                }
+
+                // 保存结果到缓存
+                this.saveAnalysisToCache(videoId, type, parsedResult);
+
+                return parsedResult;
+
+            } catch (error) {
+                lastError = error;
+                console.error(`Attempt ${attempt + 1} failed:`, error);
+
+                if (attempt < maxRetries - 1) {
+                    // 如果还有重试机会，等待一段时间后重试
+                    console.log(`Waiting ${retryDelay}ms before next attempt...`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    attempt++;
+                } else {
+                    // 所有重试都失败了
+                    console.error('All retry attempts failed:', lastError);
+                    break;
+                }
+            }
         }
 
-        console.log("prompt:", prompt,",  type:", type);
-
-        try {
-            var result = await this.translator.translate(prompt);
-            result = extractJsonFromString(result);
-
-            const parsedResult = JSON.parse(result);
-            
-            // 保存结果到缓存
-            this.saveAnalysisToCache(videoId, type, parsedResult);
-            
-            return parsedResult;
-        } catch (error) {
-            console.error('Subtitle analysis failed:', error);
-            return null;
+        // 如果所有重试都失败，返回一个友好的错误结果
+        if (type === 'summary') {
+            return {
+                summary: "很抱歉，内容分析暂时失败，请稍后重试。",
+                coreConcepts: [],
+                viewpoints: []
+            };
+        } else {
+            return [{
+                type: "Error",
+                vocabulary: "分析失败",
+                difficulty: "N/A",
+                part_of_speech: "N/A",
+                phonetic: "N/A",
+                chinese_meaning: "请稍后重试",
+                chinese_english_sentence: "系统暂时无法完成分析，请刷新页面重试。"
+            }];
         }
+    }
+
+    // 添加新的辅助方法
+    cleanJsonString(str) {
+        // 首先尝试提取 JSON 字符串（如果 AI 返回了额外的文字）
+        const jsonMatch = str.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            str = jsonMatch[0];
+        }
+
+        // 清理字符串
+        str = str
+            // 移除控制字符
+            .replace(/[\u0000-\u0019]+/g, "")
+            // 规范化空白字符
+            .replace(/\s+/g, " ")
+            // 修复可能的 JSON 格式问题
+            .replace(/,\s*}/g, "}")  // 移除对象末尾多余的逗号
+            .replace(/,\s*]/g, "]")  // 移除数组末尾多余的逗号
+            .replace(/'/g, '"')      // 将单引号替换为双引号
+            .replace(/\\"/g, '"')    // 修复可能的转义问题
+            .replace(/"\s+"/g, '" "')// 修复引号间的空白
+            .trim();
+
+        // 确保是一个完整的 JSON 对象
+        if (!str.startsWith("{") || !str.endsWith("}")) {
+            throw new Error("Invalid JSON format");
+        }
+
+        return str;
+    }
+
+    validateSummaryFormat(result) {
+        // 验证summary格式
+        const requiredFields = ['summary', 'coreConcepts', 'viewpoints'];
+        const hasAllFields = requiredFields.every(field => field in result);
+
+        if (!hasAllFields) {
+            console.error('Missing required fields in summary result:', result);
+            return false;
+        }
+
+        // 验证coreConcepts格式
+        if (!Array.isArray(result.coreConcepts)) {
+            console.error('coreConcepts is not an array');
+            return false;
+        }
+
+        // 验证viewpoints格式
+        if (!Array.isArray(result.viewpoints)) {
+            console.error('viewpoints is not an array');
+            return false;
+        }
+
+        return true;
     }
 
     buildWordsAnalysisPrompt(subtitleText) {
@@ -161,27 +276,51 @@ ${subtitleText}`;
     }
 
     buildSummaryAnalysisPrompt(subtitleText) {
-        return `请使用中文总结概括当前字幕的内容，并列出当前字幕提到的核心观点及支持论据，返回Json格式如下：
+        return `你是一位专业的内容分析专家。请使用中文分析以下字幕内容，并按照严格的JSON格式输出分析结果。
+要求：
+1. 请使用中文
+2. 必须确保输出是合法的JSON格式
+3. 所有字符串必须使用双引号，不能用单引号
+3. 不要输出任何额外的文字，只输出JSON对象
+4. 每个字段必须完全匹配示例格式
+
+输出格式示例：
 {
-    "Summary":"该视频主要探讨了学习英语与学习其他语言的不...",
-    "Viewpoints":[
+    "summary": "这里是总结内容（200字以内）",
+    "coreConcepts": [
         {
-            "Viewpoint":" 学习英语与学习其他语言...",
-            "Argument":[
-                "论据 2： 许多人学习英语是一...",
-                "论据 2： 学习英语常带来压力...",
-                ...
+            "term": "概念1",
+            "definition": "概念1的解释（50字内）"
+        }
+    ],
+    "viewpoints": [
+        {
+            "viewpoint": "观点1",
+            "arguments": [
+                "支持论据1",
+                "支持论据2"
             ]
         }
     ]
 }
-上述说明如下：
-- Summary：总结
-- Viewpoints：观点集
-- Viewpoint： 观点
-- Argument： 论据
 
-字幕内容如下：
+格式说明：
+1. summary：字符串类型，总结内容（200字以内）
+2. coreConcepts：数组类型，包含核心概念对象
+   - term：字符串类型，概念名称
+   - definition：字符串类型，概念解释（50字内）
+3. viewpoints：数组类型，包含所有重点观点
+   - viewpoint：字符串类型，核心观点
+   - arguments：字符串数组类型，支持论据
+   
+注意事项：
+1. 严格遵守JSON格式规范
+2. 所有字符串使用双引号
+3. 数组和对象需要正确的闭合
+4. 最后一个属性后不要加逗号
+5. 不要添加任何注释或说明文字
+
+请分析以下字幕内容：
 ${subtitleText}`;
     }
 }

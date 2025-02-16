@@ -342,9 +342,6 @@
 .summary-card {
     background: white;
     border-radius: 8px;
-    padding: 16px;
-    margin: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .summary-content {
@@ -416,3 +413,48 @@
     margin: 0;
     font-size: 14px;
 }
+
+.concepts-section {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.concepts-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.concept-item {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid #34a853;
+}
+
+.concept-term {
+    font-size: 14px;
+    font-weight: 600;
+    color: #202124;
+    margin: 0 0 8px 0;
+}
+
+.concept-definition {
+    font-size: 14px;
+    color: #5f6368;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.arguments-list {
+    margin-top: 8px;
+}
+.viewpoint-item {
+    margin: 16px 0;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #1a73e8;
+}
+
