@@ -104,7 +104,7 @@ class SubtitleAnalyzer {
                 console.log("Raw translation result:", result);
 
                 // 尝试清理和修复 JSON 字符串
-                result = this.cleanJsonString(result);
+                // result = this.cleanJsonString(result);
 
                 // 从字符串中提取 JSON
                 result = extractJsonFromString(result);
@@ -312,7 +312,7 @@ ${subtitleText}`;
 3. viewpoints：数组类型，包含所有重点观点
    - viewpoint：字符串类型，核心观点
    - arguments：字符串数组类型，支持论据
-   
+
 注意事项：
 1. 严格遵守JSON格式规范
 2. 所有字符串使用双引号
