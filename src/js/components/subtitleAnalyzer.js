@@ -219,9 +219,9 @@ class SubtitleAnalyzer {
 
     buildWordsAnalysisPrompt(subtitleText) {
         return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语字幕文件，要求如下：
-1、解析我提供的字幕内容，帮我从字幕中筛选出10个最难理解的词汇。
+1、您的任务是分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的单词。
 2、输出请遵循以下要求：
- - 类型：包括词汇、短语/词块、俚语、缩写（Words, Phrases, Slang, Abbreviations）
+ - 类型：包括单词、短语/词块、俚语、缩写（Words, Phrases, Slang, Abbreviations）
  - 难度：使用CEFR评级（C2, C1, B2, B1, A2, A1），从高到低排序
  - 词性：使用n., v., adj., adv., phrase等标准缩写
  - 音标：提供美式音标
@@ -251,7 +251,7 @@ ${subtitleText}`;
 
     buildPhrasesAnalysisPrompt(subtitleText) {
         return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语字幕文件，要求如下：
-1、解析我提供的字幕内容，帮我从字幕中筛选出10个最难理解的短语/词块、俚语、缩写【重点】。
+1、您的任务是分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的短语、俚语、缩写、简写以及网络用语等。
 2、输出请遵循以下要求：
  - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
  - 难度：使用CEFR评级（C2, C1, B2, B1, A2, A1），从高到低排序
