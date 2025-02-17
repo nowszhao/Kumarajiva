@@ -287,7 +287,6 @@
     position: absolute;
     width: 16px;
     height: 16px;
-    /* background:  transparent; */
     background: rgba(210, 88, 231);  /* 更新：统一为紫色调（#9c27b0）的浅色版 */
     border-radius: 50%;
     top: 2px;
@@ -298,7 +297,7 @@
 }
 
 .subtitle-switch.active {
-    background-color: rgba(156, 39, 176, 0.8); /* 更新：绿色调激活状态 */
+    background-color: rgba(156, 39, 176, 0.2); /* 更新：绿色调激活状态 */
     border-color: rgba(156, 39, 176, 0.8); /* 更新：绿色调 */
     /* background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239c27b0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c3.86 0 7 3.14 7 7 0 1.82-.7 3.49-1.84 4.74L12 10.59l-5.16 5.15C5.7 14.49 5 12.82 5 11c0-3.86 3.14-7 7-7zm0 16c-3.86 0-7-3.14-7-7 0-.95.19-1.85.53-2.68l5.31 5.31v.88c0 1.1.9 2 2 2s2-.9 2-2v-.88l5.31-5.31c.34.83.53 1.73.53 2.68 0 3.86-3.14 7-7 7z"/></svg>'); */
 }
