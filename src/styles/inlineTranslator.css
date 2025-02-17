@@ -191,6 +191,11 @@
     color: #444;
     margin-top: 4px;
 }
+ 
+.chinese_english_sentence {
+    color: #888;
+    margin-top: 4px;
+}
 
 @keyframes slideIn {
     from {

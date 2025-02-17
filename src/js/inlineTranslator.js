@@ -22,12 +22,13 @@ class Utils {
     }
 
     static containsEnglish(text) {
-        // 检查是否包含中文字符
+        // 排除包含中文字符的文本
         if (/[\u4e00-\u9fa5]/.test(text)) {
             return false;
         }
-        // 检查是否包含至少三个由非字母分隔的英语单词
-        return /(?:[^a-zA-Z]*[a-zA-Z]+){3}/.test(text);
+        // 匹配至少两个由有效分隔符分隔的英语单词
+        const englishPattern = /[a-zA-Z]+(?:['’-][a-zA-Z]+)*[\s,.;!?()'":]+[a-zA-Z]+(?:['’-][a-zA-Z]+)*/;
+        return englishPattern.test(text);
     }
 
 
@@ -43,7 +44,6 @@ class Utils {
             'SVG', 
             'VIDEO', 
             'AUDIO',
-            'A',           // 添加 A 标签到忽略列表
             'BUTTON',      // 添加 BUTTON 标签
             'INPUT',       // 添加 INPUT 标签
             'SELECT',      // 添加 SELECT 标签
@@ -89,7 +89,7 @@ class Utils {
         if (
             container &&
             container.textContent.trim().length > 0 &&
-            !container.querySelector('a, button, input, select, textarea') && // 检查是否包含交互元素
+            !container.querySelector('button, input, select, textarea') && // 检查是否包含交互元素
             !ignoredTags.has(container.tagName) // 再次检查容器本身的标签
         ) {
             return container;
@@ -248,6 +248,13 @@ class UIManager {
         meaning.className = 'word-meaning';
         meaning.textContent = word.chinese_meaning;
         wordDetails.appendChild(meaning);
+
+
+        const method = document.createElement('div');
+        method.className = 'chinese_english_sentence';
+        method.textContent = word.chinese_english_sentence;
+        wordDetails.appendChild(method);
+
 
         wordItem.appendChild(wordHeader);
         wordItem.appendChild(wordDetails);
@@ -1213,7 +1220,7 @@ class TranslationTask {
         } else {
             const translationPrompt = `
                 你现在是一位专业的翻译专家，现在正帮我翻译一个英文句子，要求如下：
-                1、翻译和解析我提供的英语内容，同时帮我从中筛选出5个最难理解的短语/词块、俚语、缩写。
+                1、翻译和解析我提供的英语文本，分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等，并帮我从中筛选出Top 8难点。
                 2、输出请遵循以下要求：
                 - 中文翻译：根据字幕语境给出最贴切的含义
                 - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
@@ -1232,7 +1239,7 @@ class TranslationTask {
                             "part_of_speech": "n.",
                             "phonetic": "/ˈbentʃmɑːrk/",
                             "chinese_meaning": "基准；参照标准",
-                        "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。"
+                            "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。（DeepSeek's newly launched reasoning model has surpassed leading AI companies on standard benchmarks.）"   //中文句子中必要包含待解析的英文词汇
                         },
                         ...
                     ]
@@ -1360,7 +1367,22 @@ class Analyzer {
         element.insertAdjacentElement('afterend', loadingIndicator);
 
         const analyzePrompt = `
-            你现在是专业的英语老师，请找出句子中所有非英语为母语学生所有难点，，包括难的单词、短语、俚语、缩写、简写、网络用语等，请使用中文并按照HTML格式输出，保证阅读简洁：
+            作为一位专业英语教师，您的任务是分析给定文本中的语言难点。这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等。
+            要求：
+            1.识别并列出所有潜在的语言难点。
+            2. 使用清晰的中文解释每个难点的含义或用法。
+            3.将结果以简洁的HTML格式呈现，确保易于阅读和理解。
+            4.预期输出（HTML格式）：
+            <ul>
+                <li><strong>难点词汇/短语</strong>: [具体内容] - [中文解释]</li>
+                <li><strong>俚语/缩略语</strong>: [具体内容] - [中文解释]</li>
+                <!-- 其他项目依此类推 -->
+            </ul>
+            5.注意事项：
+            1）确保每个项目的解释准确且简明扼要。
+            2）如果某个部分没有发现任何难点，请在相应位置注明“无”。
+
+            内容如下：
             ${element.textContent}`;
 
         try {

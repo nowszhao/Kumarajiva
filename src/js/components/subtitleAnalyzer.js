@@ -237,7 +237,7 @@ class SubtitleAnalyzer {
         "part_of_speech": "adj.",
         "phonetic": "/juːˈbɪkwɪtəs/",
         "chinese_meaning": "无处不在的",
-        "chinese_english_sentence": "在当今的数字时代，智能手机已经ubiquitous，使人们更容易保持联系。"
+        "chinese_english_sentence": "在当今的数字时代，智能手机已经ubiquitous，使人们更容易保持联系。(In today's digital age, smartphones have become ubiquitous, significantly enhancing people's ability to maintain social connections.)"
     }
 ]
 

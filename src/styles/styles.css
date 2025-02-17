@@ -287,7 +287,8 @@
     position: absolute;
     width: 16px;
     height: 16px;
-    background:  transparent;
+    /* background:  transparent; */
+    background: rgba(210, 88, 231);  /* 更新：统一为紫色调（#9c27b0）的浅色版 */
     border-radius: 50%;
     top: 2px;
     left: 2px;
