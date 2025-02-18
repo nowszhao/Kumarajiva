@@ -21,13 +21,14 @@ class Utils {
         };
     }
 
+
     static containsEnglish(text) {
         // 排除包含中文字符的文本
         if (/[\u4e00-\u9fa5]/.test(text)) {
             return false;
         }
-        // 匹配至少两个由有效分隔符分隔的英语单词
-        const englishPattern = /[a-zA-Z]+(?:['’-][a-zA-Z]+)*[\s,.;!?()'":]+[a-zA-Z]+(?:['’-][a-zA-Z]+)*/;
+        // 匹配至少三个由有效分隔符分隔的英语单词
+        const englishPattern = /[a-zA-Z]+(?:['’-][a-zA-Z]+)*(?:[\s,.;!?()'":]+[a-zA-Z]+(?:['’-][a-zA-Z]+)*){2,}/;
         return englishPattern.test(text);
     }
 

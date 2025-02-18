@@ -26,7 +26,7 @@ export default {
     kimiv1: {
         apiToken: 'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1c2VyLWNlbnRlciIsImV4cCI6MTc0NTc5NDIxMiwiaWF0IjoxNzM4MDE4MjEyLCJqdGkiOiJjdWMwcjk2bjNta2JwY21ndGI2ZyIsInR5cCI6InJlZnJlc2giLCJhcHBfaWQiOiJraW1pIiwic3ViIjoiY29mc2piOWtxcTR0dHJnYWhocWciLCJzcGFjZV9pZCI6ImNvZnNqYjlrcXE0dHRyZ2FoaHBnIiwiYWJzdHJhY3RfdXNlcl9pZCI6ImNvZnNqYjlrcXE0dHRyZ2FoaHAwIiwicm9sZXMiOlsiZl9tdmlwIiwidmlkZW9fZ2VuX2FjY2VzcyJdLCJzc2lkIjoiMTczMDMwMzY0NzY2NTEyMzQxMyIsImRldmljZV9pZCI6IjczNTg4MjE4NTkxNDk3NTIzMjkifQ.NbyE8tzvtB5sRWVJmku4HqnSZo2quTUMa4_r_DXoKzkJjT98htpRZ6mJQDoKGclO0sAz6I_v1TdjM961NZos3g',
         maxRetries: 3,
-        model: 'kimi',
+        model: 'kimi-research',
         url: 'http://47.121.117.100:8003/v1/chat/completions'
     },
     translation: {
