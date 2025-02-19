@@ -12,7 +12,8 @@ module.exports = {
     output: {
         filename: 'js/[name].js',
         path: path.resolve(__dirname, 'dist/Kumarajiva'),
-        clean: true // 在每次构建前清理 dist 目录
+        clean: true,
+        devtoolModuleFilenameTemplate: 'webpack:///[resource-path]?[loaders]'
     },
     module: {
         rules: [
@@ -51,9 +52,17 @@ module.exports = {
         }),
     ],
     optimization: {
-        minimize: false // 禁用压缩
+        minimize: false,
+        moduleIds: 'named'
     },
     resolve: {
         extensions: ['.js']
+    },
+    mode: 'development',
+    devtool: 'source-map',
+    devServer: {
+        devMiddleware: {
+            writeToDisk: true
+        }
     }
 };

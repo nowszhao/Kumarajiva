@@ -7,12 +7,13 @@ class VocabularyStorage {
             const result = await chrome.storage.local.get(this.STORAGE_KEY);
             return result[this.STORAGE_KEY] || {};
         } catch (error) {
-            console.error('Failed to load vocabulary from chrome.storage:', error);
+            console.log('Failed to load vocabulary from chrome.storage:', error);
             
             // 如果是扩展上下文失效，等待一段时间后重新加载扩展
             if (error.message.includes('Extension context invalidated')) {
                 // 通知用户
                 // this.notifyUserAndReload('扩展需要重新加载以确保正常工作');
+                // chrome.runtime.reload();
             }
             return {};
         }
@@ -23,7 +24,7 @@ class VocabularyStorage {
             await chrome.storage.local.set({ [this.STORAGE_KEY]: words });
             return true;
         } catch (error) {
-            console.error('Failed to save vocabulary:', error);
+            console.log('Failed to save vocabulary:', error);
             
             // 如果是扩展上下文失效，等待一段时间后重新加载扩展
             if (error.message.includes('Extension context invalidated')) {
@@ -52,9 +53,9 @@ class VocabularyStorage {
         document.body.appendChild(notification);
 
         // 3秒后重新加载扩展
-        setTimeout(() => {
-            chrome.runtime.reload();
-        }, 3000);
+        // setTimeout(() => {
+        //     chrome.runtime.reload();
+        // }, 3000);
     }
 
     static async addWord(word, wordInfo) {
