@@ -181,29 +181,33 @@ class TranslationProcessor {
         this.storageManager = storageManager;
         this.eventBus = eventBus;
         this.subtitleManager = subtitleManager;
-        this.BATCH_SIZE = 10;
+        this.BATCH_SIZE = 5;
         this.BATCH_INTERVAL = 2000;
         this.processingStatus = {
             total: 0,
             processed: 0,
-            isProcessing: false
+            isProcessing: false,
+            isPaused: false
         };
         // 添加 AbortController
         this.abortController = null;
+        
+        // 注册事件监听
+        this.eventBus.on('pauseTranslation', () => this.pauseTranslation());
+        this.eventBus.on('resumeTranslation', () => this.resumeTranslation());
     }
 
-    // 添加停止翻译的方法
-    stopTranslation() {
-        // 停止当前的翻译进程
+    // 添加暂停方法
+    pauseTranslation() {
+        this.processingStatus.isPaused = true;
         this.processingStatus.isProcessing = false;
-        
-        // 如果存在 AbortController，中止所有请求
-        if (this.abortController) {
-            this.abortController.abort();
-            this.abortController = null;
-        }
+        this.eventBus.emit('processingStatusUpdated', this.processingStatus);
+    }
 
-        // 发送状态更新事件
+    // 修改继续方法
+    resumeTranslation() {
+        this.processingStatus.isPaused = false;
+        this.processingStatus.isProcessing = true;
         this.eventBus.emit('processingStatusUpdated', this.processingStatus);
     }
 
@@ -232,34 +236,37 @@ class TranslationProcessor {
         this.processingStatus = {
             total: subtitles.length,
             processed: 0,
-            isProcessing: true
+            isProcessing: true,
+            isPaused: false
         };
         this.eventBus.emit('processingStatusUpdated', this.processingStatus);
 
         try {
-            // 将字幕分成批次
             const batches = [];
             for (let i = 0; i < subtitles.length; i += this.BATCH_SIZE) {
                 batches.push(subtitles.slice(i, i + this.BATCH_SIZE));
             }
 
-            // 处理每个批次
             for (let i = 0; i < batches.length; i++) {
-                // 检查是否已中止
+                // 检查是否已中止或暂停
                 if (signal.aborted) {
                     console.log('Translation aborted');
                     break;
                 }
 
-                // 如果不再处理中，退出循环
-                if (!this.processingStatus.isProcessing) {
+                // 如果暂停，等待恢复
+                while (this.processingStatus.isPaused && !signal.aborted) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // 如果不再处理中且未暂停，退出循环
+                if (!this.processingStatus.isProcessing && !this.processingStatus.isPaused) {
                     console.log('Translation stopped');
                     break;
                 }
 
                 await this.processBatch(batches[i], i + 1, batches.length);
                 
-                // 在批次之间添加延迟
                 if (i < batches.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, this.BATCH_INTERVAL));
                 }
@@ -445,16 +452,36 @@ class TranslationProcessor {
         const container = document.getElementById('translation-progress');
         if (!container) return;
 
-        if (status.isProcessing) {
+        if (status.isProcessing || status.isPaused) {
             const progress = Math.round((status.processed / status.total) * 100);
+            const buttonIcon = status.isPaused ? '▶' : '⏸'; // 使用 Unicode 字符作为图标
+            const buttonText = status.isPaused ? '继续' : '暂停';
+            
             container.innerHTML = `
                 <div class="processing-status">
-                    正在处理字幕 (${progress}%)
+                    <div class="status-header">
+                        <span>正在处理字幕 (${progress}%)</span>
+                        <button class="translation-control-btn ${status.isPaused ? 'paused' : ''}" title="${buttonText}">
+                            ${buttonIcon}
+                        </button>
+                    </div>
                     <div class="progress-bar">
                         <div class="progress" style="width: ${progress}%"></div>
                     </div>
                 </div>
             `;
+
+            // 添加按钮点击事件
+            const controlBtn = container.querySelector('.translation-control-btn');
+            if (controlBtn) {
+                controlBtn.addEventListener('click', () => {
+                    if (status.isPaused) {
+                        this.eventBus.emit('resumeTranslation');
+                    } else {
+                        this.eventBus.emit('pauseTranslation');
+                    }
+                });
+            }
         } else {
             container.innerHTML = '';
         }
@@ -506,16 +533,36 @@ class UIManager {
             const container = document.getElementById('translation-progress');
             if (!container) return;
 
-            if (status.isProcessing) {
+            if (status.isProcessing || status.isPaused) {
                 const progress = Math.round((status.processed / status.total) * 100);
+                const buttonIcon = status.isPaused ? '▶' : '⏸'; // 使用 Unicode 字符作为图标
+                const buttonText = status.isPaused ? '继续' : '暂停';
+                
                 container.innerHTML = `
                     <div class="processing-status">
-                        正在处理字幕 (${progress}%)
+                        <div class="status-header">
+                            <span>正在处理字幕 (${progress}%)</span>
+                            <button class="translation-control-btn ${status.isPaused ? 'paused' : ''}" title="${buttonText}">
+                                ${buttonIcon}
+                            </button>
+                        </div>
                         <div class="progress-bar">
                             <div class="progress" style="width: ${progress}%"></div>
                         </div>
                     </div>
                 `;
+
+                // 添加按钮点击事件
+                const controlBtn = container.querySelector('.translation-control-btn');
+                if (controlBtn) {
+                    controlBtn.addEventListener('click', () => {
+                        if (status.isPaused) {
+                            this.eventBus.emit('resumeTranslation');
+                        } else {
+                            this.eventBus.emit('pauseTranslation');
+                        }
+                    });
+                }
             } else {
                 container.innerHTML = '';
             }

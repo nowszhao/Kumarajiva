@@ -719,3 +719,37 @@
         max-height: calc(800px - 120px);
     }
 }
+
+/* 添加进度条控制按钮样式 */
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.translation-control-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.translation-control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.translation-control-btn.paused {
+    background: #1a73e8;
+}
+
+.translation-control-btn.paused:hover {
+    background: #1557b0;
+}
