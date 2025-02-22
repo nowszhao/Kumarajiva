@@ -301,7 +301,8 @@ class TranslationProcessor {
                     originalText,
                     translatedData: {
                         correctedText: item.correctedText,
-                        translation: item.translation
+                        translation: item.translation,
+                        difficultVocabulary: item.difficultVocabulary || []
                     }
                 });
             });
@@ -328,39 +329,92 @@ class TranslationProcessor {
     }
 
     generateTranslationPrompt(batch) {
-        return `
-你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
-1. 处理规则：
-- 保持原始时间戳(startTime/endTime)不变
-- 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
-- 生成准确流畅的中文翻译(translation字段)
-- 所有数字时间值保持整数格式
+        var prompt = `
+            你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
+            1. 处理规则：
+            - 保持原始时间戳(startTime/endTime)不变
+            - 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
+            - 生成准确流畅的中文翻译(translation字段)
+            - 所有数字时间值保持整数格式
 
-2. 遵守的JSON规范：
-- 使用双引号("")
-- 禁止尾随逗号
-- 确保特殊字符被正确转义
-- 换行符替换为空（即移除原文中的换行符）
-- 严格保持字段顺序：startTime > endTime > correctedText > translation
-3. 输入示例：
-[
-    {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
-]
-4. 输出示例：
-\`\`\`
-[
-    {
-        "startTime": 120,
-        "endTime": 1800,
-        "correctedText": "Hey, welcome back! So this week, the world",
-        "translation": "嘿，欢迎回来！本周我们将讨论"
-    },
-    ...
-]
-\`\`\`
-请现在处理以下输入内容：
-${JSON.stringify(batch, null, 2)}
-`;
+            2. 遵守的JSON规范：
+            - 使用双引号("")
+            - 禁止尾随逗号
+            - 确保特殊字符被正确转义
+            - 换行符替换为空（即移除原文中的换行符）
+            - 严格保持字段顺序：startTime > endTime > correctedText > translation
+            3. 输入示例：
+            [
+                {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
+            ]
+            4. 输出示例：
+            \`\`\`
+            [
+                {
+                    "startTime": 120,
+                    "endTime": 1800,
+                    "correctedText": "Hey, welcome back! So this week, the world",
+                    "translation": "嘿，欢迎回来！本周我们将讨论"
+                },
+                ...
+            ]
+            \`\`\`
+            请现在处理以下输入内容：
+            ${JSON.stringify(batch, null, 2)}`;
+
+
+
+        prompt = `
+            你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
+            1. 处理规则：
+            - 保持原始时间戳(startTime/endTime)不变
+            - 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
+            - 生成准确流畅的中文翻译(translation字段)
+            - 所有数字时间值保持整数格式
+            - 分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等，输出请遵循以下要求：
+                - 中文翻译：根据字幕语境给出最贴切的含义
+                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
+                - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
+                - 词性：使用n., v., adj., adv., phrase等标准缩写
+                - 音标：提供美式音标
+                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
+            2. 遵守的JSON规范：
+            - 使用双引号("")
+            - 禁止尾随逗号
+            - 确保特殊字符被正确转义
+            - 换行符替换为空（即移除原文中的换行符）
+            - 严格保持字段顺序：startTime > endTime > correctedText > translation
+            3. 输入示例：
+            [
+                {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
+            ]
+            4. 输出示例：
+            \`\`\`
+            [
+                {
+                    "startTime": 120,
+                    "endTime": 1800,
+                    "correctedText": "Hey, welcome back! So this week, the world",
+                    "translation": "嘿，欢迎回来！本周我们将讨论",
+                    "difficultVocabulary": [
+                        {
+                            "vocabulary": "welcome back",
+                            "type": "Phrases",
+                            "part_of_speech": "phrase",
+                            "phonetic": "/ˈwelkəm bæk/",
+                            "chinese_meaning":  "欢迎回来",
+                            "chinese_english_sentence": "当他出差回来时，同事们对他说 "Welcome back"。（When he came back from a business trip, his colleagues said"Welcome back"to him.）" //中文句子中必要包含待解析的英文词汇
+                        },
+                        ...
+                    ]
+                },
+                ...
+            ]
+            \`\`\`
+            请现在处理以下输入内容：
+            ${JSON.stringify(batch, null, 2)}`;
+
+            return prompt;
     }
 
     async translate(text, translatorType = config.translation.defaultService) {
@@ -475,8 +529,8 @@ class UIManager {
             const cached = this.subtitleCache.get(currentSubtitle.text) || {};
             const html = `
                 <div class="subtitle-item">
-                    <div class="subtitle-english">${cached.correctedText || '原文| '+currentSubtitle.text}</div>
-                    <div class="subtitle-chinese">${cached.translation || '正在翻译中...'}</div>
+                    <div class="subtitle-english">${cached.correctedText || currentSubtitle.text}</div>
+                    <div class="subtitle-chinese">${cached.translation || 'AI翻译中...'}</div>
                 </div>
             `;
 
@@ -546,7 +600,7 @@ class UIManager {
                 </div>
             </div>
             <div class="subtitle-controls-group">
-                <button class="analyze-button">AI解析</button>
+                <button class="analyze-button">单字幕AI解析</button>
             </div>
         `;
         container.appendChild(controlPanel);
@@ -822,7 +876,7 @@ class UIManager {
         }
     }
 
-    // 添加新方法
+    // 修改添加分析按钮的方法
     addAnalyzeButtonToControls = () => {
         const ytpRightControls = document.querySelector('.ytp-right-controls');
         if (!ytpRightControls) return;
@@ -841,7 +895,7 @@ class UIManager {
         }
 
         const analyzeSwitch = analyzeContainer.querySelector('.analyze-switch');
-        analyzeSwitch.addEventListener('click', async () => {
+        analyzeSwitch.addEventListener('click', () => {
             if (this.analysisPanel.isVisible) {
                 this.analysisPanel.hidePanel();
                 analyzeSwitch.classList.remove('active');
@@ -851,7 +905,8 @@ class UIManager {
             analyzeSwitch.classList.add('active');
             this.analysisPanel.setSubtitles(this.currentSubtitles);
             this.analysisPanel.showPanel();
-            await this.analysisPanel.triggerAnalysis();
+            // 移除自动触发分析的代码
+            // await this.analysisPanel.triggerAnalysis();
         });
 
         // 当分析面板关闭时，更新按钮状态

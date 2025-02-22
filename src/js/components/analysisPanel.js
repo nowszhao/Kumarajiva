@@ -9,6 +9,97 @@ class AnalysisPanel {
         this.currentSubtitles = null; // 添加当前字幕引用
         this.currentVideoId = null; // 添加视频ID属性
         this.collectedWords = new Set(); // 添加收藏单词集合
+        
+        // 在初始化时添加新的样式
+        const style = document.createElement('style');
+        style.textContent += `
+            .analyze-current-tab-btn {
+                margin-left: 8px;
+                padding: 6px 12px;
+                background: #1a73e8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+
+            .analyze-current-tab-btn:hover {
+                background: #1557b0;
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 24px;
+                color: #666;
+                font-size: 14px;
+            }
+
+            .error-state {
+                text-align: center;
+                padding: 24px;
+                color: #d93025;
+                font-size: 14px;
+            }
+
+            .retry-btn {
+                margin-top: 12px;
+                padding: 6px 12px;
+                background: #d93025;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+
+            .retry-btn:hover {
+                background: #a50e0e;
+            }
+
+            .loading-indicator {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                gap: 12px;
+            }
+
+            .spinner {
+                width: 24px;
+                height: 24px;
+                border: 2px solid #f3f3f3;
+                border-top: 2px solid #1a73e8;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            .loading-indicator span {
+                color: #666;
+                font-size: 14px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 添加标签页内容状态管理
+        this.tabContents = {
+            summary: null,
+            words: null,
+            phrases: null
+        };
+
+        // 添加加载状态跟踪
+        this.loadingStates = {
+            summary: false,
+            words: false,
+            phrases: false
+        };
     }
 
     async initialize() {
@@ -18,7 +109,6 @@ class AnalysisPanel {
     }
 
     createPanel() {
-        // 查找 YouTube 右侧栏容器
         const secondaryInner = document.querySelector('#secondary-inner');
         if (!secondaryInner) {
             console.error('Secondary inner container not found');
@@ -39,13 +129,18 @@ class AnalysisPanel {
             </div>
             <div class="analysis-search">
                 <input type="text" placeholder="在视频中搜索...">
+                <button class="analyze-current-tab-btn">解析当前内容</button>
             </div>
             <div class="analysis-content">
                 <div class="loading-indicator" style="display: none;">
                     <div class="spinner"></div>
                     <span>正在分析字幕...</span>
                 </div>
-                <div class="analysis-results"></div>
+                <div class="analysis-results">
+                    <div class="empty-state">
+                        点击上方"解析当前内容"按钮开始分析
+                    </div>
+                </div>
             </div>
         `;
 
@@ -130,6 +225,49 @@ class AnalysisPanel {
 
         // 批量操作事件处理
         this.setupBatchOperations();
+
+        // 修改解析按钮事件监听
+        const analyzeBtn = this.panel.querySelector('.analyze-current-tab-btn');
+        analyzeBtn.addEventListener('click', async () => {
+            if (!this.analyzer || !this.currentSubtitles || !this.currentVideoId) {
+                console.error('Analyzer, subtitles, or video ID not set');
+                return;
+            }
+
+            this.setLoading(true);
+            try {
+                const results = await this.analyzer.analyzeSubtitles(
+                    this.currentSubtitles,
+                    this.currentTab,
+                    this.currentVideoId
+                );
+                
+                if (results) {
+                    // 只更新当前标签页的内容
+                    this.tabContents[this.currentTab] = results;
+                    this.renderResults(results);
+                } else {
+                    throw new Error('Analysis failed');
+                }
+            } catch (error) {
+                console.error('Failed to analyze subtitles:', error);
+                const resultsContainer = this.panel.querySelector('.analysis-results');
+                resultsContainer.innerHTML = `
+                    <div class="error-state">
+                        分析失败，请稍后重试
+                        <button class="retry-btn">重试</button>
+                    </div>
+                `;
+
+                // 添加重试按钮事件监听
+                const retryBtn = resultsContainer.querySelector('.retry-btn');
+                retryBtn.addEventListener('click', () => {
+                    analyzeBtn.click();
+                });
+            } finally {
+                this.setLoading(false);
+            }
+        });
     }
 
     handleFullscreenChange() {
@@ -154,17 +292,58 @@ class AnalysisPanel {
         if (this.panel) {
             this.panel.classList.remove('visible');
             this.isVisible = false;
+            // 重置所有加载状态
+            this.loadingStates = {
+                summary: false,
+                words: false,
+                phrases: false
+            };
         }
     }
 
     setLoading(loading) {
         if (!this.panel) return;
         
-        const loadingIndicator = this.panel.querySelector('.loading-indicator');
         const resultsContainer = this.panel.querySelector('.analysis-results');
         
-        loadingIndicator.style.display = loading ? 'flex' : 'none';
-        resultsContainer.style.display = loading ? 'none' : 'block';
+        // 更新当前标签的加载状态
+        this.loadingStates[this.currentTab] = loading;
+        
+        if (loading) {
+            // 只在当前标签页显示加载状态
+            if (this.currentTab === 'summary') {
+                resultsContainer.innerHTML = `
+                    <div class="summary-card">
+                        <div class="loading-indicator" style="display: flex;">
+                            <div class="spinner"></div>
+                            <span>正在分析字幕...</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultsContainer.innerHTML = `
+                    <div class="analysis-card">
+                        <div class="loading-indicator" style="display: flex;">
+                            <div class="spinner"></div>
+                            <span>正在分析字幕...</span>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            if (this.tabContents[this.currentTab]) {
+                if (this.currentTab === 'summary') {
+                    resultsContainer.innerHTML = this.createSummaryCard(this.tabContents[this.currentTab]);
+                } else {
+                    resultsContainer.innerHTML = this.tabContents[this.currentTab]
+                        .map(item => this.createAnalysisCard(item))
+                        .join('');
+                    this.setupAudioPlayback();
+                }
+            } else {
+                resultsContainer.innerHTML = '<div class="empty-state">点击上方"解析当前内容"按钮开始分析</div>';
+            }
+        }
     }
 
     async renderResults(results) {
@@ -176,6 +355,9 @@ class AnalysisPanel {
         }
 
         const resultsContainer = this.panel.querySelector('.analysis-results');
+        
+        // 保存当前标签的结果
+        this.tabContents[this.currentTab] = results;
         
         if (this.currentTab === 'summary') {
             resultsContainer.innerHTML = this.createSummaryCard(results);
@@ -329,8 +511,42 @@ class AnalysisPanel {
         }
 
         this.currentTab = tab;
-        // 触发重新分析
-        this.triggerAnalysis();
+        const resultsContainer = this.panel.querySelector('.analysis-results');
+
+        // 检查是否正在加载
+        if (this.loadingStates[tab]) {
+            // 显示加载状态
+            if (tab === 'summary') {
+                resultsContainer.innerHTML = `
+                    <div class="summary-card">
+                        <div class="loading-indicator" style="display: flex;">
+                            <div class="spinner"></div>
+                            <span>正在分析字幕...</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultsContainer.innerHTML = `
+                    <div class="analysis-card">
+                        <div class="loading-indicator" style="display: flex;">
+                            <div class="spinner"></div>
+                            <span>正在分析字幕...</span>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (this.tabContents[tab]) {
+            // 显示已有内容
+            if (tab === 'summary') {
+                resultsContainer.innerHTML = this.createSummaryCard(this.tabContents[tab]);
+            } else {
+                resultsContainer.innerHTML = this.tabContents[tab].map(item => this.createAnalysisCard(item)).join('');
+                this.setupAudioPlayback();
+            }
+        } else {
+            // 显示空状态
+            resultsContainer.innerHTML = '<div class="empty-state">点击上方"解析当前内容"按钮开始分析</div>';
+        }
     }
 
     async triggerAnalysis() {
@@ -497,6 +713,26 @@ class AnalysisPanel {
         console.log("ret:", ret);
 
         return ret;
+    }
+
+    // 清空所有标签页内容的方法
+    clearAllTabContents() {
+        this.tabContents = {
+            summary: null,
+            words: null,
+            phrases: null
+        };
+        
+        this.loadingStates = {
+            summary: false,
+            words: false,
+            phrases: false
+        };
+        
+        if (this.panel) {
+            const resultsContainer = this.panel.querySelector('.analysis-results');
+            resultsContainer.innerHTML = '<div class="empty-state">点击上方"解析当前内容"按钮开始分析</div>';
+        }
     }
 }
 

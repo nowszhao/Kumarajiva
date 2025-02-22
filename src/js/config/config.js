@@ -6,10 +6,10 @@ export default {
         url:''
     },
     doubao: {
-        apiToken: '4c90226de33bbfd4f7c7062989959a3a',
+        apiToken: '6ac50f1b-775a-48a1-9ae8-b013ba71da6f',
         maxRetries: 3,
-        model: 'doubao',
-        url: 'http://47.121.117.100:8000/v1/chat/completions'
+        model: 'doubao-1-5-pro-32k-250115',
+        url: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
     },
     qwen: {
         apiToken: 'eeqo4OWmYhFgRh6*gdY_CtreMU*Ent6AHvLFvsFhJ_4P7x7INIiTM8J6jh5GQDYJ0',
@@ -24,10 +24,10 @@ export default {
         url: 'http://47.121.117.100:8002/v1/chat/completions'
     }, 
     kimiv1: {
-        apiToken: 'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1c2VyLWNlbnRlciIsImV4cCI6MTc0NTc5NDIxMiwiaWF0IjoxNzM4MDE4MjEyLCJqdGkiOiJjdWMwcjk2bjNta2JwY21ndGI2ZyIsInR5cCI6InJlZnJlc2giLCJhcHBfaWQiOiJraW1pIiwic3ViIjoiY29mc2piOWtxcTR0dHJnYWhocWciLCJzcGFjZV9pZCI6ImNvZnNqYjlrcXE0dHRyZ2FoaHBnIiwiYWJzdHJhY3RfdXNlcl9pZCI6ImNvZnNqYjlrcXE0dHRyZ2FoaHAwIiwicm9sZXMiOlsiZl9tdmlwIiwidmlkZW9fZ2VuX2FjY2VzcyJdLCJzc2lkIjoiMTczMDMwMzY0NzY2NTEyMzQxMyIsImRldmljZV9pZCI6IjczNTg4MjE4NTkxNDk3NTIzMjkifQ.NbyE8tzvtB5sRWVJmku4HqnSZo2quTUMa4_r_DXoKzkJjT98htpRZ6mJQDoKGclO0sAz6I_v1TdjM961NZos3g',
+        apiToken: 'sk-Z6YApuZ0y89eAMLTaaySq52s9jQNT9BdgqhbLKY8bTp2CtFA',
         maxRetries: 3,
-        model: 'kimi',
-        url: 'http://47.121.117.100:8003/v1/chat/completions'
+        model: 'moonshot-v1-8k',
+        url: 'https://api.moonshot.cn/v1/chat/completions'
     },
     translation: {
         defaultService: 'doubao',
