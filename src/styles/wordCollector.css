@@ -143,8 +143,12 @@
 }
 
 .collected-word {
-    background-color: rgba(52, 168, 83, 0.15);
-    border-radius: 2px;
+    /* background-color: rgba(52, 168, 83, 0.15); */
+    background-color: #149035;
+    color:#fff;
+    padding-left: 3px;
+    padding-right: 3px;
+    border-radius: 5px;
     cursor: pointer;
     position: relative;
     display: inline-block;

@@ -1,4 +1,5 @@
 import VocabularyStorage from './vocabularyStorage';
+import { StorageManager } from './youtubeVideoParser';
 
 class AnalysisPanel {
     constructor() {
@@ -9,6 +10,7 @@ class AnalysisPanel {
         this.currentSubtitles = null; // 添加当前字幕引用
         this.currentVideoId = null; // 添加视频ID属性
         this.collectedWords = new Set(); // 添加收藏单词集合
+        this.storageManager = new StorageManager();
         
         // 在初始化时添加新的样式
         const style = document.createElement('style');
@@ -117,19 +119,49 @@ class AnalysisPanel {
 
         const panel = document.createElement('div');
         panel.className = 'subtitle-analysis-panel';
+        // panel.innerHTML = `
+        //     <div class="analysis-header">
+        //         <h3>AI 字幕解析</h3>
+        //         <button class="close-btn">×</button>
+        //     </div>
+        //     <div class="analysis-tabs">
+        //         <button class="tab-btn active" data-tab="summary">视频总结</button>
+        //         <button class="tab-btn" data-tab="words">视频词汇</button>
+        //         <button class="tab-btn" data-tab="phrases">视频短语</button>
+        //         <button class="tab-btn" data-tab="current">字幕词汇</button>
+        //     </div>
+        //     <div class="analysis-search">
+        //         <input type="text" placeholder="在视频中搜索...">
+        //         <button class="analyze-current-tab-btn">解析当前内容</button>
+        //     </div>
+        //     <div class="analysis-content">
+        //         <div class="loading-indicator" style="display: none;">
+        //             <div class="spinner"></div>
+        //             <span>正在分析字幕...</span>
+        //         </div>
+        //         <div class="analysis-results">
+        //             <div class="empty-state">
+        //                 点击上方"解析当前内容"按钮开始分析
+        //             </div>
+        //         </div>
+        //     </div>
+        // `;
+
+
         panel.innerHTML = `
             <div class="analysis-header">
                 <h3>AI 字幕解析</h3>
                 <button class="close-btn">×</button>
             </div>
             <div class="analysis-tabs">
-                <button class="tab-btn active" data-tab="summary">总结</button>
-                <button class="tab-btn" data-tab="words">词汇</button>
-                <button class="tab-btn" data-tab="phrases">短语</button>
+                <button class="tab-btn active" data-tab="summary">视频总结</button>
+                <button class="tab-btn" data-tab="words">视频词汇</button>
+                <button class="tab-btn" data-tab="current">字幕词汇</button>
             </div>
             <div class="analysis-search">
                 <input type="text" placeholder="在视频中搜索...">
                 <button class="analyze-current-tab-btn">解析当前内容</button>
+
             </div>
             <div class="analysis-content">
                 <div class="loading-indicator" style="display: none;">
@@ -138,7 +170,7 @@ class AnalysisPanel {
                 </div>
                 <div class="analysis-results">
                     <div class="empty-state">
-                        点击上方"解析当前内容"按钮开始分析
+                       点击解析当前内容开始分析
                     </div>
                 </div>
             </div>
@@ -341,7 +373,12 @@ class AnalysisPanel {
                     this.setupAudioPlayback();
                 }
             } else {
-                resultsContainer.innerHTML = '<div class="empty-state">点击上方"解析当前内容"按钮开始分析</div>';
+                resultsContainer.innerHTML = `
+                
+                 <div class="empty-state">
+                    点击解析当前内容开始分析
+                 </div>
+                `
             }
         }
     }
@@ -545,7 +582,11 @@ class AnalysisPanel {
             }
         } else {
             // 显示空状态
-            resultsContainer.innerHTML = '<div class="empty-state">点击上方"解析当前内容"按钮开始分析</div>';
+            resultsContainer.innerHTML = `
+                <div class="empty-state">
+                    点击解析当前内容开始分析
+                 </div>
+            `;
         }
     }
 
@@ -731,7 +772,51 @@ class AnalysisPanel {
         
         if (this.panel) {
             const resultsContainer = this.panel.querySelector('.analysis-results');
-            resultsContainer.innerHTML = '<div class="empty-state">点击上方"解析当前内容"按钮开始分析</div>';
+            resultsContainer.innerHTML = `
+                 <div class="empty-state">
+                    点击解析当前内容开始分析
+                 </div>
+            `;
+        }
+    }
+
+    // 添加新方法用于处理单字幕词汇分析
+    async analyzeSingleSubtitle(subtitle) {
+        if (!subtitle || !subtitle.text) {
+            console.error('Invalid subtitle for analysis');
+            return;
+        }
+
+        const videoId = this.currentVideoId;
+        if (!videoId) {
+            console.error('Video ID not set');
+            return;
+        }
+
+        try {
+            const storageKey = `yt-subtitles-${videoId}`;
+            const cached = await this.storageManager.getFromStorage(storageKey);
+
+            if (cached && cached[subtitle.text]) {
+                const subtitleData = cached[subtitle.text];
+                if (subtitleData.difficultVocabulary) {
+                    // 切换到单字幕词汇标签
+                    const tabBtn = this.panel.querySelector('[data-tab="current"]');
+                    if (tabBtn) {
+                        this.switchTab('current');
+                    }
+                    this.renderResults(subtitleData.difficultVocabulary);
+                    return;
+                }
+            }
+
+            // 如果没有缓存数据，显示提示信息
+            const resultsContainer = this.panel.querySelector('.analysis-results');
+            resultsContainer.innerHTML = '<div class="empty-state">该字幕暂无分析数据，请先进行整体分析</div>';
+        } catch (error) {
+            console.error('Error analyzing single subtitle:', error);
+            const resultsContainer = this.panel.querySelector('.analysis-results');
+            resultsContainer.innerHTML = '<div class="error-state">分析出错，请稍后重试</div>';
         }
     }
 }

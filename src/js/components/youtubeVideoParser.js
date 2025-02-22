@@ -336,42 +336,7 @@ class TranslationProcessor {
             - 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
             - 生成准确流畅的中文翻译(translation字段)
             - 所有数字时间值保持整数格式
-
-            2. 遵守的JSON规范：
-            - 使用双引号("")
-            - 禁止尾随逗号
-            - 确保特殊字符被正确转义
-            - 换行符替换为空（即移除原文中的换行符）
-            - 严格保持字段顺序：startTime > endTime > correctedText > translation
-            3. 输入示例：
-            [
-                {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
-            ]
-            4. 输出示例：
-            \`\`\`
-            [
-                {
-                    "startTime": 120,
-                    "endTime": 1800,
-                    "correctedText": "Hey, welcome back! So this week, the world",
-                    "translation": "嘿，欢迎回来！本周我们将讨论"
-                },
-                ...
-            ]
-            \`\`\`
-            请现在处理以下输入内容：
-            ${JSON.stringify(batch, null, 2)}`;
-
-
-
-        prompt = `
-            你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
-            1. 处理规则：
-            - 保持原始时间戳(startTime/endTime)不变
-            - 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
-            - 生成准确流畅的中文翻译(translation字段)
-            - 所有数字时间值保持整数格式
-            - 分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等，输出请遵循以下要求：
+            - 分析给定字幕中的语言最难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等，有了这些解析，用户将能完整理解字幕内容，输出请遵循以下要求：
                 - 中文翻译：根据字幕语境给出最贴切的含义
                 - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
                 - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
@@ -403,7 +368,7 @@ class TranslationProcessor {
                             "part_of_speech": "phrase",
                             "phonetic": "/ˈwelkəm bæk/",
                             "chinese_meaning":  "欢迎回来",
-                            "chinese_english_sentence": "当他出差回来时，同事们对他说 "Welcome back"。（When he came back from a business trip, his colleagues said"Welcome back"to him.）" //中文句子中必要包含待解析的英文词汇
+                            "chinese_english_sentence": "当他出差回来时，同事们对他说Welcome back。（When he came back from a business trip, his colleagues said 'Welcome back'to him.）" //中文句子中必要包含待解析的英文词汇
                         },
                         ...
                     ]
@@ -612,7 +577,25 @@ class UIManager {
 
         const analyzeButton = controlPanel.querySelector('.analyze-button');
         analyzeButton.addEventListener('click', async () => {
-            console.log("you have clicked the analyze button");
+            const currentIndex = this.getCurrentSubtitleIndex();
+            if (currentIndex === -1) {
+                console.log('No current subtitle found');
+                return;
+            }
+
+            const currentSubtitle = this.currentSubtitles[currentIndex];
+            if (!currentSubtitle) {
+                console.log('Invalid current subtitle');
+                return;
+            }
+
+            // 确保分析面板可见
+            if (!this.analysisPanel.isVisible) {
+                this.analysisPanel.showPanel();
+            }
+
+            // 触发单字幕分析
+            await this.analysisPanel.analyzeSingleSubtitle(currentSubtitle);
         });
         
         const contentContainer = document.createElement('div');
@@ -914,6 +897,21 @@ class UIManager {
             analyzeSwitch.classList.remove('active');
         };
     };
+
+    // 添加新方法用于获取当前字幕的缓存数据
+    async getCurrentSubtitleCache() {
+        const currentIndex = this.getCurrentSubtitleIndex();
+        if (currentIndex === -1) return null;
+
+        const currentSubtitle = this.currentSubtitles[currentIndex];
+        if (!currentSubtitle) return null;
+
+        const videoId = UIManager.getYouTubeVideoId();
+        const storageKey = `yt-subtitles-${videoId}`;
+        const cached = await this.storageManager.getFromStorage(storageKey);
+
+        return cached && cached[currentSubtitle.text];
+    }
 }
 
 // 存储管理器 - 负责数据的存储和读取
@@ -941,4 +939,4 @@ class StorageManager {
     }
 }
 
-export { EventBus,SubtitleManager,TranslationProcessor, UIManager, StorageManager};
+export { EventBus, SubtitleManager, TranslationProcessor, UIManager, StorageManager };

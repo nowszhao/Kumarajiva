@@ -54,6 +54,10 @@ class SubtitleAnalyzer {
             await this.initialize();
         }
 
+        if(type === 'current') {
+            return
+        }
+
         // 首先检查缓存
         const cachedResults = this.getCachedAnalysis(videoId, type);
         if (cachedResults) {
@@ -87,6 +91,9 @@ class SubtitleAnalyzer {
                         break;
                     case 'phrases':
                         prompt = this.buildPhrasesAnalysisPrompt(fullText);
+                        break;
+                    case 'current':
+                        prompt = this.buildSingleSubtitlePrompt(fullText);
                         break;
                     default:
                         prompt = this.buildWordsAnalysisPrompt(fullText);
@@ -122,6 +129,10 @@ class SubtitleAnalyzer {
 
                 // 保存结果到缓存
                 this.saveAnalysisToCache(videoId, type, parsedResult);
+
+                if (type === 'current') {
+                    return parsedResult.difficultVocabulary || [];
+                }
 
                 return parsedResult;
 
@@ -218,38 +229,39 @@ class SubtitleAnalyzer {
     }
 
     buildWordsAnalysisPrompt(subtitleText) {
-        return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语字幕文件，要求如下：
-1、您的任务是使用中文分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的单词。
-2、输出请遵循以下要求：
- - 类型：包括单词、短语/词块、俚语、缩写（Words, Phrases, Slang, Abbreviations）
- - 难度：使用CEFR评级（C2, C1, B2, B1, A2, A1），从高到低排序
- - 词性：使用n., v., adj., adv., phrase等标准缩写
- - 音标：提供美式音标
- - 中文解释：根据字幕语境给出最贴切的含义
- - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
+        return `你现在一位翻译专家，现在正帮我理解一个英语字幕文件，要求如下：
+            1、您的任务是翻译和分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等。
+            2、输出请遵循以下要求：
+                - 类型：包括单词、短语/词块、俚语、缩写（Words, Phrases, Slang, Abbreviations）
+                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
+                - 难度：使用CEFR评级（C2, C1, B2, B1, A2, A1），从高到低排序
+                - 词性：使用n., v., adj., adv., phrase等标准缩写
+                - 音标：提供美式音标
+                - 中文解释：根据字幕语境给出最贴切的含义
+                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
+            3、输出格式为json数组，示例如下：
+            [
+                {
+                    "type": "Words",
+                    "vocabulary": "ubiquitous",
+                    "difficulty": "C1",
+                    "part_of_speech": "adj.",
+                    "phonetic": "/juːˈbɪkwɪtəs/",
+                    "chinese_meaning": "无处不在的",
+                    "chinese_english_sentence": "在当今的数字时代，智能手机已经ubiquitous，使人们更容易保持联系。(In today's digital age, smartphones have become ubiquitous, significantly enhancing people's ability to maintain social connections.)"
+                }
+            ]
 
-3、输出格式为json数组，示例如下：
-[
-    {
-        "type": "Words",
-        "vocabulary": "ubiquitous",
-        "difficulty": "C1",
-        "part_of_speech": "adj.",
-        "phonetic": "/juːˈbɪkwɪtəs/",
-        "chinese_meaning": "无处不在的",
-        "chinese_english_sentence": "在当今的数字时代，智能手机已经ubiquitous，使人们更容易保持联系。(In today's digital age, smartphones have become ubiquitous, significantly enhancing people's ability to maintain social connections.)"
-    }
-]
+            4、其他注意事项：
+            - 优先选择在语境中确实影响理解的表达，而不仅仅是生僻词
+            - 如遇同等难度的表达，优先选择在日常生活或学习中更有用的
 
-4、其他注意事项：
-- 优先选择在语境中确实影响理解的表达，而不仅仅是生僻词
-- 如遇同等难度的表达，优先选择在日常生活或学习中更有用的
-
-字幕内容如下：
-${subtitleText}`;
+            字幕内容如下：
+            ${subtitleText}`;
     }
 
     buildPhrasesAnalysisPrompt(subtitleText) {
+        // 废弃
         return `你现在一位专业英文字幕处理专家，现在正帮我理解一个英语字幕文件，要求如下：
 1、您的任务是分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的短语、俚语、缩写、简写以及网络用语等。
 2、输出请遵循以下要求：
@@ -322,6 +334,77 @@ ${subtitleText}`;
 
 请分析以下字幕内容：
 ${subtitleText}`;
+    }
+
+    // 添加新方法用于获取单个字幕的分析结果
+    async analyzeSingleSubtitle(subtitle) {
+        const text = subtitle.text;
+        if (!text) return null;
+
+        // 构建单字幕分析的提示词
+        const prompt = this.buildSingleSubtitlePrompt(text);
+        
+        try {
+            const result = await this.translator.translate(prompt);
+            const parsedResult = JSON.parse(result);
+            return parsedResult.difficultVocabulary || [];
+        } catch (error) {
+            console.error('Failed to analyze single subtitle:', error);
+            return null;
+        }
+    }
+
+    // 添加新方法用于构建单字幕分析的提示词  --废弃
+    buildSingleSubtitlePrompt(text) {
+        return `
+        你是一个专业的多语言字幕处理助手，请严格按照以下步骤处理输入内容：
+            1. 处理规则：
+            - 保持原始时间戳(startTime/endTime)不变
+            - 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
+            - 生成准确流畅的中文翻译(translation字段)
+            - 所有数字时间值保持整数格式
+            - 分析给定字幕中的语言最难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等，有了这些解析，用户将能完整理解字幕内容，输出请遵循以下要求：
+                - 中文翻译：根据字幕语境给出最贴切的含义
+                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
+                - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
+                - 词性：使用n., v., adj., adv., phrase等标准缩写
+                - 音标：提供美式音标
+                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
+            2. 遵守的JSON规范：
+            - 使用双引号("")
+            - 禁止尾随逗号
+            - 确保特殊字符被正确转义
+            - 换行符替换为空（即移除原文中的换行符）
+            - 严格保持字段顺序：startTime > endTime > correctedText > translation
+            3. 输入示例：
+            [
+                {"startTime": 120, "endTime": 1800, "text": "hey welcome back so this week the world"},
+            ]
+            4. 输出示例：
+            \`\`\`
+            [
+                {
+                    "startTime": 120,
+                    "endTime": 1800,
+                    "correctedText": "Hey, welcome back! So this week, the world",
+                    "translation": "嘿，欢迎回来！本周我们将讨论",
+                    "difficultVocabulary": [
+                        {
+                            "vocabulary": "welcome back",
+                            "type": "Phrases",
+                            "part_of_speech": "phrase",
+                            "phonetic": "/ˈwelkəm bæk/",
+                            "chinese_meaning":  "欢迎回来",
+                            "chinese_english_sentence": "当他出差回来时，同事们对他说Welcome back。（When he came back from a business trip, his colleagues said 'Welcome back'to him.）" //中文句子中必要包含待解析的英文词汇
+                        },
+                        ...
+                    ]
+                },
+                ...
+            ]
+            \`\`\`
+            请现在处理以下输入内容：
+            ${text}`;
     }
 }
 

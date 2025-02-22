@@ -712,10 +712,10 @@
 
 @media (max-width: 1000px) {
     .subtitle-analysis-panel {
-        max-height: 400px;
+        max-height: 800px;
     }
 
     .analysis-content {
-        max-height: calc(400px - 120px);
+        max-height: calc(800px - 120px);
     }
 }
