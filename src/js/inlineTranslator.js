@@ -472,16 +472,25 @@ class UIManager {
         const toolbar = document.createElement('div');
         toolbar.className = 'hover-toolbar';
         
-         // 翻译按钮 (新增)
-         const translateButtonHov = document.createElement('button');
-         translateButtonHov.className = 'hover-toolbar-button';
-         translateButtonHov.title = '翻译';
-         translateButtonHov.innerHTML = `
-             <svg viewBox="0 0 24 24">
-                 <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04z"/>
-             </svg>
-         `;
+        // 翻译按钮
+        const translateButtonHov = document.createElement('button');
+        translateButtonHov.className = 'hover-toolbar-button';
+        translateButtonHov.title = '翻译';
+        translateButtonHov.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04z"/>
+            </svg>
+        `;
 
+        // 复制提示词按钮 (新增)
+        const copyPromptButton = document.createElement('button');
+        copyPromptButton.className = 'hover-toolbar-button';
+        copyPromptButton.title = '复制解析提示词';
+        copyPromptButton.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+            </svg>
+        `;
         
         // 深度解析按钮
         const analyzeButton = document.createElement('button');
@@ -503,22 +512,24 @@ class UIManager {
             </svg>
         `;
 
+
         toolbar.appendChild(translateButtonHov);
+        toolbar.appendChild(copyPromptButton);  // 添加新按钮
         toolbar.appendChild(analyzeButton);
         toolbar.appendChild(copyButton);
         document.body.appendChild(toolbar);
         return toolbar;
     }
 
-    async handleCopy(text) {
+    async handleCopy(text,tips="复制") {
         try {
             // 将文本中的连续空白字符替换为单个空格，并去除首尾空白
             const normalizedText = text.replace(/\s+/g, ' ').trim();
             await navigator.clipboard.writeText(normalizedText);
-            this.showToast('复制成功');
+            this.showToast(`${tips}成功`);
         } catch (err) {
-            console.error('复制失败:', err);
-            this.showToast('复制失败');
+            console.error(`${tips}失败:`, err);
+            this.showToast(`${tips}失败`);
         }
     }
 
@@ -1381,7 +1392,7 @@ class Analyzer {
             </ul>
             5.注意事项：
             1）确保每个项目的解释准确且简明扼要。
-            2）如果某个部分没有发现任何难点，请在相应位置注明“无”。
+            2）如果某个部分没有发现任何难点，请在相应位置注明"无"。
 
             内容如下：
             ${element.textContent}`;
@@ -1583,6 +1594,10 @@ class InlineTranslator {
                     const translateButtonHov = this.uiManager.hoverToolbar.querySelector(
                         '.hover-toolbar-button[title="翻译"]'
                     );
+                    const copyPromptButton = this.uiManager.hoverToolbar.querySelector(
+                        '.hover-toolbar-button[title="复制解析提示词"]'
+                    );
+
                     if (copyButton) {
                         copyButton.onclick = () => this.uiManager.handleCopy(element.textContent);
                     }
@@ -1591,6 +1606,41 @@ class InlineTranslator {
                     }
                     if (translateButtonHov) {
                         translateButtonHov.onclick = () => this.handleTranslationOnElement(element);
+                    }
+                    if (copyPromptButton) {
+                        copyPromptButton.onclick = () => {
+                            // 为复制提示词按钮添加点击事件
+                            const translationPrompt = `
+                            你现在是一位专业的翻译专家，现在正帮我翻译一个英文句子，要求如下：
+                                1、您的任务是翻译和分析给定文本中的语言难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等。
+                                2、输出请遵循以下要求：
+                                - 中文翻译：根据字幕语境给出最贴切的含义
+                                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
+                                - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
+                                - 词性：使用n., v., adj., adv., phrase等标准缩写
+                                - 音标：提供美式音标
+                                - 中英混合句子：使用词汇造一个句子，除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法。
+                                3、输出示例如下,严格按照json格式输出：
+                                {
+                                "original": "xxxxx",
+                                "translation": "xxxx",
+                                "difficultVocabulary": [
+                                        {
+                                            "vocabulary": "benchmark",
+                                            "type": "Words",
+                                            "part_of_speech": "n.",
+                                            "phonetic": "/ˈbentʃmɑːrk/",
+                                            "chinese_meaning": "基准；参照标准",
+                                            "chinese_english_sentence": "DeepSeek最近发布的推理模型在常见benchmark中击败了许多顶级人工智能公司。（DeepSeek's newly launched reasoning model has surpassed leading AI companies on standard benchmarks.）"   //中文句子中必要包含待解析的英文词汇
+                                        },
+                                        ...
+                                    ]
+                                }    
+                                处理内容如下：
+                                ${element.textContent || ''}`;
+
+                                this.uiManager.handleCopy(translationPrompt, '复制解析提示词');
+                            };
                     }
                 }
             }
