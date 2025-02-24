@@ -8,7 +8,7 @@ export default {
     doubao: {
         apiToken: '6ac50f1b-775a-48a1-9ae8-b013ba71da6f',
         maxRetries: 3,
-        model: 'doubao-1-5-pro-32k-250115',
+        model: 'doubao-1-5-vision-pro-32k-250115',
         url: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
     },
     qwen: {

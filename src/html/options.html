@@ -44,6 +44,18 @@
                             <label for="apiToken">API Token</label>
                             <input type="text" id="apiToken" required>
                         </div>
+                        <div class="form-group">
+                            <label for="model">模型</label>
+                            <input type="text" id="model" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxRetries">最大重试次数</label>
+                            <input type="number" id="maxRetries" min="1" max="30" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceUrl">服务地址</label>
+                            <input type="text" id="serviceUrl" placeholder="https://api.example.com/v1/chat/completions">
+                        </div>
                     </div>
 
                     <!-- UI 设置 -->
@@ -135,6 +147,12 @@
                     <div class="action-group">
                         <button id="deleteSelected" class="btn btn-danger" disabled>
                             删除选中
+                        </button>
+                        <button id="addManually" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                            </svg>
+                            手动添加
                         </button>
                         <button id="syncVocabulary" class="btn btn-primary">
                             <svg class="sync-icon" viewBox="0 0 24 24" width="16" height="16">

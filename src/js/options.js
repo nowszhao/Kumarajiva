@@ -1,5 +1,6 @@
 import config from './config/config';
 import { VocabularyManager } from './components/vocabularyManager';
+import { ManualAddDrawer } from './components/manualAddDrawer';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 初始化导航切换功能
@@ -23,6 +24,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 添加翻译服务切换事件监听
     document.getElementById('translationService').addEventListener('change', handleServiceChange);
+
+    // 初始化手动添加抽屉
+    const manualAddDrawer = new ManualAddDrawer();
+    
+    // 添加按钮点击事件
+    document.getElementById('addManually').addEventListener('click', () => {
+        manualAddDrawer.show();
+    });
 });
 
 // 导航切换功能
@@ -48,7 +57,10 @@ async function loadSettings() {
         // 从 storage 加载所有设置
         const settings = await chrome.storage.sync.get([
             'translationService',
-            'serviceTokens', // 改用 serviceTokens 存储所有服务的 token
+            'serviceTokens',
+            'serviceModels',
+            'serviceMaxRetries',
+            'serviceUrls',
             'fontSize',
             'subtitlePosition',
             'batchSize',
@@ -63,7 +75,10 @@ async function loadSettings() {
         // 设置默认值
         const defaultSettings = {
             translationService: config.translation.defaultService,
-            serviceTokens: {}, // 初始化空对象
+            serviceTokens: {},
+            serviceModels: {},
+            serviceMaxRetries: {},
+            serviceUrls: {},
             fontSize: 24,
             subtitlePosition: 'bottom',
             batchSize: config.translation.batchSize,
@@ -81,7 +96,7 @@ async function loadSettings() {
         // 更新表单值
         Object.entries(mergedSettings).forEach(([key, value]) => {
             const element = document.getElementById(key);
-            if (element && key !== 'serviceTokens') {
+            if (element && key !== 'serviceTokens' && key !== 'serviceModels' && key !== 'serviceMaxRetries' && key !== 'serviceUrls') {
                 if (element.type === 'checkbox') {
                     element.checked = value;
                 } else {
@@ -90,15 +105,19 @@ async function loadSettings() {
             }
         });
 
-        // 如果有选中的翻译服务，加载对应的 API Token
+        // 如果有选中的翻译服务，加载对应的配置
         if (mergedSettings.translationService) {
             const service = mergedSettings.translationService;
             const storedTokens = mergedSettings.serviceTokens || {};
-            const storedToken = storedTokens[service];
-            const defaultToken = config[service]?.apiToken;
+            const storedModels = mergedSettings.serviceModels || {};
+            const storedMaxRetries = mergedSettings.serviceMaxRetries || {};
+            const storedUrls = mergedSettings.serviceUrls || {};
             
-            // 优先使用存储的 token，如果没有则使用默认值
-            document.getElementById('apiToken').value = storedToken || defaultToken || '';
+            // 设置当前选中服务的配置
+            document.getElementById('apiToken').value = storedTokens[service] || config[service]?.apiToken || '';
+            document.getElementById('model').value = storedModels[service] || config[service]?.model || '';
+            document.getElementById('maxRetries').value = storedMaxRetries[service] || config[service]?.maxRetries || 3;
+            document.getElementById('serviceUrl').value = storedUrls[service] || config[service]?.url || '';
         }
 
         // 更新交互设置
@@ -136,26 +155,28 @@ async function handleSettingsSubmit(e) {
     try {
         const service = document.getElementById('translationService').value;
         const token = document.getElementById('apiToken').value;
-        const fontSize = parseInt(document.getElementById('fontSize').value);
-        const subtitlePosition = document.getElementById('subtitlePosition').value;
-        const triggerKey = document.getElementById('triggerKey').value;
-        const enableTriggerKey = document.getElementById('enableTriggerKey').checked;
-        const autoShowWordDetails = document.getElementById('autoShowWordDetails').checked;
+        const model = document.getElementById('model').value;
+        const maxRetries = parseInt(document.getElementById('maxRetries').value);
+        const serviceUrl = document.getElementById('serviceUrl').value;
 
         // 验证设置
-        if (!token) {
-            showStatus('请输入 API Token', 'error');
-            return;
-        }
-
-        if (fontSize < 12 || fontSize > 32) {
-            showStatus('字体大小必须在 12-32 之间', 'error');
+        if (!token || !model || !serviceUrl) {
+            showStatus('请填写所有必填字段', 'error');
             return;
         }
 
         // 获取当前存储的所有配置
-        const { serviceTokens = {}, batchSize, batchInterval, maxSubtitles, maxRetries } = 
-            await chrome.storage.sync.get(['serviceTokens', 'batchSize', 'batchInterval', 'maxSubtitles', 'maxRetries']);
+        const { 
+            serviceTokens = {}, 
+            serviceModels = {}, 
+            serviceMaxRetries = {}, 
+            serviceUrls = {} 
+        } = await chrome.storage.sync.get([
+            'serviceTokens',
+            'serviceModels',
+            'serviceMaxRetries',
+            'serviceUrls'
+        ]);
         
         // 构建要保存的数据
         const formData = {
@@ -164,53 +185,78 @@ async function handleSettingsSubmit(e) {
                 ...serviceTokens,
                 [service]: token
             },
-            fontSize,
-            subtitlePosition,
-            // 保持其他配置项不变
-            batchSize: batchSize || config.translation.batchSize,
-            batchInterval: batchInterval || config.translation.batchInterval,
-            maxSubtitles: maxSubtitles || config.translation.maxSubtitles,
-            maxRetries: maxRetries || config.translation.maxRetries,
-            triggerKey,
-            enableTriggerKey,
-            autoShowWordDetails
+            serviceModels: {
+                ...serviceModels,
+                [service]: model
+            },
+            serviceMaxRetries: {
+                ...serviceMaxRetries,
+                [service]: maxRetries
+            },
+            serviceUrls: {
+                ...serviceUrls,
+                [service]: serviceUrl
+            }
         };
+
+        // 添加其他设置前先检查元素是否存在
+        const fontSize = document.getElementById('fontSize');
+        const subtitlePosition = document.getElementById('subtitlePosition');
+        const batchSize = document.getElementById('batchSize');
+        const batchInterval = document.getElementById('batchInterval');
+        const maxSubtitles = document.getElementById('maxSubtitles');
+        const triggerKey = document.getElementById('triggerKey');
+        const enableTriggerKey = document.getElementById('enableTriggerKey');
+        const autoShowWordDetails = document.getElementById('autoShowWordDetails');
+
+        // 只有在元素存在时才添加到 formData
+        if (fontSize) formData.fontSize = parseInt(fontSize.value);
+        if (subtitlePosition) formData.subtitlePosition = subtitlePosition.value;
+        if (batchSize) formData.batchSize = parseInt(batchSize.value);
+        if (batchInterval) formData.batchInterval = parseInt(batchInterval.value);
+        if (maxSubtitles) formData.maxSubtitles = parseInt(maxSubtitles.value);
+        if (maxRetries) formData.maxRetries = maxRetries;
+        if (triggerKey) formData.triggerKey = triggerKey.value;
+        if (enableTriggerKey) formData.enableTriggerKey = enableTriggerKey.checked;
+        if (autoShowWordDetails) formData.autoShowWordDetails = autoShowWordDetails.checked;
 
         // 保存到 storage
         await chrome.storage.sync.set(formData);
         
         // 更新运行时的 config 对象
-        Object.assign(config.translation, {
-            defaultService: service,
-            batchSize: formData.batchSize,
-            batchInterval: formData.batchInterval,
-            maxSubtitles: formData.maxSubtitles,
-            maxRetries: formData.maxRetries
-        });
-        
-        // 更新服务配置
         if (!config[service]) {
             config[service] = {};
         }
         config[service].apiToken = token;
+        config[service].model = model;
+        config[service].maxRetries = maxRetries;
+        config[service].url = serviceUrl;
 
         // 更新交互设置
-        Object.assign(config.translation.interaction, {
-            triggerKey,
-            enableTriggerKey,
-            autoShowWordDetails
-        });
+        if (triggerKey && enableTriggerKey && autoShowWordDetails) {
+            Object.assign(config.translation.interaction, {
+                triggerKey: formData.triggerKey,
+                enableTriggerKey: formData.enableTriggerKey,
+                autoShowWordDetails: formData.autoShowWordDetails
+            });
+        }
 
         // 保存同步设置
-        const syncSettings = {
-            syncServerUrl: document.getElementById('syncServerUrl').value,
-            enableAutoSync: document.getElementById('enableAutoSync').checked,
-            syncInterval: parseInt(document.getElementById('syncInterval').value, 10)
-        };
+        const syncServerUrl = document.getElementById('syncServerUrl');
+        const enableAutoSync = document.getElementById('enableAutoSync');
+        const syncInterval = document.getElementById('syncInterval');
 
-        // 更新同步设置
-        const vocabularyManager = new VocabularyManager();
-        await vocabularyManager.sync.updateSettings(syncSettings);
+        if (syncServerUrl && enableAutoSync && syncInterval) {
+            const syncSettings = {
+                syncServerUrl: syncServerUrl.value,
+                enableAutoSync: enableAutoSync.checked,
+                syncInterval: parseInt(syncInterval.value, 10)
+            };
+
+            // 更新同步设置
+            const vocabularyManager = new VocabularyManager();
+            await vocabularyManager.sync.updateSettings(syncSettings);
+        }
 
         showStatus('设置已保存', 'success');
     } catch (error) {
@@ -290,6 +336,9 @@ async function handleResetDefaults() {
                 qwen: config.qwen.apiToken,
                 deepseek: config.deepseek.apiToken
             },
+            serviceModels: {},
+            serviceMaxRetries: {},
+            serviceUrls: {},
             // 翻译相关配置
             batchSize: config.translation.batchSize,
             batchInterval: config.translation.batchInterval,
@@ -377,31 +426,33 @@ function showStatus(message, type) {
 // 添加服务切换处理函数
 async function handleServiceChange(e) {
     const selectedService = e.target.value;
-    const apiTokenInput = document.getElementById('apiToken');
     
     try {
-        // 获取所有服务的 tokens
-        const { serviceTokens = {} } = await chrome.storage.sync.get(['serviceTokens']);
+        // 获取所有服务的配置
+        const { 
+            serviceTokens = {}, 
+            serviceModels = {}, 
+            serviceMaxRetries = {}, 
+            serviceUrls = {} 
+        } = await chrome.storage.sync.get([
+            'serviceTokens',
+            'serviceModels',
+            'serviceMaxRetries',
+            'serviceUrls'
+        ]);
         
-        // 获取选中服务的 token
-        const storedToken = serviceTokens[selectedService];
-        if (storedToken) {
-            apiTokenInput.value = storedToken;
-        } else {
-            // 如果 storage 中没有，则使用 config.js 中的默认值
-            const defaultToken = config[selectedService]?.apiToken;
-            if (defaultToken) {
-                apiTokenInput.value = defaultToken;
-            } else {
-                apiTokenInput.value = ''; // 如果没有默认值则清空
-            }
-        }
+        // 更新表单字段
+        document.getElementById('apiToken').value = serviceTokens[selectedService] || config[selectedService]?.apiToken || '';
+        document.getElementById('model').value = serviceModels[selectedService] || config[selectedService]?.model || '';
+        document.getElementById('maxRetries').value = serviceMaxRetries[selectedService] || config[selectedService]?.maxRetries || 3;
+        document.getElementById('serviceUrl').value = serviceUrls[selectedService] || config[selectedService]?.url || '';
     } catch (error) {
-        console.error('Error loading API token:', error);
+        console.error('Error loading service configuration:', error);
         // 发生错误时使用 config.js 中的默认值
-        const defaultToken = config[selectedService]?.apiToken;
-        if (defaultToken) {
-            apiTokenInput.value = defaultToken;
-        }
+        const defaultConfig = config[selectedService] || {};
+        document.getElementById('apiToken').value = defaultConfig.apiToken || '';
+        document.getElementById('model').value = defaultConfig.model || '';
+        document.getElementById('maxRetries').value = defaultConfig.maxRetries || 3;
+        document.getElementById('serviceUrl').value = defaultConfig.url || '';
     }
 } 
