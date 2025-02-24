@@ -37,7 +37,8 @@
         "matches": ["<all_urls>"],
         "css": [
             "styles/inlineTranslator.css",
-            "styles/wordCollector.css"
+            "styles/wordCollector.css",
+            "styles/manualAddDrawer.css"
         ],
         "js": ["js/inlineTranslator.js"],
         "run_at": "document_end"

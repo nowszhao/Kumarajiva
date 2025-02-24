@@ -12,9 +12,10 @@ export class ManualAddDrawer {
     createDrawer() {
         this.drawer = document.createElement('div');
         this.drawer.className = 'drawer';
+        
         this.drawer.innerHTML = `
             <div class="drawer-header">
-                <h2>手动添加生词</h2>
+                <h2>添加生词</h2>
                 <button class="drawer-close">
                     <svg viewBox="0 0 24 24" width="24" height="24">
                         <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
@@ -22,13 +23,11 @@ export class ManualAddDrawer {
                 </button>
             </div>
             <div class="drawer-content">
-                <div class="step-container active" data-step="1">
-                    <h3>第一步：填写生词JSON数据</h3>
-                    <textarea class="json-input" placeholder="请输入JSON格式的生词数据..."></textarea>
+                <div class="input-section">
+                    <textarea class="json-input" placeholder="在此粘贴内容..."></textarea>
                 </div>
-                <div class="step-container" data-step="2">
-                    <h3>第二步：确认生词信息</h3>
-                    <div class="preview-section">
+                <div class="preview-section">
+                    <div class="text-preview">
                         <h3>原文</h3>
                         <div class="preview-item">
                             <div class="preview-item-content original-text"></div>
@@ -37,14 +36,10 @@ export class ManualAddDrawer {
                         <div class="preview-item">
                             <div class="preview-item-content translation-text"></div>
                         </div>
-                        <h3>生词列表</h3>
-                        <div class="vocabulary-preview"></div>
                     </div>
+                    <h3>生词列表</h3>
+                    <div class="vocabulary-preview"></div>
                 </div>
-            </div>
-            <div class="drawer-footer">
-                <button class="btn btn-secondary" id="resetBtn">重置</button>
-                <button class="btn" id="nextBtn">下一步</button>
             </div>
         `;
 
@@ -53,63 +48,70 @@ export class ManualAddDrawer {
     }
 
     setupEventListeners() {
-        // 关闭按钮
         this.drawer.querySelector('.drawer-close').addEventListener('click', () => {
             this.hide();
         });
 
-        // 重置按钮
-        this.drawer.querySelector('#resetBtn').addEventListener('click', () => {
-            this.reset();
+        const jsonInput = this.drawer.querySelector('.json-input');
+        
+        // 监听输入框的粘贴和输入事件
+        jsonInput.addEventListener('input', () => {
+            this.validateAndPreview();
         });
 
-        // 下一步按钮
-        this.drawer.querySelector('#nextBtn').addEventListener('click', () => {
-            if (this.currentStep === 1) {
-                this.validateAndPreview();
-            } else {
-                this.saveVocabulary();
+        // 监听 Ctrl+V / Cmd+V 快捷键
+        jsonInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                setTimeout(() => {
+                    this.validateAndPreview();
+                }, 100);
             }
         });
     }
 
     show() {
         this.drawer.classList.add('visible');
+        this.drawer.style.right = '0';
     }
 
     hide() {
-        this.drawer.classList.remove('visible');
-        setTimeout(() => this.reset(), 300);
+        this.drawer.style.right = '-500px';
+        setTimeout(() => {
+            this.drawer.classList.remove('visible');
+        }, 300);
     }
 
     reset() {
-        this.currentStep = 1;
         this.jsonData = null;
-        this.drawer.querySelector('.json-input').value = '';
-        this.updateStepDisplay();
-        const nextBtn = this.drawer.querySelector('#nextBtn');
-        nextBtn.textContent = '下一步';
-    }
-
-    updateStepDisplay() {
-        const containers = this.drawer.querySelectorAll('.step-container');
-        containers.forEach(container => {
-            container.classList.remove('active');
-            if (container.dataset.step == this.currentStep) {
-                container.classList.add('active');
-            }
-        });
+        // 不清空输入框，让用户可以修改内容
+        // this.drawer.querySelector('.json-input').value = '';
+        this.drawer.querySelector('.vocabulary-preview').innerHTML = '';
+        this.drawer.querySelector('.original-text').textContent = '';
+        this.drawer.querySelector('.translation-text').textContent = '';
+        // 隐藏预览区域
+        const previewSection = this.drawer.querySelector('.preview-section');
+        previewSection.style.display = 'none';
     }
 
     async validateAndPreview() {
         try {
-            const jsonInput = this.drawer.querySelector('.json-input').value;
+            const jsonInput = this.drawer.querySelector('.json-input').value.trim();
+            
+            // 如果输入为空，重置显示
+            if (!jsonInput) {
+                this.reset();
+                return;
+            }
+
             this.jsonData = JSON.parse(jsonInput);
 
-            // 验证必要字段
             if (!this.jsonData.original || !this.jsonData.translation || !Array.isArray(this.jsonData.difficultVocabulary)) {
-                throw new Error('JSON格式不正确，请检查必要字段');
+                throw new Error('JSON格式不正确，请检查内容');
             }
+
+            // 显示预览区域
+            const previewSection = this.drawer.querySelector('.preview-section');
+            previewSection.style.display = 'block';
 
             // 更新预览内容
             this.drawer.querySelector('.original-text').textContent = this.jsonData.original;
@@ -179,26 +181,27 @@ export class ManualAddDrawer {
                         await vocabularyManager.initialize();
                     } catch (error) {
                         console.error('Failed to toggle word collection:', error);
-                        alert('操作失败：' + error.message);
                     }
                 });
             });
 
-            // 进入第二步
-            this.currentStep = 2;
-            this.updateStepDisplay();
-            const nextBtn = this.drawer.querySelector('#nextBtn');
-            nextBtn.textContent = '完成';
+            // 不自动清空输入框，让用户可以修改内容
+            // this.drawer.querySelector('.json-input').value = '';
 
         } catch (error) {
-            alert('验证失败：' + error.message);
+            console.error('Parse error:', error);
+            this.reset();
         }
     }
 
     async saveVocabulary() {
         this.hide();
         // 刷新生词列表
-        const vocabularyManager = new VocabularyManager();
-        await vocabularyManager.initialize();
+        try {
+            const vocabularyManager = new VocabularyManager();
+            await vocabularyManager.initialize();
+        } catch (error) {
+            console.error('Failed to initialize vocabulary manager:', error);
+        }
     }
 } 

@@ -5,6 +5,7 @@ import config from './config/config';
 import WordCollector from './components/wordCollector';
 import VocabularyStorage from './components/vocabularyStorage';
 import { extractJsonFromString } from './utils';
+import { ManualAddDrawer } from './components/manualAddDrawer';
 
 /**
  * 工具函数类
@@ -28,7 +29,7 @@ class Utils {
             return false;
         }
         // 匹配至少三个由有效分隔符分隔的英语单词
-        const englishPattern = /[a-zA-Z]+(?:['’-][a-zA-Z]+)*(?:[\s,.;!?()'":]+[a-zA-Z]+(?:['’-][a-zA-Z]+)*){2,}/;
+        const englishPattern = /[a-zA-Z]+(?:[''-][a-zA-Z]+)*(?:[\s,.;!?()'":]+[a-zA-Z]+(?:[''-][a-zA-Z]+)*){2,}/;
         return englishPattern.test(text);
     }
 
@@ -119,6 +120,7 @@ class UIManager {
     constructor() {
         this.selectionToolbar = null;
         this.hoverToolbar = null;
+        this.manualAddDrawer = null; // 添加 manualAddDrawer 属性
     }
 
     createLoadingIndicator(text="正在翻译中...") {
@@ -421,9 +423,35 @@ class UIManager {
             }
         });
 
+        // 添加手动添加按钮
+        const addManuallyButton = document.createElement('button');
+        addManuallyButton.className = 'toolbar-button add-manually-button';
+        addManuallyButton.title = '手动添加生词';
+        addManuallyButton.innerHTML = `
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+        `;
+
+        // 添加点击事件
+        addManuallyButton.addEventListener('click', () => {
+            console.log('[ManualAdd] Button clicked');
+            try {
+                if (!this.manualAddDrawer) {
+                    console.log('[ManualAdd] Creating new drawer');
+                    this.manualAddDrawer = new ManualAddDrawer();
+                }
+                console.log('[ManualAdd] Showing drawer');
+                this.manualAddDrawer.show();
+            } catch (error) {
+                console.error('[ManualAdd] Error:', error);
+            }
+        });
+
         toolbar.appendChild(translateButton);
         toolbar.appendChild(toggleOriginalButton);
         toolbar.appendChild(analyzeButton);
+        toolbar.appendChild(addManuallyButton); // 添加到工具栏
         document.body.appendChild(toolbar);
         return { toolbar, progress };
     }
@@ -1440,7 +1468,6 @@ class InlineTranslator {
         this.translationQueueManager = null;
         this.analyzer = new Analyzer(this.uiManager);
         this.currentTriggerKey = null;
-        // 存储事件处理函数的引用
         this.boundHandlers = {
             mousemove: null,
             mouseout: null,
@@ -1903,6 +1930,13 @@ class InlineTranslator {
         this.hoveredElement = null;
         this.currentHoverElement = null;
         this.isTranslating = false;
+        
+        // 修改清理逻辑
+        if (this.uiManager.manualAddDrawer) {
+            this.uiManager.manualAddDrawer.hide();
+            this.uiManager.manualAddDrawer = null;
+        }
+        
         console.log('[Translator] Cleanup completed');
     }
 }
