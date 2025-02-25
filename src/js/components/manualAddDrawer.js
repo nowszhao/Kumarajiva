@@ -24,21 +24,25 @@ export class ManualAddDrawer {
             </div>
             <div class="drawer-content">
                 <div class="input-section">
-                    <textarea class="json-input" placeholder="在此粘贴内容..."></textarea>
+                    <textarea class="json-input" placeholder="在此粘贴JSON内容..."></textarea>
                 </div>
                 <div class="preview-section">
-                    <div class="text-preview">
-                        <h3>原文</h3>
-                        <div class="preview-item">
-                            <div class="preview-item-content original-text"></div>
+                    <div class="text-preview-fixed">
+                        <div class="text-preview-header">
+                            <h3>原文 & 翻译</h3>
                         </div>
-                        <h3>翻译</h3>
-                        <div class="preview-item">
-                            <div class="preview-item-content translation-text"></div>
+                        <div class="text-preview-content">
+                            <div class="original-text"></div>
+                            <div class="divider"></div>
+                            <div class="translation-text"></div>
                         </div>
                     </div>
-                    <h3>生词列表</h3>
-                    <div class="vocabulary-preview"></div>
+                    <div class="vocabulary-section">
+                        <h3>生词列表</h3>
+                        <div class="vocabulary-container">
+                            <div class="vocabulary-preview"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -57,6 +61,15 @@ export class ManualAddDrawer {
         // 监听输入框的粘贴和输入事件
         jsonInput.addEventListener('input', () => {
             this.validateAndPreview();
+        });
+
+        // 添加聚焦和失焦事件
+        jsonInput.addEventListener('focus', () => {
+            this.drawer.classList.add('input-focused');
+        });
+
+        jsonInput.addEventListener('blur', () => {
+            this.drawer.classList.remove('input-focused');
         });
 
         // 监听 Ctrl+V / Cmd+V 快捷键
@@ -111,7 +124,7 @@ export class ManualAddDrawer {
 
             // 显示预览区域
             const previewSection = this.drawer.querySelector('.preview-section');
-            previewSection.style.display = 'block';
+            previewSection.style.display = 'flex'; // 使用flex布局
 
             // 更新预览内容
             this.drawer.querySelector('.original-text').textContent = this.jsonData.original;
