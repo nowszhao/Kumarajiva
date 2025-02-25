@@ -104,10 +104,21 @@ class YouTubeSubtitleApp {
     }
 
     async initializePlugin() {
+        // Add subtitle switch if it doesn't exist
         if (!document.querySelector('.subtitle-switch-container')) {
             this.addSubtitleSwitch();
         }
 
+        // Create player and UIManager regardless of subtitle status
+        this.player = await this.waitForYouTubePlayer();
+        if (this.player) {
+            // Initialize UIManager early to add the analyze button
+            if (!this.uiManager) {
+                this.uiManager = new UIManager(this.player, this.eventBus);
+            }
+        }
+
+        // Continue with subtitles initialization if enabled
         if (this.isSubtitleEnabled) {
             await this.initializePluginCore();
         }
@@ -186,10 +197,15 @@ class YouTubeSubtitleApp {
     async initializePluginCore() {
         if (!this.isTranslating) return;
 
-        this.player = await this.waitForYouTubePlayer();
-        if (!this.player) return;
+        if (!this.player) {
+            this.player = await this.waitForYouTubePlayer();
+            if (!this.player) return;
+        }
 
-        this.uiManager = new UIManager(this.player, this.eventBus);
+        // Use existing UIManager or create if needed
+        if (!this.uiManager) {
+            this.uiManager = new UIManager(this.player, this.eventBus);
+        }
         
         const englishTrack = await this.subtitleManager.getEnglishSubtitleTrack();
         if (!englishTrack) {
@@ -237,7 +253,6 @@ class YouTubeSubtitleApp {
 
         const elementsToRemove = [
             '.subtitle-switch-container',
-            '.analyze-switch-container',
             '#yt-subtitle-container',
             '#translation-progress'
         ];

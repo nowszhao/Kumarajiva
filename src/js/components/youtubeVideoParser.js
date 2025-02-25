@@ -232,12 +232,12 @@ class TranslationProcessor {
             return;
         }
 
-        // 初始化处理状态
+        // 初始化处理状态 - 将 isPaused 设置为 true，使其默认暂停
         this.processingStatus = {
             total: subtitles.length,
             processed: 0,
             isProcessing: true,
-            isPaused: false
+            isPaused: true  // 默认暂停
         };
         this.eventBus.emit('processingStatusUpdated', this.processingStatus);
 
@@ -246,6 +246,9 @@ class TranslationProcessor {
             for (let i = 0; i < subtitles.length; i += this.BATCH_SIZE) {
                 batches.push(subtitles.slice(i, i + this.BATCH_SIZE));
             }
+
+            // 显示一个提示，指导用户点击开始按钮
+            this.showStartTranslationHint();
 
             for (let i = 0; i < batches.length; i++) {
                 // 检查是否已中止或暂停
@@ -455,13 +458,14 @@ class TranslationProcessor {
         if (status.isProcessing || status.isPaused) {
             const progress = Math.round((status.processed / status.total) * 100);
             const buttonIcon = status.isPaused ? '▶' : '⏸'; // 使用 Unicode 字符作为图标
-            const buttonText = status.isPaused ? '继续' : '暂停';
+            const buttonText = status.isPaused ? '开始' : '暂停'; // 修改文字以更明确
+            const buttonClass = status.isPaused ? 'paused play-button' : ''; // 添加额外的类名，使按钮更突出
             
             container.innerHTML = `
                 <div class="processing-status">
                     <div class="status-header">
-                        <span>正在处理字幕 (${progress}%)</span>
-                        <button class="translation-control-btn ${status.isPaused ? 'paused' : ''}" title="${buttonText}">
+                        <span>${status.isPaused && status.processed === 0 ? '点击开始翻译字幕' : `正在处理字幕 (${progress}%)`}</span>
+                        <button class="translation-control-btn ${buttonClass}" title="${buttonText}">
                             ${buttonIcon}
                         </button>
                     </div>
@@ -485,6 +489,38 @@ class TranslationProcessor {
         } else {
             container.innerHTML = '';
         }
+    }
+
+    // Add a new method to show a hint to the user
+    showStartTranslationHint() {
+        const container = document.getElementById('translation-progress');
+        if (!container) return;
+        
+        // 添加提示信息，指导用户点击开始按钮
+        const notification = document.createElement('div');
+        notification.className = 'translation-hint';
+        notification.innerHTML = `
+            <div style="
+                padding: 8px 12px;
+                background-color: rgba(0, 0, 0, 0.7);
+                color: white;
+                border-radius: 4px;
+                margin-bottom: 8px;
+                text-align: center;
+                animation: fadeOut 5s forwards;
+            ">
+                点击 ▶ 按钮开始翻译字幕
+            </div>
+        `;
+        
+        container.prepend(notification);
+        
+        // 5秒后自动移除提示
+        setTimeout(() => {
+            if (notification && notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
     }
 }
 
@@ -918,14 +954,24 @@ class UIManager {
             <div class="analyze-switch"></div>
         `;
 
-        // 找到字幕开关容器并在其后插入
-        const subtitleSwitchContainer = ytpRightControls.querySelector('.subtitle-switch-container');
-        if (subtitleSwitchContainer) {
-            subtitleSwitchContainer.after(analyzeContainer);
+        // 直接插入到右侧控制区，不依赖于字幕开关
+        // 找到合适的参考元素（如果有字幕按钮，在其后插入；否则直接添加到右侧控制区开头）
+        const captionButton = ytpRightControls.querySelector('.ytp-subtitles-button');
+        if (captionButton) {
+            captionButton.after(analyzeContainer);
+        } else {
+            ytpRightControls.prepend(analyzeContainer);
         }
 
         const analyzeSwitch = analyzeContainer.querySelector('.analyze-switch');
         analyzeSwitch.addEventListener('click', () => {
+            // 检查是否有字幕数据可供分析
+            if (!this.currentSubtitles || this.currentSubtitles.length === 0) {
+                // 显示提示信息，指示用户先启用字幕
+                this.showAnalyzeNotification('请先开启AI双语字幕功能');
+                return;
+            }
+
             if (this.analysisPanel.isVisible) {
                 this.analysisPanel.hidePanel();
                 analyzeSwitch.classList.remove('active');
@@ -935,8 +981,6 @@ class UIManager {
             analyzeSwitch.classList.add('active');
             this.analysisPanel.setSubtitles(this.currentSubtitles);
             this.analysisPanel.showPanel();
-            // 移除自动触发分析的代码
-            // await this.analysisPanel.triggerAnalysis();
         });
 
         // 当分析面板关闭时，更新按钮状态
@@ -944,6 +988,32 @@ class UIManager {
             analyzeSwitch.classList.remove('active');
         };
     };
+
+    // 添加一个新方法用于显示通知
+    showAnalyzeNotification(message) {
+        const notificationContainer = document.createElement('div');
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            z-index: 2147483647;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        `;
+        notificationContainer.textContent = message;
+        
+        document.body.appendChild(notificationContainer);
+        
+        setTimeout(() => {
+            notificationContainer.remove();
+        }, 3000);
+    }
 
     // 添加新方法用于获取当前字幕的缓存数据
     async getCurrentSubtitleCache() {
