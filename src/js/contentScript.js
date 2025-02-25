@@ -221,6 +221,7 @@ class YouTubeSubtitleApp {
         this.player.addEventListener('timeupdate', () => {
             if (!this.isTranslating) return;
             
+            // 使用当前时间检查字幕
             const currentTime = this.player.currentTime * 1000;
             let activeSubtitle = subtitles.find(sub => 
                 currentTime >= sub.startTime && currentTime < sub.endTime
@@ -232,13 +233,16 @@ class YouTubeSubtitleApp {
                     activeSubtitle = this.lastDisplayedSubtitle;
                 }
             }
-    
-            if (activeSubtitle) {
-                this.lastDisplayedSubtitle = activeSubtitle;
-                this.uiManager.updateSubtitleDisplay([activeSubtitle]);
-            } else {
-                this.lastDisplayedSubtitle = null;
-                this.uiManager.updateSubtitleDisplay([]);
+            
+            // 只在字幕真正变化时更新显示
+            if (!this.subtitleEqual(activeSubtitle, this.lastDisplayedSubtitle)) {
+                if (activeSubtitle) {
+                    this.lastDisplayedSubtitle = { ...activeSubtitle }; // 克隆以避免引用问题
+                    this.uiManager.updateSubtitleDisplay([activeSubtitle]);
+                } else {
+                    this.lastDisplayedSubtitle = null;
+                    this.uiManager.updateSubtitleDisplay([]);
+                }
             }
         });
 
@@ -364,6 +368,13 @@ class YouTubeSubtitleApp {
         Object.keys(this.boundHandlers).forEach(key => {
             this.boundHandlers[key] = null;
         });
+    }
+
+    // 添加辅助方法用于比较字幕是否相同
+    subtitleEqual(sub1, sub2) {
+        if (!sub1 && !sub2) return true;
+        if (!sub1 || !sub2) return false;
+        return sub1.text === sub2.text;
     }
 }
 

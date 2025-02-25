@@ -48,6 +48,7 @@
     padding: 0; /* 移除内边距 */
     width: 100%; /* 使用全宽 */
     position: relative;
+    transition: all 0.2s ease;
 }
 
 .subtitle-item {
@@ -58,6 +59,7 @@
     width: auto;
     display: inline-block;
     min-width: min(400px, 60vw); /* 响应式最小宽度 */
+    transition: all 0.2s ease;
 }
 
 .subtitle-english {

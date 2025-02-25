@@ -546,23 +546,34 @@ class UIManager {
                 contentContainer.className = 'subtitle-content';
                 container.appendChild(contentContainer);
             }
-
-            // 只显示第一条字幕（当前时间点的字幕）
-            const currentSubtitle = subtitles[0];
-            if (!currentSubtitle) {
-                contentContainer.innerHTML = ''; // 如果没有字幕则清空
+            
+            // 清空之前的所有字幕
+            contentContainer.innerHTML = '';
+            
+            // 如果没有字幕数据，直接返回
+            if (!subtitles || subtitles.length === 0) {
                 return;
             }
-
-            const cached = this.subtitleCache.get(currentSubtitle.text) || {};
-            const html = `
-                <div class="subtitle-item">
-                    <div class="subtitle-english">${cached.correctedText || currentSubtitle.text}</div>
-                    <div class="subtitle-chinese">${cached.translation || 'AI翻译中...'}</div>
-                </div>
+            
+            // 只处理第一条字幕（当前时间点的字幕）
+            const currentSubtitle = subtitles[0];
+            if (!currentSubtitle) return;
+            
+            // 获取缓存数据
+            const cachedData = this.subtitleCache.get(currentSubtitle.text);
+            const englishText = cachedData?.correctedText || currentSubtitle.text;
+            const chineseText = cachedData?.translation || 'AI翻译中...';
+            
+            // 创建字幕项
+            const item = document.createElement('div');
+            item.className = 'subtitle-item';
+            item.innerHTML = `
+                <div class="subtitle-english">${englishText}</div>
+                <div class="subtitle-chinese">${chineseText}</div>
             `;
-
-            contentContainer.innerHTML = html;
+            
+            // 添加到容器
+            contentContainer.appendChild(item);
         };
 
         this.updateProgressDisplay = (status) => {
