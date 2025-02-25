@@ -540,12 +540,36 @@ class UIManager {
             </svg>
         `;
 
-
         toolbar.appendChild(translateButtonHov);
         toolbar.appendChild(copyPromptButton);  // 添加新按钮
         toolbar.appendChild(analyzeButton);
         toolbar.appendChild(copyButton);
+        
+        // 将toolbar添加到document.body而不是特定元素
         document.body.appendChild(toolbar);
+        
+        // 添加鼠标进入toolbar的事件监听，防止toolbar消失
+        toolbar.addEventListener('mouseenter', () => {
+            toolbar.classList.add('hover-active');
+        });
+        
+        toolbar.addEventListener('mouseleave', () => {
+            toolbar.classList.remove('hover-active');
+            if (!this.hoveredElement) {
+                setTimeout(() => {
+                    if (toolbar && !toolbar.classList.contains('hover-active')) {
+                        toolbar.classList.remove('visible');
+                        setTimeout(() => {
+                            if (toolbar && !toolbar.classList.contains('visible') && !toolbar.classList.contains('hover-active')) {
+                                toolbar.remove();
+                                this.hoverToolbar = null;
+                            }
+                        }, 200);
+                    }
+                }, 100);
+            }
+        });
+        
         return toolbar;
     }
 
@@ -612,149 +636,6 @@ class UIManager {
         // 创建 Shadow DOM
         const shadow = host.attachShadow({ mode: 'open' });
         
-        // 注入样式
-        const style = document.createElement('style');
-        style.textContent = `
-            :host {
-                all: initial;
-                display: block;
-            }
-            
-            .analysis-panel {
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                width: 400px;
-                background: #fff;
-                box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
-                display: flex;
-                flex-direction: column;
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                z-index: 999999;
-                font-family: system-ui, -apple-system, sans-serif;
-            }
-            
-            .analysis-panel.visible {
-                transform: translateX(0);
-            }
-            
-            .analysis-header {
-                padding: 16px;
-                border-bottom: 1px solid #eee;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .analysis-header h2 {
-                margin: 0;
-                font-size: 16px;
-                font-weight: 600;
-                color: #333;
-            }
-            
-            .close-analysis-btn {
-                background: none;
-                border: none;
-                padding: 8px;
-                cursor: pointer;
-                color: #666;
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .close-analysis-btn:hover {
-                background: #f5f5f5;
-            }
-            
-            .analysis-content {
-                flex: 1;
-                overflow-y: auto;
-                padding: 16px;
-            }
-            
-            .analysis-loading {
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-                padding: 24px;
-                color: #666;
-            }
-            
-            .analysis-spinner {
-                width: 24px;
-                height: 24px;
-                border: 2px solid #eee;
-                border-top-color: #1a73e8;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            }
-            
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-            
-            .analysis-resizer {
-                position: absolute;
-                right: -4px;
-                top: 0;
-                width: 8px;
-                height: 100%;
-                cursor: ew-resize;
-                background: transparent;
-                transition: background 0.2s;
-            }
-            
-            .analysis-resizer:hover,
-            .analysis-resizer.dragging {
-                background: rgba(26, 115, 232, 0.1);
-            }
-            
-            /* 复制现有的分析结果样式 */
-            ${this.getAnalysisResultStyles()}
-            
-            /* 深色模式支持 */
-            @media (prefers-color-scheme: dark) {
-                .analysis-panel {
-                    background: #202124;
-                    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
-                }
-                
-                .analysis-header {
-                    border-bottom-color: #3c4043;
-                }
-                
-                .analysis-header h2 {
-                    color: #e8eaed;
-                }
-                
-                .close-analysis-btn {
-                    color: #9aa0a6;
-                }
-                
-                .close-analysis-btn:hover {
-                    background: #303134;
-                    color: #e8eaed;
-                }
-                
-                .analysis-loading {
-                    color: #9aa0a6;
-                }
-                
-                .analysis-spinner {
-                    border-color: #3c4043;
-                    border-top-color: #8ab4f8;
-                }
-            }
-        `;
-        shadow.appendChild(style);
-        
         // 创建面板内容
         const panel = document.createElement('div');
         panel.className = 'analysis-panel';
@@ -815,208 +696,6 @@ class UIManager {
         resizer.addEventListener('mousedown', startDragging);
     }
 
-    // 获取分析结果样式
-    getAnalysisResultStyles() {
-        return `
-            .analysis-result-wrapper {
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                padding: 0 16px;
-            }
-
-            .analysis-summary {
-                background: #f8f9fa;
-                border-radius: 8px;
-                padding: 16px;
-            }
-
-            .analysis-summary h4 {
-                margin: 0 0 12px;
-                color: #1a73e8;
-                font-size: 15px;
-                font-weight: 600;
-            }
-
-            .analysis-summary p {
-                margin: 0;
-                color: #333;
-                line-height: 1.6;
-                font-size: 14px;
-            }
-
-            .analysis-concepts {
-                margin: 0;
-            }
-
-            .analysis-concepts h4 {
-                margin: 0 0 12px;
-                color: #1a73e8;
-                font-size: 15px;
-                font-weight: 600;
-            }
-
-            .concepts-list {
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .concept-item {
-                background: #f8f9fa;
-                border-radius: 8px;
-                padding: 12px 16px;
-            }
-
-            .concept-header {
-                display: flex;
-                gap: 12px;
-                align-items: flex-start;
-            }
-
-            .concept-number {
-                width: 20px;
-                height: 20px;
-                background: #1a73e8;
-                color: white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                flex-shrink: 0;
-                margin-top: 2px;
-            }
-
-            .concept-content {
-                flex: 1;
-            }
-
-            .concept-term {
-                margin: 0 0 4px;
-                font-size: 14px;
-                font-weight: 600;
-                color: #333;
-            }
-
-            .concept-definition {
-                margin: 0;
-                font-size: 13px;
-                color: #666;
-                line-height: 1.5;
-            }
-
-            .analysis-viewpoints {
-                margin: 0;
-            }
-
-            .analysis-viewpoints h4 {
-                margin: 0 0 12px;
-                color: #1a73e8;
-                font-size: 15px;
-                font-weight: 600;
-            }
-
-            .viewpoint-card {
-                background: #f8f9fa;
-                border-radius: 8px;
-                padding: 12px 16px;
-                margin-bottom: 12px;
-            }
-
-            .viewpoint-header {
-                display: flex;
-                gap: 12px;
-                align-items: flex-start;
-                margin-bottom: 8px;
-            }
-
-            .viewpoint-number {
-                width: 20px;
-                height: 20px;
-                background: #1a73e8;
-                color: white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                flex-shrink: 0;
-                margin-top: 2px;
-            }
-
-            .viewpoint-text {
-                margin: 0;
-                font-size: 14px;
-                font-weight: 600;
-                color: #333;
-                line-height: 1.5;
-            }
-
-            .viewpoint-arguments {
-                margin-left: 32px;
-            }
-
-            .argument-item {
-                display: flex;
-                gap: 8px;
-                align-items: flex-start;
-                margin-bottom: 8px;
-            }
-
-            .argument-item:last-child {
-                margin-bottom: 0;
-            }
-
-            .argument-bullet {
-                color: #1a73e8;
-                font-size: 16px;
-                line-height: 1;
-                margin-top: 2px;
-            }
-
-            .argument-item p {
-                margin: 0;
-                font-size: 13px;
-                color: #666;
-                line-height: 1.5;
-            }
-
-            @media (prefers-color-scheme: dark) {
-                .analysis-summary,
-                .concept-item,
-                .viewpoint-card {
-                    background: #2c2c2c;
-                }
-
-                .analysis-summary h4,
-                .analysis-concepts h4,
-                .analysis-viewpoints h4 {
-                    color: #8ab4f8;
-                }
-
-                .analysis-summary p,
-                .concept-term,
-                .viewpoint-text {
-                    color: #e8eaed;
-                }
-
-                .concept-definition,
-                .argument-item p {
-                    color: #9aa0a6;
-                }
-
-                .concept-number,
-                .viewpoint-number {
-                    background: #8ab4f8;
-                }
-
-                .argument-bullet {
-                    color: #8ab4f8;
-                }
-            }
-        `;
-    }
 
     createAnalysisResult(result) {
         const container = document.createElement('div');
@@ -1461,21 +1140,14 @@ class Analyzer {
  */
 class InlineTranslator {
     constructor() {
-        this.hoveredElement = null;
-        this.currentHoverElement = null;
+        this.isInitialized = false;
+        this.boundHandlers = {}; // 保存绑定的处理程序
         this.isTranslating = false;
-        this.uiManager = new UIManager();
+        this.hoveredElement = null; // 当前鼠标悬停的元素
         this.translationQueueManager = null;
+        this.uiManager = new UIManager();
         this.analyzer = new Analyzer(this.uiManager);
-        this.currentTriggerKey = null;
-        this.boundHandlers = {
-            mousemove: null,
-            mouseout: null,
-            keydown: null,
-            keyup: null,
-            scroll: null,
-            selectionchange: null
-        };
+        this.currentTriggerKey = 'd';
     }
 
     static findVisibleTextContainers() {
@@ -1541,76 +1213,20 @@ class InlineTranslator {
             const element = Utils.findTextContainer(e.target);
             if (element && Utils.containsEnglish(element.textContent)) {
                 if (this.hoveredElement !== element) {
+                    // 先移除上一个元素的高亮
                     if (this.hoveredElement) {
                         this.hoveredElement.classList.remove('hoverable-text');
                     }
                     this.hoveredElement = element;
                     element.classList.add('hoverable-text');
-                }
-            }
-        }, 100);
-        document.addEventListener('mousemove', this.boundHandlers.mousemove);
-
-        // 鼠标移出时移除高亮
-        this.boundHandlers.mouseout = (e) => {
-            if (this.hoveredElement && (!e.relatedTarget || !this.hoveredElement.contains(e.relatedTarget))) {
-                this.hoveredElement.classList.remove('hoverable-text');
-                if (!this.isTranslating) {
-                    this.hoveredElement = null;
-                }
-            }
-        };
-        document.addEventListener('mouseout', this.boundHandlers.mouseout);
-
-        // 键盘事件触发翻译
-        this.boundHandlers.keydown = (e) => {
-            if (e.key === this.currentTriggerKey && !e.ctrlKey) {
-                if (this.hoveredElement) {
-                    this.handleTranslationOnElement(this.hoveredElement);
-                }
-            }
-        };
-        document.addEventListener('keydown', this.boundHandlers.keydown);
-
-        document.addEventListener('keyup', (e) => {
-            if (e.key === this.currentTriggerKey) {
-                this.hoveredElement = null;
-            }
-        });
-
-        // 滚动时检查新增的可翻译内容
-        this.boundHandlers.scroll = Utils.throttle(() => {
-            if (this.isTranslating && this.translationQueueManager && !this.translationQueueManager.isProcessingQueue) {
-                const containers = InlineTranslator.findVisibleTextContainers();
-                this.translationQueueManager.addToQueue(containers);
-            }
-        }, 500);
-        window.addEventListener('scroll', this.boundHandlers.scroll);
-
-        // 选择文本时显示选择工具栏
-        this.boundHandlers.selectionchange = () => {
-            this.handleSelection();
-        };
-        document.addEventListener('selectionchange', this.boundHandlers.selectionchange);
-
-        // 悬停工具栏监听
-        this.boundHandlers.mousemove = Utils.throttle((e) => {
-            const element = Utils.findTextContainer(e.target);
-            if (element && Utils.containsEnglish(element.textContent)) {
-                if (this.currentHoverElement !== element) {
-                    if (this.currentHoverElement && this.uiManager.hoverToolbar) {
-                        this.uiManager.hoverToolbar.remove();
-                        this.uiManager.hoverToolbar = null;
-                    }
-                    this.currentHoverElement = element;
+                    
+                    // 创建或更新悬停工具栏
                     if (!this.uiManager.hoverToolbar) {
                         this.uiManager.hoverToolbar = this.uiManager.createHoverToolbar();
                     }
-                    element.style.position = 'relative';
-                    if (this.uiManager.hoverToolbar.parentElement !== element) {
-                        element.appendChild(this.uiManager.hoverToolbar);
-                    }
+                    
                     this.uiManager.hoverToolbar.classList.add('visible');
+                    
                     // 为悬停工具栏按钮绑定事件
                     const copyButton = this.uiManager.hoverToolbar.querySelector(
                         '.hover-toolbar-button[title="复制"]'
@@ -1670,30 +1286,77 @@ class InlineTranslator {
                             };
                     }
                 }
+                
+                // 更新工具栏位置
+                this.updateHoverToolbarPosition(e);
+            } else {
+                // 如果当前不在可翻译元素上，而且不在工具栏上，则移除高亮
+                if (this.hoveredElement && 
+                    !this.uiManager.hoverToolbar?.contains(e.target) && 
+                    !this.uiManager.hoverToolbar?.classList.contains('hover-active')) {
+                    this.hoveredElement.classList.remove('hoverable-text');
+                    this.hoveredElement = null;
+                }
             }
         }, 100);
         document.addEventListener('mousemove', this.boundHandlers.mousemove);
 
-        // 悬停工具栏隐藏
+        // 鼠标移出时移除高亮
         this.boundHandlers.mouseout = (e) => {
-            if (
-                !e.relatedTarget ||
-                (!this.currentHoverElement?.contains(e.relatedTarget) &&
-                    !this.uiManager.hoverToolbar?.contains(e.relatedTarget))
-            ) {
-                if (this.uiManager.hoverToolbar) {
+            // 只有当鼠标不是移动到当前元素的子元素，且不是移动到工具栏上时，才移除高亮
+            if (this.hoveredElement && 
+                !this.hoveredElement.contains(e.relatedTarget) && 
+                !this.uiManager.hoverToolbar?.contains(e.relatedTarget)) {
+                
+                this.hoveredElement.classList.remove('hoverable-text');
+                
+                if (this.uiManager.hoverToolbar && !this.uiManager.hoverToolbar.classList.contains('hover-active')) {
                     this.uiManager.hoverToolbar.classList.remove('visible');
                     setTimeout(() => {
-                        if (this.uiManager.hoverToolbar && !this.uiManager.hoverToolbar.classList.contains('visible')) {
+                        if (this.uiManager.hoverToolbar && 
+                            !this.uiManager.hoverToolbar.classList.contains('visible') && 
+                            !this.uiManager.hoverToolbar.classList.contains('hover-active')) {
                             this.uiManager.hoverToolbar.remove();
                             this.uiManager.hoverToolbar = null;
                         }
                     }, 200);
                 }
-                this.currentHoverElement = null;
+                
+                this.hoveredElement = null;
             }
         };
         document.addEventListener('mouseout', this.boundHandlers.mouseout);
+
+        // 键盘事件触发翻译
+        this.boundHandlers.keydown = (e) => {
+            if (e.key === this.currentTriggerKey && !e.ctrlKey) {
+                if (this.hoveredElement) {
+                    this.handleTranslationOnElement(this.hoveredElement);
+                }
+            }
+        };
+        document.addEventListener('keydown', this.boundHandlers.keydown);
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === this.currentTriggerKey) {
+                this.hoveredElement = null;
+            }
+        });
+
+        // 滚动时检查新增的可翻译内容
+        this.boundHandlers.scroll = Utils.throttle(() => {
+            if (this.isTranslating && this.translationQueueManager && !this.translationQueueManager.isProcessingQueue) {
+                const containers = InlineTranslator.findVisibleTextContainers();
+                this.translationQueueManager.addToQueue(containers);
+            }
+        }, 500);
+        window.addEventListener('scroll', this.boundHandlers.scroll);
+
+        // 选择文本时显示选择工具栏
+        this.boundHandlers.selectionchange = () => {
+            this.handleSelection();
+        };
+        document.addEventListener('selectionchange', this.boundHandlers.selectionchange);
 
         // 快捷键：Alt + H 切换原文显示
         this.boundHandlers.keydown = (e) => {
@@ -1915,6 +1578,13 @@ class InlineTranslator {
             '.translated'
         ];
 
+        // 先移除悬停工具栏
+        if (this.uiManager && this.uiManager.hoverToolbar) {
+            this.uiManager.hoverToolbar.remove();
+            this.uiManager.hoverToolbar = null;
+        }
+
+        // 移除所有添加的类和元素
         document.querySelectorAll(elementsToRemove.join(',')).forEach(el => {
             if (el.classList.contains('hoverable-text') || 
                 el.classList.contains('translating') || 
@@ -1927,8 +1597,13 @@ class InlineTranslator {
             }
         });
 
-        this.hoveredElement = null;
-        this.currentHoverElement = null;
+        // 确保清理所有悬停元素的类
+        if (this.hoveredElement) {
+            this.hoveredElement.classList.remove('hoverable-text');
+            this.hoveredElement = null;
+        }
+        
+        // 清理所有状态
         this.isTranslating = false;
         
         // 修改清理逻辑
@@ -1938,6 +1613,38 @@ class InlineTranslator {
         }
         
         console.log('[Translator] Cleanup completed');
+    }
+
+    // 添加鼠标移动时更新工具栏位置的方法
+    updateHoverToolbarPosition(e) {
+        if (this.uiManager.hoverToolbar && this.uiManager.hoverToolbar.classList.contains('visible')) {
+            // 获取页面尺寸
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // 获取工具栏尺寸
+            const toolbarWidth = this.uiManager.hoverToolbar.offsetWidth;
+            const toolbarHeight = this.uiManager.hoverToolbar.offsetHeight;
+            
+            // 计算位置，确保不超出视口
+            let left = e.clientX + 10; // 鼠标右侧10px处
+            let top = e.clientY + 10;  // 鼠标下方10px处
+            
+            // 确保工具栏不会超出右侧边界
+            if (left + toolbarWidth > viewportWidth - 20) {
+                left = e.clientX - toolbarWidth - 10; // 如果会超出，则放在左侧
+            }
+            
+            // 确保工具栏不会超出底部边界
+            if (top + toolbarHeight > viewportHeight - 20) {
+                top = e.clientY - toolbarHeight - 10; // 如果会超出，则放在上方
+            }
+            
+            // 设置工具栏位置
+            this.uiManager.hoverToolbar.style.position = 'fixed';
+            this.uiManager.hoverToolbar.style.left = `${left}px`;
+            this.uiManager.hoverToolbar.style.top = `${top}px`;
+        }
     }
 }
 
