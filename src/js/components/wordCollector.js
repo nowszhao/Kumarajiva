@@ -1,7 +1,7 @@
 import config from '../config/config';
 import VocabularyStorage from './vocabularyStorage';
 
-class WordCollector {
+export class WordCollector {
     constructor() {
         this.cardContainer = null;
         this.isCardVisible = false;
@@ -894,5 +894,3 @@ class WordCollector {
         }
     }
 }
-
-export default WordCollector; 
