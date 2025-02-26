@@ -189,9 +189,9 @@ export class ManualAddDrawer {
                             e.target.textContent = '取消收藏';
                         }
 
-                        // 实时刷新生词列表
-                        const vocabularyManager = new VocabularyManager();
-                        await vocabularyManager.initialize();
+                        // 移除对VocabularyManager的直接使用，避免在非options页面上下文中初始化它
+                        // const vocabularyManager = new VocabularyManager();
+                        // await vocabularyManager.initialize();
                     } catch (error) {
                         console.error('Failed to toggle word collection:', error);
                     }
