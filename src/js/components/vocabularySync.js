@@ -1,4 +1,4 @@
-import VocabularyStorage from './vocabularyStorage';
+import { VocabularyStorage } from './vocabularyStorage';
 
 export class VocabularySync {
     constructor() {

@@ -1,5 +1,5 @@
 import config from '../config/config';
-import VocabularyStorage from './vocabularyStorage';
+import { VocabularyStorage } from './vocabularyStorage';
 
 export class WordCollector {
     constructor() {

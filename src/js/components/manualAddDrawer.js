@@ -1,5 +1,6 @@
-import VocabularyStorage from './vocabularyStorage.js';
+import { VocabularyStorage } from './vocabularyStorage';
 import { VocabularyManager } from './vocabularyManager.js';
+import { WordCollector } from './wordCollector.js';
 
 export class ManualAddDrawer {
     constructor() {
@@ -118,7 +119,7 @@ export class ManualAddDrawer {
 
             this.jsonData = JSON.parse(jsonInput);
 
-            if (!this.jsonData.original || !this.jsonData.translation || !Array.isArray(this.jsonData.difficultVocabulary)) {
+            if (!this.jsonData.translation || !Array.isArray(this.jsonData.difficultVocabulary)) {
                 throw new Error('JSON格式不正确，请检查内容');
             }
 
@@ -167,6 +168,13 @@ export class ManualAddDrawer {
                             await VocabularyStorage.removeWord(word);
                             e.target.classList.remove('collected');
                             e.target.textContent = '收藏';
+                            
+                            // 移除页面中该单词的所有高亮
+                            document.querySelectorAll(`.collected-word[data-word="${word.toLowerCase()}"]`)
+                                .forEach((el) => {
+                                    const textNode = document.createTextNode(el.textContent);
+                                    el.parentNode.replaceChild(textNode, el);
+                                });
                         } else {
                             // 添加收藏
                             const wordInfo = {
@@ -187,13 +195,14 @@ export class ManualAddDrawer {
                             await VocabularyStorage.addWord(word, wordInfo);
                             e.target.classList.add('collected');
                             e.target.textContent = '取消收藏';
+                            
+                            // 添加高亮更新
+                            const wordCollector = new WordCollector();
+                            await wordCollector.initialize();
+                            await wordCollector.highlightCollectedWords(document.body);
                         }
-
-                        // 移除对VocabularyManager的直接使用，避免在非options页面上下文中初始化它
-                        // const vocabularyManager = new VocabularyManager();
-                        // await vocabularyManager.initialize();
                     } catch (error) {
-                        console.error('Failed to toggle word collection:', error);
+                        console.error('Failed to update word collection:', error);
                     }
                 });
             });

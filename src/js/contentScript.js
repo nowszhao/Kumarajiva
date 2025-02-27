@@ -339,7 +339,7 @@ class YouTubeSubtitleApp {
                 switchElement.classList.remove('active');
                 this.isTranslating = false;
                 if (this.translationProcessor) {
-                    this.translationProcessor.stopTranslation();
+                    this.translationProcessor.pauseTranslation();
                 }
                 this.cleanupCurrentSession();
             }

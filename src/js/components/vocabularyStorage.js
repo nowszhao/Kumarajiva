@@ -1,4 +1,7 @@
-class VocabularyStorage {
+/**
+ * 词汇存储类：负责从 chrome.storage 中获取和保存词汇数据
+ */
+export class VocabularyStorage {
     static STORAGE_KEY = 'collected_words';
 
     static async getWords() {
@@ -79,5 +82,3 @@ class VocabularyStorage {
         return false;
     }
 }
-
-export default VocabularyStorage; 

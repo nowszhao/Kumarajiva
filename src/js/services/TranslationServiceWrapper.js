@@ -3,7 +3,9 @@ import { TranslatorFactory } from '../translators';
 import { extractJsonFromString } from '../utils';   
 import { Utils } from '../utils/Utils';
 import { UIManager } from '../ui/UIManager';
-import { WordCollector } from '../components/wordCollector';
+import { WordCollector } from '../components/wordCollector.js';
+import { VocabularyStorage } from '../components/vocabularyStorage';
+
 
 /**
  * 翻译服务封装类：负责调用 chrome.storage、TranslatorFactory 及提取返回的 JSON
@@ -31,6 +33,54 @@ export class TranslationServiceWrapper {
             console.error('Translation error:', error);
             throw error;
         }
+    }
+
+    createWordItem(word) {
+        // ... 前面的代码保持不变 ...
+
+        collectBtn.addEventListener('click', async () => {
+            const isCollected = collectBtn.classList.contains('collected');
+            if (!isCollected) {
+                const ret = {
+                    definitions: [
+                        {
+                            meaning: word.chinese_meaning,
+                            pos: word.part_of_speech,
+                        },
+                    ],
+                    mastered: false,
+                    pronunciation: {
+                        American: word.phonetic,
+                        British: '',
+                    },
+                    timestamp: new Date().getTime(),
+                    word: word.vocabulary,
+                    memory_method: word.chinese_english_sentence,
+                };
+
+                await VocabularyStorage.addWord(word.vocabulary, ret);
+                collectBtn.classList.add('collected');
+                collectBtn.textContent = '已收藏';
+                
+                // 添加高亮更新
+                const wordCollector = new WordCollector();
+                await wordCollector.initialize();
+                await wordCollector.highlightCollectedWords(document.body);
+            } else {
+                await VocabularyStorage.removeWord(word.vocabulary);
+                collectBtn.classList.remove('collected');
+                collectBtn.textContent = '收藏';
+                
+                // 移除页面中该单词的所有高亮
+                document.querySelectorAll(`.collected-word[data-word="${word.vocabulary.toLowerCase()}"]`)
+                    .forEach((el) => {
+                        const textNode = document.createTextNode(el.textContent);
+                        el.parentNode.replaceChild(textNode, el);
+                    });
+            }
+        });
+
+        // ... 后面的代码保持不变 ...
     }
 }
 

@@ -1,5 +1,6 @@
-import VocabularyStorage from './vocabularyStorage';
+import { VocabularyStorage } from './vocabularyStorage';
 import { StorageManager } from './youtubeVideoParser';
+import { WordCollector } from './wordCollector';
 
 class AnalysisPanel {
     constructor() {
@@ -230,15 +231,26 @@ class AnalysisPanel {
                         this.collectedWords.delete(word);
                         collectBtn.classList.remove('collected');
                         collectBtn.title = '收藏单词';
+                        
+                        // 移除页面中该单词的所有高亮
+                        document.querySelectorAll(`.collected-word[data-word="${word.toLowerCase()}"]`)
+                            .forEach((el) => {
+                                const textNode = document.createTextNode(el.textContent);
+                                el.parentNode.replaceChild(textNode, el);
+                            });
                     } else {
                         await VocabularyStorage.addWord(word, wordInfo);
                         this.collectedWords.add(word);
                         collectBtn.classList.add('collected');
                         collectBtn.title = '取消收藏';
+                        
+                        // 添加高亮更新
+                        const wordCollector = new WordCollector();
+                        await wordCollector.initialize();
+                        await wordCollector.highlightCollectedWords(document.body);
                     }
                 } catch (error) {
                     console.error('Failed to update word collection:', error);
-                    // 可以添加错误提示
                 }
             }
         });
@@ -700,6 +712,11 @@ class AnalysisPanel {
                 collectBtn.classList.add('collected');
                 collectBtn.title = '取消收藏';
             }
+            
+            // 批量更新高亮
+            const wordCollector = new WordCollector();
+            await wordCollector.initialize();
+            await wordCollector.highlightCollectedWords(document.body);
         });
 
         // 批量取消收藏
@@ -712,6 +729,13 @@ class AnalysisPanel {
                 const collectBtn = this.panel.querySelector(`[data-word="${word}"]`).closest('.analysis-card').querySelector('.collect-btn');
                 collectBtn.classList.remove('collected');
                 collectBtn.title = '收藏单词';
+                
+                // 移除页面中该单词的所有高亮
+                document.querySelectorAll(`.collected-word[data-word="${word.toLowerCase()}"]`)
+                    .forEach((el) => {
+                        const textNode = document.createTextNode(el.textContent);
+                        el.parentNode.replaceChild(textNode, el);
+                    });
             }
         });
 
