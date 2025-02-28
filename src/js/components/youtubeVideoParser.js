@@ -639,6 +639,9 @@ class UIManager {
         // 创建必要的容器
         this.createSubtitleContainer();
         this.createProgressContainer();
+
+        // 添加文本选择处理
+        this.setupTextSelection();
     }
 
     createSubtitleContainer() {
@@ -1039,6 +1042,115 @@ class UIManager {
         const cached = await this.storageManager.getFromStorage(storageKey);
 
         return cached && cached[currentSubtitle.text];
+    }
+
+    setupTextSelection() {
+        document.addEventListener('selectionchange', () => {
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (selectedText && this.isSubtitleText(selection)) {
+                this.handleSubtitleSelection(selection);
+            }
+        });
+    }
+
+    isSubtitleText(selection) {
+        const container = document.getElementById('yt-subtitle-container');
+        if (!container) return false;
+
+        const range = selection.getRangeAt(0);
+        const selectedNode = range.commonAncestorContainer;
+        
+        return container.contains(selectedNode) &&
+               (selectedNode.closest('.subtitle-english') || 
+                selectedNode.closest('.subtitle-chinese'));
+    }
+
+    handleSubtitleSelection(selection) {
+        // 如果已存在选择工具栏，先移除
+        this.removeSelectionToolbar();
+
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        // 创建选择工具栏
+        const toolbar = document.createElement('div');
+        toolbar.className = 'subtitle-selection-toolbar';
+        toolbar.innerHTML = `
+            <button class="toolbar-btn copy-btn" title="复制">
+                <i class="copy-icon">📋</i>
+            </button>
+            <button class="toolbar-btn translate-btn" title="翻译">
+                <i class="translate-icon">🔄</i>
+            </button>
+            <button class="toolbar-btn analyze-btn" title="解析">
+                <i class="analyze-icon">🔍</i>
+            </button>
+        `;
+
+        // 定位工具栏
+        toolbar.style.position = 'fixed';
+        toolbar.style.left = `${rect.left + (rect.width / 2)}px`;
+        toolbar.style.top = `${rect.top - 40}px`;
+        toolbar.style.transform = 'translateX(-50%)';
+        
+        document.body.appendChild(toolbar);
+
+        // 添加按钮事件处理
+        this.setupToolbarEvents(toolbar, selection);
+    }
+
+    setupToolbarEvents(toolbar, selection) {
+        const copyBtn = toolbar.querySelector('.copy-btn');
+        const translateBtn = toolbar.querySelector('.translate-btn');
+        const analyzeBtn = toolbar.querySelector('.analyze-btn');
+
+        copyBtn.addEventListener('click', () => {
+            const text = selection.toString();
+            navigator.clipboard.writeText(text);
+            this.showToast('已复制到剪贴板');
+            this.removeSelectionToolbar();
+        });
+
+        translateBtn.addEventListener('click', () => {
+            const text = selection.toString();
+            // 触发翻译事件
+            this.eventBus.emit('translateSelection', text);
+            this.removeSelectionToolbar();
+        });
+
+        analyzeBtn.addEventListener('click', () => {
+            const text = selection.toString();
+            // 触发解析事件
+            this.eventBus.emit('analyzeSelection', text);
+            this.removeSelectionToolbar();
+        });
+
+        // 点击其他区域时移除工具栏
+        document.addEventListener('mousedown', (e) => {
+            if (!toolbar.contains(e.target)) {
+                this.removeSelectionToolbar();
+            }
+        }, { once: true });
+    }
+
+    removeSelectionToolbar() {
+        const toolbar = document.querySelector('.subtitle-selection-toolbar');
+        if (toolbar) {
+            toolbar.remove();
+        }
+    }
+
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'subtitle-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
     }
 }
 
