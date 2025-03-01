@@ -12,6 +12,12 @@ export class VocabularyManager {
         this.currentPage = 1;
         this.searchQuery = '';
         this.sync = new VocabularySync();
+
+        // 添加词汇更新事件监听
+        document.addEventListener('vocabulariesUpdated', async () => {
+            await this.loadWords();
+            this.renderWordList();
+        });
     }
 
     async initialize() {
