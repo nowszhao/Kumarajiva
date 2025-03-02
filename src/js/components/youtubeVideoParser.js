@@ -562,7 +562,7 @@ class UIManager {
             // 获取缓存数据
             const cachedData = this.subtitleCache.get(currentSubtitle.text);
             const englishText = cachedData?.correctedText || currentSubtitle.text;
-            const chineseText = cachedData?.translation || 'AI翻译中...';
+            const chineseText = cachedData?.translation || '';
             
             // 创建字幕项
             const item = document.createElement('div');

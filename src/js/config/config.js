@@ -29,6 +29,18 @@ export default {
         model: 'moonshot-v1-8k',
         url: 'https://api.moonshot.cn/v1/chat/completions'
     },
+    yuanbao: {
+        apiToken: 'xx',
+        maxRetries: 3,
+        model: 'deepseek-v3',
+        url: 'xx'
+    },
+    baidu: {
+        apiToken: 'xx',
+        maxRetries: 3,
+        model: 'deepseek-chat',
+        url: 'xx'
+    },
     translation: {
         defaultService: 'doubao',
         batchSize: 10,

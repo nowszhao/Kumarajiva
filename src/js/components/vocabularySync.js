@@ -11,6 +11,8 @@ export class VocabularySync {
     // 添加 URL 构建方法
     getApiUrl(endpoint) {
         const baseUrl = this.syncServerUrl?.trim();
+        console.log('getApiUrl-Base URL:', baseUrl);
+
         if (!baseUrl) return '';
         
         // 移除末尾的斜杠

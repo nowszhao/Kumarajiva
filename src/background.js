@@ -27,26 +27,161 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
 // Add proxyFetch handler to forward requests to http://47.121.117.100
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'proxyFetch') {
-    const { url, options } = message;
-    fetch(url, options)
-      .then(async (response) => {
-        const text = await response.text();
-        sendResponse({
-          success: response.ok,
-          status: response.status,
-          body: text
+    const { url, options, isStreaming, portId } = message;
+    console.log('Background: Received proxyFetch request:', { url, isStreaming, portId });
+    
+    if (isStreaming) {
+      // For streaming requests, we need to wait for the port connection
+      console.log('Background: Waiting for port connection:', portId);
+      return true;
+    } else {
+      // Original non-streaming behavior
+      console.log('Background: Starting non-streaming fetch request');
+      fetch(url, options)
+        .then(async (response) => {
+          console.log('Background: Received non-streaming response:', { 
+            ok: response.ok, 
+            status: response.status 
+          });
+          const text = await response.text();
+          sendResponse({
+            success: response.ok,
+            status: response.status,
+            body: text
+          });
+        })
+        .catch(error => {
+          console.error('Background: Non-streaming fetch error:', error);
+          sendResponse({
+            success: false,
+            error: error.message
+          });
         });
-      })
-      .catch(error => {
-        sendResponse({
-          success: false,
-          error: error.message
-        });
-      });
-    // Return true to indicate that the response will be sent asynchronously.
-    return true;
+      return true;
+    }
   }
-}); 
+});
+
+// Handle streaming connections
+chrome.runtime.onConnect.addListener((port) => {
+  console.log('Background: Received port connection:', port.name);
+  
+  port.onMessage.addListener((message) => {
+    if (message.type === 'proxyFetch') {
+      const { url, options } = message;
+      console.log('Background: Starting streaming fetch request');
+      
+      fetch(url, options)
+        .then(response => {
+          console.log('Background: Received initial response:', { 
+            ok: response.ok, 
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries())
+          });
+
+          if (!response.ok) {
+            console.error('Background: HTTP error response:', response.status);
+            port.postMessage({
+              type: 'error',
+              error: `HTTP error! status: ${response.status}`
+            });
+            port.disconnect();
+            return;
+          }
+
+          if (!response.body) {
+            console.error('Background: Response body is not readable');
+            port.postMessage({
+              type: 'error',
+              error: 'Response body is not readable'
+            });
+            port.disconnect();
+            return;
+          }
+
+          const reader = response.body.getReader();
+          console.log('Background: Created reader for streaming response');
+          
+          // Stream the response back to content script
+          function pump() {
+            console.log('Background: Pumping next chunk');
+            return reader.read().then(({done, value}) => {
+              if (done) {
+                console.log('Background: Stream complete, sending done signal');
+                try {
+                  port.postMessage({ type: 'done' });
+                  port.disconnect();
+                } catch (e) {
+                  console.error('Background: Error sending done signal:', e);
+                }
+                return;
+              }
+              
+              // Send chunk to content script
+              if (value && value.length > 0) {
+                console.log('Background: Sending chunk of size:', value.length);
+                try {
+                  port.postMessage({
+                    type: 'chunk',
+                    value: Array.from(value) // Convert Uint8Array to regular array for transfer
+                  });
+                } catch (e) {
+                  console.error('Background: Error sending chunk:', e);
+                  port.disconnect();
+                  return;
+                }
+              } else {
+                console.log('Background: Received empty chunk, skipping');
+              }
+              
+              return pump();
+            }).catch(error => {
+              console.error('Background: Error during read:', error);
+              try {
+                port.postMessage({
+                  type: 'error',
+                  error: error.message
+                });
+              } catch (e) {
+                console.error('Background: Failed to send error response:', e);
+              }
+              port.disconnect();
+            });
+          }
+          
+          pump().catch(error => {
+            console.error('Background: Error during stream pump:', error);
+            try {
+              port.postMessage({
+                type: 'error',
+                error: error.message
+              });
+            } catch (e) {
+              console.error('Background: Failed to send pump error response:', e);
+            }
+            port.disconnect();
+          });
+        })
+        .catch(error => {
+          console.error('Background: Fetch error:', error);
+          try {
+            port.postMessage({
+              type: 'error',
+              error: error.message
+            });
+          } catch (e) {
+            console.error('Background: Failed to send fetch error response:', e);
+          }
+          port.disconnect();
+        });
+    }
+  });
+
+  port.onDisconnect.addListener(() => {
+    console.log('Background: Port disconnected:', port.name);
+  });
+});
 
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
