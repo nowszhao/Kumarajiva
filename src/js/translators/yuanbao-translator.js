@@ -9,7 +9,9 @@ class YuanBaoTranslator extends Translator {
     }
     
     async translate(text, retryCount = 3) {
-        console.log('YuanBao: Starting translation request for text:', text.substring(0, 50) + '...');
+
+        console.log("text:", text,", config:",this.config);
+
         const url = 'https://yuanbao.tencent.com/api/chat/0b0c6a06-c34d-4124-b7eb-e5df760ea40f';
         const headers = {
             'Cookie': '_qimei_uuid42=193010b053510040bdbe959987347987350c2698a9; hy_source=web; _qimei_fingerprint=579ad3031f0737dafe77266cbcb409d8; _qimei_i_3=66c04685c60e02dac5c4fe615b8626e3f2b8f6a04409578be2de7b5e2e93753e626a3f973989e2a0d790; _qimei_h38=72e5991abdbe9599873479870300000f019301; hy_user=changhozhao; hy_token=ybUPT4mXukWon0h18MPy9Z9z/kUm76vaMMrI/RwMoSEjdtz7lJl8vPi66lDYZhkX; _qimei_i_1=4cde5185970f55d2c896af620fd626e9f2e7adf915580785bd872f582593206c616351a53980e1dcd784a1e7; hy_source=web; hy_token=ybUPT4mXukWon0h18MPy9Z9z/kUm76vaMMrI/RwMoSEjdtz7lJl8vPi66lDYZhkX; hy_user=changhozhao',
@@ -74,7 +76,7 @@ class YuanBaoTranslator extends Translator {
 
                     if (response.type === 'chunk') {
                         try {
-                            console.log('YuanBao: Processing chunk of size:', response.value?.length);
+                            // console.log('YuanBao: Processing chunk of size:', response.value?.length);
                             const chunk = new Uint8Array(response.value);
                             const decodedChunk = decoder.decode(chunk, { stream: true });
                             // console.log('YuanBao: Decoded chunk:', decodedChunk);
@@ -105,6 +107,7 @@ class YuanBaoTranslator extends Translator {
                                             translatedText += data.msg;
                                         }
                                     } catch (e) {
+                                        console.log('YuanBao: Failed to parse JSON-dataContent:', dataContent);
                                         console.debug('YuanBao: Failed to parse JSON:', e);
                                     }
                                 }

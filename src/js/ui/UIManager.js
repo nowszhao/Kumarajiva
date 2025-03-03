@@ -1,7 +1,7 @@
 import { TranslationServiceWrapper } from '../services/TranslationServiceWrapper';
 import { ManualAddDrawer } from '../components/manualAddDrawer';
 import { WordCollector } from '../components/wordCollector';
-
+import { VocabularyStorage } from '../components/vocabularyStorage';
 
 
 /**
