@@ -478,6 +478,29 @@
     background: #6a1b9a; /* 更新：active 状态为更深的紫色 */
 }
 
+
+/* 添加 AI 解析按钮样式 */
+.copy-subtitles-button {
+    background: #9c27b0; /* 更新：改为紫色调 */
+    color: white;
+    border: none;
+    padding: 6px 16px; /* 增加内边距 */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500; /* 稍微加粗 */
+    transition: background-color 0.2s;
+}
+
+.copy-subtitles-button:hover {
+    background: #7b1fa2; /* 更新：hover 状态为稍暗的紫色 */
+}
+
+.copy-subtitles-button:active {
+    background: #6a1b9a; /* 更新：active 状态为更深的紫色 */
+}
+
+
 /* Add these styles for the play button */
 .expression-container {
     display: flex;

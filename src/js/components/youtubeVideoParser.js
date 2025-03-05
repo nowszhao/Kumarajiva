@@ -663,9 +663,16 @@ class UIManager {
             </div>
             <div class="subtitle-controls-group">
                 <button class="analyze-button">单字幕AI解析</button>
+                <button class="copy-subtitles-button">复制字幕</button>
             </div>
         `;
         container.appendChild(controlPanel);
+
+        // Add event listener for the copy subtitles button
+        const copySubtitlesButton = controlPanel.querySelector('.copy-subtitles-button');
+        copySubtitlesButton.addEventListener('click', () => {
+            this.copyAllSubtitles();
+        });
         
         this.initializeAnalysisPanel();
 
@@ -1151,6 +1158,32 @@ class UIManager {
         setTimeout(() => {
             toast.remove();
         }, 2000);
+    }
+
+    // Add new method to handle copying subtitles
+    async copyAllSubtitles() {
+        if (!this.currentSubtitles || this.currentSubtitles.length === 0) {
+            this.showToast('没有可复制的字幕');
+            return;
+        }
+
+        let subtitleText = '';
+        for (const subtitle of this.currentSubtitles) {
+            const cachedData = this.subtitleCache.get(subtitle.text);
+            if (cachedData) {
+                subtitleText += `${cachedData.correctedText}\n${cachedData.translation}\n\n`;
+            } else {
+                subtitleText += `${subtitle.text}\n\n`;
+            }
+        }
+
+        try {
+            await navigator.clipboard.writeText(subtitleText.trim());
+            this.showToast('字幕已复制到剪贴板');
+        } catch (err) {
+            console.error('Failed to copy subtitles:', err);
+            this.showToast('复制失败，请重试');
+        }
     }
 }
 
