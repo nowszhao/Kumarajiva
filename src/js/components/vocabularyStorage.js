@@ -1,11 +1,17 @@
 /**
- * 词汇存储类：使用分片方式存储大量词汇数据，同时保持向后兼容
+ * 词汇存储类：使用分片方式存储大量词汇数据
  */
 export class VocabularyStorage {
-    static STORAGE_KEY = 'collected_words';
     static CHUNK_KEY_PREFIX = 'vocab_chunk_';
     static CHUNK_SIZE = 100; // 每个分片存储100个单词
     static MIGRATION_FLAG = 'vocab_storage_migrated';
+
+    // 添加内存缓存
+    static cache = {
+        words: null,
+        lastUpdate: 0,
+        cacheTimeout: 5000  // 缓存有效期5秒
+    };
 
     // 检查是否需要迁移
     static async checkAndMigrate() {
@@ -14,16 +20,18 @@ export class VocabularyStorage {
             const oldData = await this.getLegacyWords();
             if (Object.keys(oldData).length > 0) {
                 await this.migrateToChunks(oldData);
+                // 迁移完成后删除旧数据
+                await chrome.storage.local.remove('collected_words');
                 await chrome.storage.local.set({ [this.MIGRATION_FLAG]: true });
             }
         }
     }
 
-    // 获取旧版数据
+    // 获取旧版数据（仅用于迁移）
     static async getLegacyWords() {
         try {
-            const result = await chrome.storage.local.get(this.STORAGE_KEY);
-            return result[this.STORAGE_KEY] || {};
+            const result = await chrome.storage.local.get('collected_words');
+            return result['collected_words'] || {};
         } catch (error) {
             console.log('Failed to load legacy vocabulary:', error);
             return {};
@@ -61,134 +69,83 @@ export class VocabularyStorage {
         });
     }
 
-    // 获取所有词汇（兼容现有代码）
+    // 获取所有词汇
     static async getWords() {
-        await this.checkAndMigrate();
+        // 检查缓存是否有效
+        if (this.cache.words && (Date.now() - this.cache.lastUpdate < this.cache.cacheTimeout)) {
+            return this.cache.words;
+        }
 
+        await this.checkAndMigrate();
         try {
-            // 获取元数据
             const meta = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}meta`);
             const metadata = meta[`${this.CHUNK_KEY_PREFIX}meta`];
 
-            // 如果没有分片数据，返回旧版数据
-            if (!metadata) {
-                return this.getLegacyWords();
+            if (!metadata || metadata.totalChunks === 0) {
+                this.cache.words = {};
+                this.cache.lastUpdate = Date.now();
+                return {};
             }
 
-            // 获取所有分片
             const chunkKeys = Array.from(
                 { length: metadata.totalChunks },
                 (_, i) => `${this.CHUNK_KEY_PREFIX}${i}`
             );
             const chunks = await chrome.storage.local.get(chunkKeys);
 
-            // 合并所有分片数据
-            return Object.values(chunks).reduce((acc, chunk) => ({
+            // 更新缓存
+            this.cache.words = Object.values(chunks).reduce((acc, chunk) => ({
                 ...acc,
                 ...chunk
             }), {});
+            this.cache.lastUpdate = Date.now();
+
+            return this.cache.words;
         } catch (error) {
             console.error('Failed to load vocabulary:', error);
             return {};
         }
     }
 
-    // 保存词汇（优化写入性能）
-    static async saveWords(words) {
-        try {
-            const entries = Object.entries(words);
-            const chunks = [];
-
-            // 分片处理数据
-            for (let i = 0; i < entries.length; i += this.CHUNK_SIZE) {
-                const chunk = Object.fromEntries(
-                    entries.slice(i, i + this.CHUNK_SIZE)
-                );
-                chunks.push(chunk);
-            }
-
-            // 并行保存所有分片
-            await Promise.all([
-                // 保存分片数据
-                ...chunks.map((chunk, index) => 
-                    chrome.storage.local.set({ 
-                        [`${this.CHUNK_KEY_PREFIX}${index}`]: chunk 
-                    })
-                ),
-                // 更新元数据
-                chrome.storage.local.set({
-                    [`${this.CHUNK_KEY_PREFIX}meta`]: {
-                        totalChunks: chunks.length,
-                        totalWords: entries.length,
-                        lastUpdate: Date.now()
-                    }
-                }),
-                // 保持旧版数据同步（向后兼容）
-                chrome.storage.local.set({ [this.STORAGE_KEY]: words })
-            ]);
-
-            return true;
-        } catch (error) {
-            console.error('Failed to save vocabulary:', error);
-            return false;
-        }
-    }
-
-    // 添加单词（优化单词添加性能）
+    // 添加单词
     static async addWord(word, wordInfo) {
         try {
-            // 获取元数据
             const meta = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}meta`);
-            const metadata = meta[`${this.CHUNK_KEY_PREFIX}meta`];
+            const metadata = meta[`${this.CHUNK_KEY_PREFIX}meta`] || { totalChunks: 0, totalWords: 0 };
 
-            if (!metadata) {
-                // 如果还没有分片数据，使用旧版方式
-                const words = await this.getLegacyWords();
-                words[word] = wordInfo;
-                return this.saveWords(words);
+            // 更新缓存
+            if (this.cache.words) {
+                this.cache.words[word] = wordInfo;
+                this.cache.lastUpdate = Date.now();
             }
 
-            // 获取最后一个分片
-            const lastChunk = await chrome.storage.local.get(
-                `${this.CHUNK_KEY_PREFIX}${metadata.totalChunks - 1}`
-            );
-            const chunk = lastChunk[`${this.CHUNK_KEY_PREFIX}${metadata.totalChunks - 1}`];
-
-            // 检查最后一个分片是否已满
-            if (Object.keys(chunk).length >= this.CHUNK_SIZE) {
+            // 批量更新操作
+            const updates = {};
+            
+            if (metadata.totalChunks === 0 || 
+                Object.keys(await this.getLastChunk(metadata.totalChunks - 1)).length >= this.CHUNK_SIZE) {
                 // 创建新分片
-                await chrome.storage.local.set({
-                    [`${this.CHUNK_KEY_PREFIX}${metadata.totalChunks}`]: { [word]: wordInfo }
-                });
-                // 更新元数据
-                await chrome.storage.local.set({
-                    [`${this.CHUNK_KEY_PREFIX}meta`]: {
-                        ...metadata,
-                        totalChunks: metadata.totalChunks + 1,
-                        totalWords: metadata.totalWords + 1,
-                        lastUpdate: Date.now()
-                    }
-                });
+                const newChunkKey = `${this.CHUNK_KEY_PREFIX}${metadata.totalChunks}`;
+                updates[newChunkKey] = { [word]: wordInfo };
+                updates[`${this.CHUNK_KEY_PREFIX}meta`] = {
+                    totalChunks: metadata.totalChunks + 1,
+                    totalWords: metadata.totalWords + 1,
+                    lastUpdate: Date.now()
+                };
             } else {
-                // 添加到现有分片
-                chunk[word] = wordInfo;
-                await chrome.storage.local.set({
-                    [`${this.CHUNK_KEY_PREFIX}${metadata.totalChunks - 1}`]: chunk
-                });
-                // 更新元数据
-                await chrome.storage.local.set({
-                    [`${this.CHUNK_KEY_PREFIX}meta`]: {
-                        ...metadata,
-                        totalWords: metadata.totalWords + 1,
-                        lastUpdate: Date.now()
-                    }
-                });
+                // 添加到现有最后一个分片
+                const lastChunk = await this.getLastChunk(metadata.totalChunks - 1);
+                lastChunk[word] = wordInfo;
+                updates[`${this.CHUNK_KEY_PREFIX}${metadata.totalChunks - 1}`] = lastChunk;
+                updates[`${this.CHUNK_KEY_PREFIX}meta`] = {
+                    ...metadata,
+                    totalWords: metadata.totalWords + 1,
+                    lastUpdate: Date.now()
+                };
             }
 
-            // 保持旧版数据同步
-            const allWords = await this.getWords();
-            await chrome.storage.local.set({ [this.STORAGE_KEY]: allWords });
-
+            // 批量执行所有更新
+            await chrome.storage.local.set(updates);
             return true;
         } catch (error) {
             console.error('Failed to add word:', error);
@@ -196,42 +153,83 @@ export class VocabularyStorage {
         }
     }
 
-    static notifyUserAndReload(message) {
-        // 创建通知元素
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4CAF50;
-            color: white;
-            padding: 16px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 10000;
-            font-size: 14px;
-        `;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-
-        // 3秒后重新加载扩展
-        // setTimeout(() => {
-        //     chrome.runtime.reload();
-        // }, 3000);
+    // 获取最后一个分片
+    static async getLastChunk(index) {
+        if (index < 0) return {};
+        const result = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}${index}`);
+        return result[`${this.CHUNK_KEY_PREFIX}${index}`] || {};
     }
 
+    // 删除单词
     static async removeWord(word) {
-        const words = await this.getWords();
-        delete words[word];
-        return this.saveWords(words);
+        try {
+            // 更新缓存
+            if (this.cache.words) {
+                delete this.cache.words[word];
+                this.cache.lastUpdate = Date.now();
+            }
+
+            const meta = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}meta`);
+            const metadata = meta[`${this.CHUNK_KEY_PREFIX}meta`];
+            if (!metadata) return false;
+
+            // 查找并删除单词
+            for (let i = 0; i < metadata.totalChunks; i++) {
+                const chunkKey = `${this.CHUNK_KEY_PREFIX}${i}`;
+                const chunk = await chrome.storage.local.get(chunkKey);
+                if (chunk[chunkKey] && word in chunk[chunkKey]) {
+                    delete chunk[chunkKey][word];
+                    await chrome.storage.local.set({
+                        [chunkKey]: chunk[chunkKey],
+                        [`${this.CHUNK_KEY_PREFIX}meta`]: {
+                            ...metadata,
+                            totalWords: metadata.totalWords - 1,
+                            lastUpdate: Date.now()
+                        }
+                    });
+                    return true;
+                }
+            }
+            return false;
+        } catch (error) {
+            console.error('Failed to remove word:', error);
+            return false;
+        }
     }
 
+    // 更新单词
     static async updateWord(word, updates) {
-        const words = await this.getWords();
-        if (words[word]) {
-            words[word] = { ...words[word], ...updates };
-            return this.saveWords(words);
+        try {
+            // 更新缓存
+            if (this.cache.words && this.cache.words[word]) {
+                this.cache.words[word] = { ...this.cache.words[word], ...updates };
+                this.cache.lastUpdate = Date.now();
+            }
+
+            const meta = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}meta`);
+            const metadata = meta[`${this.CHUNK_KEY_PREFIX}meta`];
+            if (!metadata) return false;
+
+            // 查找并更新单词
+            for (let i = 0; i < metadata.totalChunks; i++) {
+                const chunkKey = `${this.CHUNK_KEY_PREFIX}${i}`;
+                const chunk = await chrome.storage.local.get(chunkKey);
+                if (chunk[chunkKey] && word in chunk[chunkKey]) {
+                    chunk[chunkKey][word] = { ...chunk[chunkKey][word], ...updates };
+                    await chrome.storage.local.set({ [chunkKey]: chunk[chunkKey] });
+                    return true;
+                }
+            }
+            return false;
+        } catch (error) {
+            console.error('Failed to update word:', error);
+            return false;
         }
-        return false;
+    }
+
+    // 清理缓存
+    static clearCache() {
+        this.cache.words = null;
+        this.cache.lastUpdate = 0;
     }
 }

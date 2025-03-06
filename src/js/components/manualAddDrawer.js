@@ -198,7 +198,6 @@ export class ManualAddDrawer {
                             
                             // 添加高亮更新
                             const wordCollector = new WordCollector();
-                            await wordCollector.initialize();
                             await wordCollector.highlightCollectedWords(document.body);
                         }
                     } catch (error) {

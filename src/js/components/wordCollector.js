@@ -8,6 +8,8 @@ export class WordCollector {
         this.currentWordInfo = null;  // 添加当前单词信息存储
         this.cardPosition = { x: 0, y: 0 };  // 添加卡片位置存储
         this.boundShowWordDetails = this.showWordDetails.bind(this);
+        this.collectedWords = null;
+        this.observer = null;
     }
 
     async initialize() {
@@ -19,6 +21,11 @@ export class WordCollector {
         
         // 监听 DOM 变化，处理动态加载的内容
         this.setupMutationObserver();
+
+        if (!this.collectedWords) {
+            const words = await VocabularyStorage.getWords();
+            this.collectedWords = new Set(Object.keys(words));
+        }
     }
 
     createCardContainer() {
@@ -892,5 +899,38 @@ export class WordCollector {
         } catch (error) {
             console.error('Failed to uncollect word:', error);
         }
+    }
+
+    // 优化高亮方法，避免重复初始化
+    async highlightCollectedWords(element, forceUpdate = false) {
+        if (forceUpdate || !this.collectedWords) {
+            await this.initialize();
+        }
+        // 使用已缓存的词汇列表进行高亮
+        this.highlightVisibleContent(Array.from(this.collectedWords));
+    }
+
+    // 更新单个单词的高亮状态
+    async updateWordHighlight(word, isCollected) {
+        if (!this.collectedWords) {
+            await this.initialize();
+        }
+
+        if (isCollected) {
+            this.collectedWords.add(word);
+        } else {
+            this.collectedWords.delete(word);
+        }
+
+        // 只更新这个单词的高亮状态
+        document.querySelectorAll(`[data-word="${word.toLowerCase()}"]`)
+            .forEach(element => {
+                if (isCollected) {
+                    element.classList.add('collected-word');
+                } else {
+                    const text = document.createTextNode(element.textContent);
+                    element.parentNode.replaceChild(text, element);
+                }
+            });
     }
 }
