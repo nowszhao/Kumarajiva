@@ -11,7 +11,7 @@ class YuanBaoTranslator extends Translator {
     async createConversation() {
         const url = 'https://yuanbao.tencent.com/api/user/agent/conversation/create';
         const headers = {
-            'Cookie': this.config.cookie,
+            'Cookie': this.config.apiToken,
             'Content-Type': 'application/json'
         };
         const options = {
@@ -51,7 +51,7 @@ class YuanBaoTranslator extends Translator {
 
         const url = 'https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear';
         const headers = {
-            'Cookie': this.config.cookie,
+            'Cookie': this.config.apiToken,
             'Content-Type': 'application/json'
         };
         const options = {
@@ -92,7 +92,7 @@ class YuanBaoTranslator extends Translator {
 
             const url = `https://yuanbao.tencent.com/api/chat/${this.currentChatId}`;
             const headers = {
-                'Cookie': this.config.cookie,
+                'Cookie': this.config.apiToken,
                 'Content-Type': 'application/json'
             };
             const body = {

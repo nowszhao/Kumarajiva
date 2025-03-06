@@ -30,16 +30,16 @@ export default {
         url: 'https://api.moonshot.cn/v1/chat/completions'
     },
     yuanbao: {
-        apiToken: 'xx',
+        apiToken: "_qimei_uuid42=193010b053510040bdbe959987347987350c2698a9; hy_source=web; _qimei_fingerprint=579ad3031f0737dafe77266cbcb409d8; _qimei_i_3=66c04685c60e02dac5c4fe615b8626e3f2b8f6a04409578be2de7b5e2e93753e626a3f973989e2a0d790; _qimei_h38=72e5991abdbe9599873479870300000f019301; hy_user=changhozhao; hy_token=ybUPT4mXukWon0h18MPy9Z9z/kUm76vaMMrI/RwMoSEjdtz7lJl8vPi66lDYZhkX; _qimei_i_1=4cde5185970f55d2c896af620fd626e9f2e7adf915580785bd872f582593206c616351a53980e1dcd784a1e7; hy_source=web; hy_token=ybUPT4mXukWon0h18MPy9Z9z/kUm76vaMMrI/RwMoSEjdtz7lJl8vPi66lDYZhkX; hy_user=changhozhao",
         maxRetries: 3,
         model: 'deepseek-v3',
-        url: 'xx'
+        url: '已内置，无需修改'
     },
     baidu: {
-        apiToken: 'xx',
+        apiToken: 'BIDUPSID=C262929C87F2A363F901E39041B9AD96; PSTM=1740798408; BAIDUID=C262929C87F2A3639A12E82CD944679B:FG=1; BAIDUID_BFESS=C262929C87F2A3639A12E82CD944679B:FG=1; BA_HECTOR=a404052ha50401202021a12028ekn71js4ue91v; ZFY=I:AsEgINh9rjdcTy22OoWlWvcAlSKb6pRkhjmlULmMpI:C; H_WISE_SIDS=60274_61027_61667_62169_62184_62187_62180_62197_62234_62255_62297_62327_62337_62347_62329_62368_62371; H_PS_PSSID=60274_61027_61667_62169_62184_62187_62180_62197_62234_62255_62297_62327_62337_62347_62329_62368_62371; BAIDUID=81F5619EAFB4FCADBDAACABE5B09F8AB:FG=1; H_WISE_SIDS=60273_61027_62127_62169_62184_62187_62182_62197_62235_62281_62135_62325_62340_62347_62328_62366',
         maxRetries: 3,
         model: 'deepseek-chat',
-        url: 'xx'
+        url: '已内置，无需修改'
     },
     translation: {
         defaultService: 'doubao',
