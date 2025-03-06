@@ -10,7 +10,7 @@ export class VocabularyStorage {
     static cache = {
         words: null,
         lastUpdate: 0,
-        cacheTimeout: 5000  // 缓存有效期5秒
+        cacheTimeout: 30000  // 增加到30秒
     };
 
     // 检查是否需要迁移
@@ -71,12 +71,11 @@ export class VocabularyStorage {
 
     // 获取所有词汇
     static async getWords() {
-        // 检查缓存是否有效
+        // 使用缓存
         if (this.cache.words && (Date.now() - this.cache.lastUpdate < this.cache.cacheTimeout)) {
             return this.cache.words;
         }
 
-        await this.checkAndMigrate();
         try {
             const meta = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}meta`);
             const metadata = meta[`${this.CHUNK_KEY_PREFIX}meta`];
@@ -84,9 +83,10 @@ export class VocabularyStorage {
             if (!metadata || metadata.totalChunks === 0) {
                 this.cache.words = {};
                 this.cache.lastUpdate = Date.now();
-                return {};
+                return this.cache.words;
             }
 
+            // 批量获取所有分片
             const chunkKeys = Array.from(
                 { length: metadata.totalChunks },
                 (_, i) => `${this.CHUNK_KEY_PREFIX}${i}`
@@ -231,5 +231,54 @@ export class VocabularyStorage {
     static clearCache() {
         this.cache.words = null;
         this.cache.lastUpdate = 0;
+    }
+
+    // 添加 saveWords 方法
+    static async saveWords(words) {
+        try {
+            // 更新缓存
+            this.cache.words = words;
+            this.cache.lastUpdate = Date.now();
+
+            // 计算分片
+            const entries = Object.entries(words);
+            const chunks = [];
+            
+            for (let i = 0; i < entries.length; i += this.CHUNK_SIZE) {
+                chunks.push(Object.fromEntries(
+                    entries.slice(i, i + this.CHUNK_SIZE)
+                ));
+            }
+
+            // 准备批量更新
+            const updates = {
+                [`${this.CHUNK_KEY_PREFIX}meta`]: {
+                    totalChunks: chunks.length,
+                    totalWords: entries.length,
+                    lastUpdate: Date.now()
+                }
+            };
+
+            // 添加所有分片到更新对象
+            chunks.forEach((chunk, index) => {
+                updates[`${this.CHUNK_KEY_PREFIX}${index}`] = chunk;
+            });
+
+            // 删除旧的分片（如果有的话）
+            const meta = await chrome.storage.local.get(`${this.CHUNK_KEY_PREFIX}meta`);
+            const oldMetadata = meta[`${this.CHUNK_KEY_PREFIX}meta`];
+            if (oldMetadata && oldMetadata.totalChunks > chunks.length) {
+                for (let i = chunks.length; i < oldMetadata.totalChunks; i++) {
+                    await chrome.storage.local.remove(`${this.CHUNK_KEY_PREFIX}${i}`);
+                }
+            }
+
+            // 批量执行所有更新
+            await chrome.storage.local.set(updates);
+            return true;
+        } catch (error) {
+            console.error('Failed to save vocabulary:', error);
+            return false;
+        }
     }
 }

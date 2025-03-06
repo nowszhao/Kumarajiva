@@ -10,25 +10,43 @@ export class WordCollector {
         this.boundShowWordDetails = this.showWordDetails.bind(this);
         this.collectedWords = null;
         this.observer = null;
+        
+        // 确保在构造函数中创建卡片容器
+        this.createCardContainer();
     }
 
     async initialize() {
-        this.createCardContainer();
+        // 避免重复初始化
+        if (this.collectedWords) {
+            return;
+        }
+
         this.setupEventListeners();
         
+        // 先获取词汇数据
+        const words = await VocabularyStorage.getWords();
+        this.collectedWords = words; // 存储完整的词汇信息，而不是仅仅存储单词列表
+        
         // 初始化时高亮所有已收藏的单词
-        await this.highlightCollectedWords();
+        this.highlightVisibleContent(document.body);
         
         // 监听 DOM 变化，处理动态加载的内容
         this.setupMutationObserver();
-
-        if (!this.collectedWords) {
-            const words = await VocabularyStorage.getWords();
-            this.collectedWords = new Set(Object.keys(words));
-        }
     }
 
     createCardContainer() {
+        // 检查是否已存在卡片容器
+        if (this.cardContainer) {
+            return;
+        }
+
+        // 检查页面上是否已存在卡片容器
+        let existingContainer = document.querySelector('.word-card-container');
+        if (existingContainer) {
+            this.cardContainer = existingContainer;
+            return;
+        }
+
         const container = document.createElement('div');
         container.className = 'word-card-container';
         container.style.display = 'none';
@@ -401,66 +419,22 @@ export class WordCollector {
         }
     }
 
-    async highlightCollectedWords(container = document.body) {
-        const collectedWords = await this.getCollectedWords();
-        if (Object.keys(collectedWords).length === 0) return;
-        
-        // 先移除所有现有的高亮，以防重复
-        this.removeAllHighlights(container);
-        
-        const textNodes = this.findTextNodes(container);
-        
-        textNodes.forEach(node => {
-            let text = node.textContent;
-            let matches = [];
-            let lastIndex = 0;
-            
-            // 首先收集所有匹配项
-            Object.values(collectedWords)
-                .filter(wordInfo => !wordInfo.mastered)
-                .forEach(wordInfo => {
-                    const regex = new RegExp(`\\b${this.escapeRegExp(wordInfo.word)}\\b`, 'gi');
-                    let match;
-                    while ((match = regex.exec(text)) !== null) {
-                        matches.push({
-                            index: match.index,
-                            length: match[0].length,
-                            word: wordInfo.word,
-                            text: match[0],
-                            wordInfo: wordInfo
-                        });
-                    }
-                });
+    async highlightCollectedWords(element = document.body, forceUpdate = false) {
+        if (!this.collectedWords || forceUpdate) {
+            const words = await VocabularyStorage.getWords();
+            this.collectedWords = words;
+        }
 
-            // 按位置排序并处理重叠
-            matches.sort((a, b) => a.index - b.index);
-            matches = this.removeOverlappingMatches(matches);
+        // 确保 element 是有效的 DOM 节点
+        if (!(element instanceof Node)) {
+            console.warn('Invalid element provided to highlightCollectedWords');
+            element = document.body;
+        }
 
-            if (matches.length > 0) {
-                const fragment = document.createDocumentFragment();
-                
-                matches.forEach((match, i) => {
-                    if (match.index > lastIndex) {
-                        fragment.appendChild(
-                            document.createTextNode(text.slice(lastIndex, match.index))
-                        );
-                    }
-                    
-                    // 使用新的创建高亮span方法
-                    const span = this.createHighlightSpan(match);
-                    fragment.appendChild(span);
-                    lastIndex = match.index + match.length;
-                });
-                
-                if (lastIndex < text.length) {
-                    fragment.appendChild(
-                        document.createTextNode(text.slice(lastIndex))
-                    );
-                }
-                
-                node.parentNode.replaceChild(fragment, node);
-            }
-        });
+        // 使用已缓存的词汇列表进行高亮
+        if (Object.keys(this.collectedWords).length > 0) {
+            this.highlightVisibleContent(element);
+        }
     }
 
     // 添加辅助方法来处理重叠匹配
@@ -495,6 +469,12 @@ export class WordCollector {
 
     // 修改 findTextNodes 方法以更精确地过滤文本节点
     findTextNodes(node) {
+        // 确保 node 是有效的 DOM 节点
+        if (!(node instanceof Node)) {
+            console.warn('Invalid node provided to findTextNodes');
+            return [];
+        }
+
         const textNodes = [];
         const walk = document.createTreeWalker(
             node,
@@ -503,16 +483,17 @@ export class WordCollector {
                 acceptNode: function(node) {
                     // 排除脚本、样式、已处理的节点等
                     const parent = node.parentNode;
-                    if (parent.tagName === 'SCRIPT' || 
+                    if (!parent || 
+                        parent.tagName === 'SCRIPT' || 
                         parent.tagName === 'STYLE' || 
                         parent.tagName === 'NOSCRIPT' ||
-                        parent.classList.contains('collected-word') ||
-                        parent.classList.contains('word-card-container') ||
-                        parent.closest('.word-card-container')) {
+                        parent.classList?.contains('collected-word') ||
+                        parent.classList?.contains('word-card-container') ||
+                        parent.closest?.('.word-card-container')) {
                         return NodeFilter.FILTER_REJECT;
                     }
                     // 确保文本内容不为空且包含有意义的内容
-                    if (node.textContent.trim().length > 0) {
+                    if (node.textContent?.trim().length > 0) {
                         return NodeFilter.FILTER_ACCEPT;
                     }
                     return NodeFilter.FILTER_REJECT;
@@ -638,65 +619,189 @@ export class WordCollector {
         }
     }
 
-    // 优化高亮可见内容的方法
-    highlightVisibleContent(words) {
-        // 将文档分成小块进行处理
-        const chunks = this.getDocumentChunks();
-        chunks.forEach(chunk => {
-            this.observer.observe(chunk);
+    // 修改高亮内容的方法
+    highlightVisibleContent(container = document.body) {
+        // 确保 container 是有效的 DOM 节点
+        if (!container || !(container instanceof Node)) {
+            console.warn('Invalid container provided to highlightVisibleContent');
+            container = document.body;
+        }
+
+        if (!this.collectedWords || Object.keys(this.collectedWords).length === 0) return;
+
+        const textNodes = this.findTextNodes(container);
+        textNodes.forEach(node => {
+            this.processTextNode(node);
         });
     }
 
-    // 将文档分块的方法
-    getDocumentChunks() {
-        const chunks = [];
-        const walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_ELEMENT,
-            {
-                acceptNode: (node) => {
-                    if (node.childNodes.length > 0 && 
-                        !['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(node.tagName)) {
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                    return NodeFilter.FILTER_SKIP;
-                }
-            }
-        );
-
-        let node;
-        while (node = walker.nextNode()) {
-            if (node.textContent.trim().length > 0) {
-                chunks.push(node);
+    // 处理单个文本节点
+    processTextNode(node) {
+        let text = node.textContent;
+        let matches = [];
+        
+        // 收集所有匹配项
+        for (const [word, wordInfo] of Object.entries(this.collectedWords)) {
+            const regex = new RegExp(`\\b${this.escapeRegExp(word)}\\b`, 'gi');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                matches.push({
+                    index: match.index,
+                    length: match[0].length,
+                    word: word,
+                    text: match[0],
+                    wordInfo: wordInfo
+                });
             }
         }
-        return chunks;
+
+        // 如果有匹配项，进行替换
+        if (matches.length > 0) {
+            matches.sort((a, b) => b.index - a.index); // 从后向前替换，避免位置偏移
+            
+            // 移除重叠的匹配项
+            matches = this.removeOverlappingMatches(matches);
+            
+            let lastIndex = text.length;
+            const fragment = document.createDocumentFragment();
+            
+            // 从后向前处理，避免位置计算错误
+            for (let i = matches.length - 1; i >= 0; i--) {
+                const match = matches[i];
+                
+                // 添加匹配后的文本
+                if (match.index + match.length < lastIndex) {
+                    fragment.insertBefore(
+                        document.createTextNode(text.slice(match.index + match.length, lastIndex)),
+                        fragment.firstChild
+                    );
+                }
+                
+                // 创建高亮 span
+                const span = this.createHighlightSpan(match);
+                fragment.insertBefore(span, fragment.firstChild);
+                
+                lastIndex = match.index;
+            }
+            
+            // 添加剩余的文本
+            if (lastIndex > 0) {
+                fragment.insertBefore(
+                    document.createTextNode(text.slice(0, lastIndex)),
+                    fragment.firstChild
+                );
+            }
+            
+            node.parentNode.replaceChild(fragment, node);
+        }
     }
 
-    // 优化单个元素内的高亮处理
-    highlightWordsInElement(element) {
-        const collectedWords = this.getCollectedWords();
-        if (!collectedWords.length) return;
-
-        const textNodes = this.findTextNodes(element);
-        textNodes.forEach(node => {
-            let text = node.textContent;
-            let hasMatch = false;
-            
-            collectedWords.forEach(word => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                if (regex.test(text)) {
-                    hasMatch = true;
-                    text = text.replace(regex, `<span class="collected-word">$&</span>`);
-                }
-            });
-
-            if (hasMatch) {
-                const span = document.createElement('span');
-                span.innerHTML = text;
-                node.parentNode.replaceChild(span, node);
-            }
+    // 创建高亮 span
+    createHighlightSpan(match) {
+        const span = document.createElement('span');
+        span.className = 'collected-word';
+        span.textContent = match.text;
+        span.dataset.word = match.word.toLowerCase();
+        
+        // 添加必要的数据属性
+        if (match.wordInfo) {
+            span.dataset.pronunciation = JSON.stringify(match.wordInfo.pronunciation || {});
+            span.dataset.definitions = JSON.stringify(match.wordInfo.definitions || []);
+        }
+        
+        // 添加点击事件监听器
+        span.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.showWordDetails(match.wordInfo, e);
         });
+        
+        return span;
+    }
+
+    // 修改 showWordDetails 方法
+    showWordDetails(wordInfo, event) {
+        if (!wordInfo) return;
+        
+        // 确保卡片容器存在
+        if (!this.cardContainer) {
+            this.createCardContainer();
+        }
+        
+        // 如果仍然没有卡片容器，记录错误并返回
+        if (!this.cardContainer) {
+            console.error('Failed to create word card container');
+            return;
+        }
+
+        // 更新当前单词信息
+        this.currentWordInfo = wordInfo;
+        
+        // 阻止事件冒泡
+        event.stopPropagation();
+        
+        // 计算位置
+        const { clientX, clientY } = event;
+        const x = Math.min(clientX, window.innerWidth - 340);
+        const y = Math.min(clientY + 10, window.innerHeight - 400);
+        
+        // 显示卡片
+        this.cardContainer.style.left = `${x}px`;
+        this.cardContainer.style.top = `${y}px`;
+        this.cardContainer.style.display = 'block';
+        this.isCardVisible = true;
+
+        try {
+            // 更新卡片内容
+            const card = this.cardContainer.querySelector('.word-card');
+            if (!card) {
+                throw new Error('Word card element not found');
+            }
+
+            card.innerHTML = this.getCardTemplate();
+            
+            // 设置单词和音标
+            const wordElem = card.querySelector('.word');
+            if (wordElem) {
+                wordElem.textContent = wordInfo.word;
+                wordElem.dataset.word = wordInfo.word;
+            }
+            
+            const phonetic = wordInfo.pronunciation?.American || wordInfo.pronunciation?.British || '';
+            const phoneticElem = card.querySelector('.phonetic');
+            if (phoneticElem) {
+                phoneticElem.textContent = phonetic;
+            }
+
+            // 设置释义
+            const definitionElem = card.querySelector('.definition');
+            if (definitionElem) {
+                const definitionsHtml = wordInfo.definitions
+                    .map(def => `<div class="definition-item">
+                        ${def.pos ? `<span class="pos">${def.pos}</span>` : ''}
+                        <span class="meaning">${def.meaning}</span>
+                    </div>`)
+                    .join('');
+                definitionElem.innerHTML = definitionsHtml;
+            }
+
+            // 更新收藏按钮状态
+            this.updateCollectButton(wordInfo.word);
+
+            // 重新绑定事件监听器
+            this.setupCardEventListeners();
+            
+        } catch (error) {
+            console.error('Error showing word card:', error);
+            if (this.cardContainer) {
+                const card = this.cardContainer.querySelector('.word-card');
+                if (card) {
+                    card.innerHTML = `
+                        <div class="word-card-error">加载失败，请重试</div>
+                    `;
+                }
+            }
+        }
     }
 
     // 添加 IntersectionObserver 设置
@@ -741,107 +846,6 @@ export class WordCollector {
         });
     }
 
-    // 修改显示单词详细信息的方法
-    showWordDetails(wordInfo, event) {
-        if (!wordInfo) return;
-        
-        // 移除可能存在的其他弹窗
-        const existingPopup = document.querySelector('.word-details-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
-        
-        const popup = document.createElement('div');
-        popup.className = 'word-details-popup';
-        
-        const content = `
-            <div class="word-details-header">
-                <span class="word">${wordInfo.word}</span>
-                <span class="phonetic">${wordInfo.pronunciation?.American || wordInfo.pronunciation?.British || ''}</span>
-                <button class="play-audio-btn">
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                        <path fill="currentColor" d="M8 5v14l11-7z"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="definitions">
-                ${wordInfo.definitions.map(def => `
-                    <div class="definition-item">
-                        <span class="pos">${def.pos}</span>
-                        <span class="meaning">${def.meaning}</span>
-                    </div>
-                `).join('')}
-            </div>
-            <div class="word-details-footer">
-                <button class="uncollect-btn">取消收藏</button>
-                ${!wordInfo.mastered ? `
-                    <button class="master-btn">
-                        <svg viewBox="0 0 24 24" width="16" height="16">
-                            <path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                        </svg>
-                        标记为已掌握
-                    </button>
-                ` : ''}
-            </div>
-        `;
-        
-        popup.innerHTML = content;
-        
-        // 定位弹窗
-        const rect = event.target.getBoundingClientRect();
-        popup.style.left = `${rect.left}px`;
-        popup.style.top = `${rect.bottom + 5}px`;
-        
-        document.body.appendChild(popup);
-        
-        // 使用 requestAnimationFrame 确保过渡效果正常工作
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                popup.classList.add('visible');
-            });
-        });
-        
-        // 添加音频播放功能
-        popup.querySelector('.play-audio-btn').addEventListener('click', () => {
-            this.playWordAudio(wordInfo.word);
-        });
-        
-        // 添加取消收藏功能
-        const uncollectBtn = popup.querySelector('.uncollect-btn');
-        if (uncollectBtn) {
-            uncollectBtn.addEventListener('click', async () => {
-                await this.uncollectWord(wordInfo.word);
-                popup.remove();
-            });
-        }
-        
-        // 添加掌握按钮功能
-        const masterBtn = popup.querySelector('.master-btn');
-        if (masterBtn) {
-            masterBtn.addEventListener('click', async () => {
-                await this.markWordAsMastered(wordInfo.word);
-                popup.remove();
-            });
-        }
-        
-        // 添加点击外部关闭弹窗
-        const closePopup = (e) => {
-            if (!popup.contains(e.target) && e.target !== event.target) {
-                popup.classList.remove('visible');
-                // 等待过渡效果完成后移除元素
-                setTimeout(() => {
-                    popup.remove();
-                }, 200);
-                document.removeEventListener('click', closePopup);
-            }
-        };
-        
-        // 延迟添加点击监听，避免立即触发关闭
-        setTimeout(() => {
-            document.addEventListener('click', closePopup);
-        }, 0);
-    }
-
     // 添加标记单词为已掌握的方法
     async markWordAsMastered(word) {
         try {
@@ -870,46 +874,6 @@ export class WordCollector {
         });
     }
 
-    // 修改创建高亮span的部分
-    createHighlightSpan(match) {
-        const span = document.createElement('span');
-        span.className = 'collected-word';
-        span.textContent = match.text;
-        span.dataset.word = match.word.toLowerCase();
-        span.dataset.pronunciation = JSON.stringify(match.wordInfo.pronunciation);
-        span.dataset.definitions = JSON.stringify(match.wordInfo.definitions);
-        
-        // 使用绑定的方法处理点击事件
-        span.addEventListener('click', (e) => this.boundShowWordDetails(match.wordInfo, e));
-        
-        return span;
-    }
-
-    // 添加取消收藏方法
-    async uncollectWord(word) {
-        try {
-            await VocabularyStorage.removeWord(word);
-            
-            // 移除页面中该单词的所有高亮
-            document.querySelectorAll(`.collected-word[data-word="${word.toLowerCase()}"]`)
-                .forEach(element => {
-                    const textNode = document.createTextNode(element.textContent);
-                    element.parentNode.replaceChild(textNode, element);
-                });
-        } catch (error) {
-            console.error('Failed to uncollect word:', error);
-        }
-    }
-
-    // 优化高亮方法，避免重复初始化
-    async highlightCollectedWords(element, forceUpdate = false) {
-        if (forceUpdate || !this.collectedWords) {
-            await this.initialize();
-        }
-        // 使用已缓存的词汇列表进行高亮
-        this.highlightVisibleContent(Array.from(this.collectedWords));
-    }
-
     // 更新单个单词的高亮状态
     async updateWordHighlight(word, isCollected) {
         if (!this.collectedWords) {
@@ -917,20 +881,18 @@ export class WordCollector {
         }
 
         if (isCollected) {
-            this.collectedWords.add(word);
+            // 获取完整的单词信息
+            const words = await VocabularyStorage.getWords();
+            this.collectedWords[word] = words[word];
         } else {
-            this.collectedWords.delete(word);
+            delete this.collectedWords[word];
         }
 
-        // 只更新这个单词的高亮状态
-        document.querySelectorAll(`[data-word="${word.toLowerCase()}"]`)
-            .forEach(element => {
-                if (isCollected) {
-                    element.classList.add('collected-word');
-                } else {
-                    const text = document.createTextNode(element.textContent);
-                    element.parentNode.replaceChild(text, element);
-                }
-            });
+        // 重新高亮整个文档
+        try {
+            this.highlightVisibleContent(document.body);
+        } catch (error) {
+            console.error('Error highlighting content:', error);
+        }
     }
 }
