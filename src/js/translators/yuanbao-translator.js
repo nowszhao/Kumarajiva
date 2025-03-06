@@ -8,45 +8,122 @@ class YuanBaoTranslator extends Translator {
         this.currentChatId = null;
     }
     
-    async translate(text, retryCount = 3) {
-
-        console.log("text:", text,", config:",this.config);
-
-        const url = 'https://yuanbao.tencent.com/api/chat/0b0c6a06-c34d-4124-b7eb-e5df760ea40f';
+    async createConversation() {
+        const url = 'https://yuanbao.tencent.com/api/user/agent/conversation/create';
         const headers = {
-            'Cookie': '_qimei_uuid42=193010b053510040bdbe959987347987350c2698a9; hy_source=web; _qimei_fingerprint=579ad3031f0737dafe77266cbcb409d8; _qimei_i_3=66c04685c60e02dac5c4fe615b8626e3f2b8f6a04409578be2de7b5e2e93753e626a3f973989e2a0d790; _qimei_h38=72e5991abdbe9599873479870300000f019301; hy_user=changhozhao; hy_token=ybUPT4mXukWon0h18MPy9Z9z/kUm76vaMMrI/RwMoSEjdtz7lJl8vPi66lDYZhkX; _qimei_i_1=4cde5185970f55d2c896af620fd626e9f2e7adf915580785bd872f582593206c616351a53980e1dcd784a1e7; hy_source=web; hy_token=ybUPT4mXukWon0h18MPy9Z9z/kUm76vaMMrI/RwMoSEjdtz7lJl8vPi66lDYZhkX; hy_user=changhozhao',
+            'Cookie': this.config.cookie,
             'Content-Type': 'application/json'
         };
-        const body = {
-            model: "gpt_175B_0404",
-            prompt: text,
-            plugin: "Adaptive",
-            displayPrompt: "",
-            displayPromptType: 1,
-            options: {
-                imageIntention: {
-                    needIntentionModel: true,
-                    backendUpdateFlag: 2,
-                    intentionStatus: true
-                }
-            },
-            multimedia: [],
-            agentId: "naQivTmsDa",
-            supportHint: 1,
-            version: "v2",
-            chatModelId: "deep_seek_v3"
-        };
-
         const options = {
             method: 'POST',
             headers,
-            body: JSON.stringify(body)
+            body: JSON.stringify({
+                agentId: "naQivTmsDa"
+            })
         };
 
-        console.log('YuanBao: Prepared request options:', { url, method: options.method });
+        try {
+            // 使用 proxyFetch 机制发送请求
+            const response = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage({
+                    type: 'proxyFetch',
+                    url,
+                    options
+                }, response => {
+                    if (response.success) {
+                        resolve(JSON.parse(response.body));
+                    } else {
+                        reject(new Error(response.error));
+                    }
+                });
+            });
+
+            this.currentChatId = response.id;
+            return response.id;
+        } catch (error) {
+            console.error('YuanBao: Failed to create conversation:', error);
+            throw error;
+        }
+    }
+
+    async deleteConversation() {
+        if (!this.currentChatId) return;
+
+        const url = 'https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear';
+        const headers = {
+            'Cookie': this.config.cookie,
+            'Content-Type': 'application/json'
+        };
+        const options = {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                conversationIds: [this.currentChatId]
+            })
+        };
 
         try {
-            return await new Promise((resolve, reject) => {
+            // 使用 proxyFetch 机制发送请求
+            await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage({
+                    type: 'proxyFetch',
+                    url,
+                    options
+                }, response => {
+                    if (response.success) {
+                        resolve();
+                    } else {
+                        reject(new Error(response.error));
+                    }
+                });
+            });
+            this.currentChatId = null;
+        } catch (error) {
+            console.error('YuanBao: Failed to delete conversation:', error);
+        }
+    }
+    
+    async translate(text, retryCount = 3) {
+        try {
+            // 创建新会话
+            await this.createConversation();
+            
+            console.log("text:", text,", config:",this.config);
+
+            const url = `https://yuanbao.tencent.com/api/chat/${this.currentChatId}`;
+            const headers = {
+                'Cookie': this.config.cookie,
+                'Content-Type': 'application/json'
+            };
+            const body = {
+                model: "gpt_175B_0404",
+                prompt: text,
+                plugin: "Adaptive",
+                displayPrompt: "",
+                displayPromptType: 1,
+                options: {
+                    imageIntention: {
+                        needIntentionModel: true,
+                        backendUpdateFlag: 2,
+                        intentionStatus: true
+                    }
+                },
+                multimedia: [],
+                agentId: "naQivTmsDa",
+                supportHint: 1,
+                version: "v2",
+                chatModelId: "deep_seek_v3"
+            };
+
+            const options = {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body)
+            };
+
+            console.log('YuanBao: Prepared request options:', { url, method: options.method });
+
+            const result = await new Promise((resolve, reject) => {
                 let translatedText = '';
                 let messageBuffer = '';
                 const decoder = new TextDecoder();
@@ -167,7 +244,15 @@ class YuanBaoTranslator extends Translator {
                     options
                 });
             });
+
+            // 删除会话
+            await this.deleteConversation();
+            
+            return result;
         } catch (error) {
+            // 确保在出错时也删除会话
+            await this.deleteConversation();
+            
             console.error('YuanBao: Translation error:', error);
             if (retryCount > 0) {
                 console.log(`YuanBao: Retrying translation, ${retryCount} attempts remaining...`);
