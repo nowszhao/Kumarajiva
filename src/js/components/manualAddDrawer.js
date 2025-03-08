@@ -119,7 +119,7 @@ export class ManualAddDrawer {
 
             this.jsonData = JSON.parse(jsonInput);
 
-            if (!this.jsonData.translation || !Array.isArray(this.jsonData.difficultVocabulary)) {
+            if (!Array.isArray(this.jsonData.difficultVocabulary)) {
                 throw new Error('JSON格式不正确，请检查内容');
             }
 
@@ -128,8 +128,8 @@ export class ManualAddDrawer {
             previewSection.style.display = 'flex'; // 使用flex布局
 
             // 更新预览内容
-            this.drawer.querySelector('.original-text').textContent = this.jsonData.original;
-            this.drawer.querySelector('.translation-text').textContent = this.jsonData.translation;
+            this.drawer.querySelector('.original-text').textContent = this.jsonData.original || "暂未提供";
+            this.drawer.querySelector('.translation-text').textContent = this.jsonData.translation || "暂未提供";
 
             // 获取已收藏的单词列表，用于显示初始状态
             const collectedWords = await VocabularyStorage.getWords();
