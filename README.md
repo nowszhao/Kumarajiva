@@ -17,11 +17,15 @@ Kumarajiva 是一款面YouTube视频和英文网页的实时字幕翻译和解�
   </div>
   <div>
     <img src="images/screenshot2.png" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="字幕分析面板">
-    <p align="center">AI字幕深度分析</p>
+    <p align="center">英文网页段落翻译</p>
   </div>
   <div>
     <img src="images/screenshot3.png" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="网页翻译界面">
-    <p align="center">英文网页段落翻译</p>
+    <p align="center">本地生词表</p>
+  </div>
+    <div>
+    <img src="images/screenshot4.png" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="网页翻译界面">
+    <p align="center">插件配置</p>
   </div>
 </div>
 
