@@ -644,7 +644,7 @@ export class WordCollector {
         for (const [word, wordInfo] of Object.entries(this.collectedWords)) {
             const regex = new RegExp(`\\b${this.escapeRegExp(word)}\\b`, 'gi');
             let match;
-            while ((match = regex.exec(text)) !== null) {
+            while ((match = regex.exec(text)) !== null && !wordInfo.mastered) {
                 matches.push({
                     index: match.index,
                     length: match[0].length,
