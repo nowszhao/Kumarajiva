@@ -1076,3 +1076,57 @@
     box-sizing: border-box;
     letter-spacing: normal;
 }
+
+/* 练习模式开关容器 */
+.practice-switch-container {
+    display: flex;
+    align-items: center;
+    margin: 0 8px;
+}
+
+/* 练习模式开关样式 */
+.practice-switch {
+    width: 40px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.practice-switch::before {
+    content: '听力';
+    position: absolute;
+    left: -36px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+}
+
+.practice-switch::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: all 0.3s ease;
+}
+
+.practice-switch.active {
+    background: #9c27b0;
+}
+
+.practice-switch.active::after {
+    transform: translateX(20px);
+}
+
+/* 修改现有的 loop-switch-container 样式以对齐 */
+.loop-switch-container {
+    margin-right: 24px;
+}

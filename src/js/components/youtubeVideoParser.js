@@ -534,6 +534,7 @@ class UIManager {
         this.analysisPanel = null;
         this.subtitleCache = new Map();
         this.currentSubtitles = [];
+        this.isPracticeMode = false;
 
         // 先定义所有需要的方法
         this.updateSubtitleDisplay = (subtitles) => {
@@ -574,6 +575,12 @@ class UIManager {
             
             // 添加到容器
             contentContainer.appendChild(item);
+
+            // 如果处于练习模式，重新创建练习元素
+            if (this.isPracticeMode) {
+                this.removePracticeElements();
+                this.createPracticeElements(contentContainer);
+            }
         };
 
         this.updateProgressDisplay = (status) => {
@@ -660,11 +667,13 @@ class UIManager {
                 <div class="loop-switch-container">
                     <div class="loop-switch"></div>
                 </div>
+                <div class="practice-switch-container">
+                    <div class="practice-switch"></div>
+                </div>
             </div>
             <div class="subtitle-controls-group">
                 <button class="analyze-button">单字幕AI解析</button>
                 <button class="copy-subtitles-button">复制字幕</button>
-                <button class="listening-practice-button">听力练习</button>
             </div>
         `;
         container.appendChild(controlPanel);
@@ -715,9 +724,10 @@ class UIManager {
             document.body.appendChild(container);
         }
 
-        // 添加听力练习按钮事件监听
-        const listeningPracticeButton = controlPanel.querySelector('.listening-practice-button');
-        listeningPracticeButton.addEventListener('click', () => {
+        // 替换听力练习按钮的事件监听
+        const practiceSwitch = controlPanel.querySelector('.practice-switch');
+        practiceSwitch.addEventListener('click', () => {
+            practiceSwitch.classList.toggle('active');
             this.toggleListeningPractice();
         });
     }
@@ -796,23 +806,48 @@ class UIManager {
         };
         
         prevButton.addEventListener('click', () => {
-            const currentIndex = this.getCurrentSubtitleIndex();
-            if (currentIndex > 0) {
-                const prevSubtitle = this.currentSubtitles[currentIndex - 1];
-                this.player.currentTime = prevSubtitle.startTime / 1000;
+            this.showPreviousSubtitle();
+            // 如果处于练习模式，更新练习区域
+            if (this.isPracticeMode) {
+                const contentContainer = container.querySelector('.subtitle-content');
+                this.removePracticeElements();
+                this.createPracticeElements(contentContainer);
             }
         });
         
         nextButton.addEventListener('click', () => {
-            const currentIndex = this.getCurrentSubtitleIndex();
-            if (currentIndex !== -1 && currentIndex < this.currentSubtitles.length - 1) {
-                const nextSubtitle = this.currentSubtitles[currentIndex + 1];
-                this.player.currentTime = nextSubtitle.startTime / 1000;
+            this.showNextSubtitle();
+            // 如果处于练习模式，更新练习区域
+            if (this.isPracticeMode) {
+                const contentContainer = container.querySelector('.subtitle-content');
+                this.removePracticeElements();
+                this.createPracticeElements(contentContainer);
             }
         });
         
         this.player.addEventListener('timeupdate', updateButtonStates);
         updateButtonStates();
+
+        // 添加键盘导航支持
+        document.addEventListener('keydown', (e) => {
+            // 只有在练习模式下才启用键盘导航
+            if (!this.isPracticeMode) return;
+            
+            // 防止与输入框冲突
+            if (e.target.tagName === 'INPUT') return;
+
+            if (e.key === 'ArrowLeft') {
+                this.showPreviousSubtitle();
+                const contentContainer = container.querySelector('.subtitle-content');
+                this.removePracticeElements();
+                this.createPracticeElements(contentContainer);
+            } else if (e.key === 'ArrowRight') {
+                this.showNextSubtitle();
+                const contentContainer = container.querySelector('.subtitle-content');
+                this.removePracticeElements();
+                this.createPracticeElements(contentContainer);
+            }
+        });
     }
 
     initializeLoopControl(container) {
@@ -1193,19 +1228,22 @@ class UIManager {
         }
     }
 
-    // 添加新方法来处理听力练习模式
+    // 修改 toggleListeningPractice 方法
     toggleListeningPractice() {
         const container = document.getElementById('yt-subtitle-container');
         const contentContainer = container.querySelector('.subtitle-content');
         
-        if (container.classList.contains('practice-mode')) {
-            // 退出练习模式
-            container.classList.remove('practice-mode');
-            this.removePracticeElements();
-        } else {
+        // 切换练习模式状态
+        this.isPracticeMode = !this.isPracticeMode;
+        
+        if (this.isPracticeMode) {
             // 进入练习模式
             container.classList.add('practice-mode');
             this.createPracticeElements(contentContainer);
+        } else {
+            // 退出练习模式
+            container.classList.remove('practice-mode');
+            this.removePracticeElements();
         }
     }
 
@@ -1468,6 +1506,23 @@ class UIManager {
         const practiceArea = container.querySelector('.listening-practice-area');
         if (practiceArea) {
             practiceArea.remove();
+        }
+    }
+
+    // 添加导航方法
+    showNextSubtitle() {
+        const currentIndex = this.getCurrentSubtitleIndex();
+        if (currentIndex !== -1 && currentIndex < this.currentSubtitles.length - 1) {
+            const nextSubtitle = this.currentSubtitles[currentIndex + 1];
+            this.player.currentTime = nextSubtitle.startTime / 1000;
+        }
+    }
+
+    showPreviousSubtitle() {
+        const currentIndex = this.getCurrentSubtitleIndex();
+        if (currentIndex > 0) {
+            const prevSubtitle = this.currentSubtitles[currentIndex - 1];
+            this.player.currentTime = prevSubtitle.startTime / 1000;
         }
     }
 }
