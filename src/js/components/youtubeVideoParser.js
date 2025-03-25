@@ -664,6 +664,7 @@ class UIManager {
             <div class="subtitle-controls-group">
                 <button class="analyze-button">单字幕AI解析</button>
                 <button class="copy-subtitles-button">复制字幕</button>
+                <button class="listening-practice-button">听力练习</button>
             </div>
         `;
         container.appendChild(controlPanel);
@@ -713,6 +714,12 @@ class UIManager {
         } else {
             document.body.appendChild(container);
         }
+
+        // 添加听力练习按钮事件监听
+        const listeningPracticeButton = controlPanel.querySelector('.listening-practice-button');
+        listeningPracticeButton.addEventListener('click', () => {
+            this.toggleListeningPractice();
+        });
     }
 
     createProgressContainer() {
@@ -738,20 +745,20 @@ class UIManager {
         let hoverTimeout;
 
         container.addEventListener('mouseenter', () => {
-            if (!this.player) return;
+            // if (!this.player) return;
             
-            if (hoverTimeout) {
-                clearTimeout(hoverTimeout);
-            }
+            // if (hoverTimeout) {
+            //     clearTimeout(hoverTimeout);
+            // }
 
-            hoverTimeout = setTimeout(() => {
-                wasPlaying = !this.player.paused;
+            // hoverTimeout = setTimeout(() => {
+            //     wasPlaying = !this.player.paused;
                 
-                if (wasPlaying) {
-                    this.player.pause();
-                    pausedByHover = true;
-                }
-            }, 200);
+            //     if (wasPlaying) {
+            //         this.player.pause();
+            //         pausedByHover = true;
+            //     }
+            // }, 200);
         });
 
         container.addEventListener('mouseleave', () => {
@@ -1183,6 +1190,281 @@ class UIManager {
         } catch (err) {
             console.error('Failed to copy subtitles:', err);
             this.showToast('复制失败，请重试');
+        }
+    }
+
+    // 添加新方法来处理听力练习模式
+    toggleListeningPractice() {
+        const container = document.getElementById('yt-subtitle-container');
+        const contentContainer = container.querySelector('.subtitle-content');
+        
+        if (container.classList.contains('practice-mode')) {
+            // 退出练习模式
+            container.classList.remove('practice-mode');
+            this.removePracticeElements();
+        } else {
+            // 进入练习模式
+            container.classList.add('practice-mode');
+            this.createPracticeElements(contentContainer);
+        }
+    }
+
+    // 修改 createPracticeElements 方法
+    createPracticeElements(contentContainer) {
+        // 获取当前字幕
+        const currentIndex = this.getCurrentSubtitleIndex();
+        if (currentIndex === -1) return;
+
+        const currentSubtitle = this.currentSubtitles[currentIndex];
+        if (!currentSubtitle) return;
+
+        const cachedData = this.subtitleCache.get(currentSubtitle.text);
+        const englishText = cachedData?.correctedText || currentSubtitle.text;
+        
+        // 创建练习区域
+        const practiceArea = document.createElement('div');
+        practiceArea.className = 'listening-practice-area';
+        
+        // 分词并创建输入框 - 改进分词逻辑
+        const words = englishText
+            .split(/\s+/)
+            .filter(word => word.length > 0)
+            .map(word => word.replace(/[.,!?;:'"]/g, '')); // 移除标点符号
+        
+        // 添加字符宽度计算容器
+        const widthCalculator = document.createElement('div');
+        widthCalculator.className = 'width-calculator';
+        // 修改样式以更准确匹配输入框
+        widthCalculator.style.cssText = `
+            position: absolute;
+            visibility: hidden;
+            white-space: pre;
+            font-size: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 8px 12px;
+            border: 2px solid transparent;
+            letter-spacing: normal;
+            box-sizing: border-box;
+            display: inline-block;
+        `;
+        document.body.appendChild(widthCalculator);
+
+        // 改进宽度计算函数
+        const calculateInputWidth = (word) => {
+            // 添加一些额外字符来测试宽度
+            widthCalculator.textContent = word + 'W'; // 添加一个宽字符作为缓冲
+            const wordWidth = widthCalculator.getBoundingClientRect().width;
+            
+            // 根据字符数量动态调整额外空间
+            const extraSpace = word.length <= 3 ? 16 : 24; // 短词给更少的额外空间
+            const totalWidth = Math.ceil(wordWidth) + extraSpace;
+            
+            // 根据单词长度设置不同的最小宽度
+            const minWidth = word.length <= 3 ? 50 : 
+                            word.length <= 6 ? 70 :
+                            90;
+            
+            return Math.max(minWidth, totalWidth) + 'px';
+        };
+
+        const inputsHTML = words.map((word, index) => {
+            const inputWidth = calculateInputWidth(word);
+            return `
+                <div class="word-input-container">
+                    <input type="text" 
+                           class="word-input" 
+                           data-word="${word.toLowerCase()}"
+                           data-index="${index}"
+                           autocomplete="off"
+                           spellcheck="false"
+                           style="--input-width: ${inputWidth}">
+                    <span class="word-hint">${word[0]}${'•'.repeat(word.length - 1)}</span>
+                </div>
+            `;
+        }).join('');
+
+        practiceArea.innerHTML = `
+            <div class="practice-controls">
+                <button class="practice-btn show-hint-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    显示提示
+                </button>
+                <button class="practice-btn reset-practice-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    重新开始
+                </button>
+                <button class="practice-btn show-answer-btn">
+                    查看答案
+                </button>
+                <div class="practice-progress">
+                    <span class="progress-text">已完成: 0/${words.length}</span>
+                </div>
+            </div>
+            <div class="word-inputs-container">
+                ${inputsHTML}
+            </div>
+        `;
+
+        contentContainer.appendChild(practiceArea);
+        
+        // 清理宽度计算器
+        document.body.removeChild(widthCalculator);
+        
+        // 添加事件监听
+        this.setupPracticeEventListeners(practiceArea, words);
+    }
+
+    // 设置练习相关的事件监听
+    setupPracticeEventListeners(practiceArea, words) {
+        const inputs = practiceArea.querySelectorAll('.word-input');
+        const showHintBtn = practiceArea.querySelector('.show-hint-btn');
+        const resetBtn = practiceArea.querySelector('.reset-practice-btn');
+        const showAnswerBtn = practiceArea.querySelector('.show-answer-btn');
+
+        const progressText = practiceArea.querySelector('.progress-text');
+        let correctCount = 0;
+
+        // 添加输入框动画效果
+        inputs.forEach((input, index) => {
+            setTimeout(() => {
+                input.style.opacity = '1';
+                input.style.transform = 'translateY(0)';
+            }, index * 50);
+        });
+
+        // 检查所有单词的函数
+        const checkAllWords = () => {
+            correctCount = 0;
+            inputs.forEach((input) => {
+                const userInput = input.value.toLowerCase().trim();
+                const correctWord = input.dataset.word.toLowerCase();
+                
+                if (userInput === correctWord) {
+                    input.classList.add('correct');
+                    input.classList.remove('incorrect');
+                    if (!input.dataset.counted) {
+                        correctCount++;
+                        input.dataset.counted = 'true';
+                    }
+                } else if (userInput) {
+                    input.classList.add('incorrect');
+                    input.classList.remove('correct');
+                    input.dataset.counted = '';
+                } else {
+                    input.classList.remove('correct', 'incorrect');
+                    input.dataset.counted = '';
+                }
+            });
+
+            progressText.textContent = `已完成: ${correctCount}/${words.length}`;
+            
+            // 检查是否全部完成
+            if (correctCount === words.length) {
+                this.showToast('🎉 太棒了！所有单词都正确了！');
+                practiceArea.classList.add('completed');
+            }
+        };
+
+        // 修改输入事件处理
+        inputs.forEach((input, index) => {
+            const maxLength = words[index].length;
+            input.maxLength = maxLength; // 添加最大长度限制
+
+            input.addEventListener('input', (e) => {
+                const userInput = e.target.value.toLowerCase().trim();
+                const correctWord = e.target.dataset.word.toLowerCase();
+                
+                // 实时显示当前输入框的状态
+                if (userInput === correctWord) {
+                    input.classList.add('correct');
+                    input.classList.remove('incorrect');
+                } else if (userInput && userInput.length >= correctWord.length) {
+                    input.classList.add('incorrect');
+                    input.classList.remove('correct');
+                }
+            });
+
+            // 修改键盘事件监听
+            input.addEventListener('keydown', (e) => {
+                // 阻止所有键盘事件冒泡，防止触发 YouTube 快捷键
+                e.stopPropagation();
+                
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // 每次按回车键时检查所有单词
+                    checkAllWords();
+                    // 如果不是最后一个输入框，跳转到下一个
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                } else if (e.key === 'Backspace' && !input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+
+            // 添加 keyup 和 keypress 事件监听，也阻止冒泡
+            input.addEventListener('keyup', (e) => {
+                e.stopPropagation();
+            });
+
+            input.addEventListener('keypress', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // 显示提示按钮
+        showHintBtn.addEventListener('click', () => {
+            practiceArea.classList.toggle('show-hints');
+        });
+
+        // 重置按钮 - 修改为使用新的检查函数
+        resetBtn.addEventListener('click', () => {
+            inputs.forEach(input => {
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+                input.dataset.counted = '';
+            });
+            correctCount = 0;
+            progressText.textContent = `已完成: 0/${words.length}`;
+            inputs[0].focus();
+            checkAllWords(); // 重置后检查所有单词
+        });
+
+        showAnswerBtn.addEventListener('click', () => {
+
+            const container = document.getElementById('yt-subtitle-container');
+            
+            if (container.classList.contains('practice-mode')) {
+                // 退出练习模式
+                container.classList.remove('practice-mode');
+            } else {
+                // 进入练习模式
+                container.classList.add('practice-mode');
+            }
+
+        });
+
+
+
+        // 自动聚焦第一个输入框
+        inputs[0].focus();
+    }
+
+    // 移除练习元素
+    removePracticeElements() {
+        const container = document.getElementById('yt-subtitle-container');
+        const practiceArea = container.querySelector('.listening-practice-area');
+        if (practiceArea) {
+            practiceArea.remove();
         }
     }
 }

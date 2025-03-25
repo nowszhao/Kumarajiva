@@ -53,13 +53,13 @@
 }
 
 .subtitle-item {
-    margin-top: 0; /* 移除顶部间距 */
+    margin-top: 5px; /* 移除顶部间距 */
     padding: 8px 16px;
     background-color: rgba(0, 0, 0, 0.75);
     border-radius: 6px;
-    width: auto;
+    width: 80%;
     display: inline-block;
-    min-width: min(400px, 60vw); /* 响应式最小宽度 */
+    min-width: 800px; /* 响应式最小宽度 */
     transition: all 0.2s ease;
     user-select: text; /* 允许文本选择 */
 }
@@ -854,4 +854,213 @@
     border-radius: 4px;
     font-size: 14px;
     z-index: 2147483647;
+}
+
+/* 听力练习按钮样式 */
+.listening-practice-button {
+    background: #9c27b0;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.listening-practice-button:hover {
+    background: #7b1fa2;
+}
+
+.listening-practice-button:active {
+    background: #6a1b9a;
+}
+
+/* 练习模式样式 */
+.subtitle-container.practice-mode .subtitle-english {
+    filter: blur(5px);
+    user-select: none;
+    pointer-events: none;
+}
+
+.subtitle-container.practice-mode .subtitle-english:hover {
+    filter: none;
+}
+
+/* 优化练习区域样式 */
+.listening-practice-area {
+    background: rgba(28, 28, 28, 0.95);  /* 更深的背景色 */
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 20px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+/* 优化控制面板样式 */
+.practice-controls {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 优化按钮样式 */
+.practice-btn {
+    background: rgba(156, 39, 176, 0.1);  /* 使用主题紫色 */
+    color: #fff;
+    border: 1px solid rgba(156, 39, 176, 0.3);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.practice-btn:hover {
+    background: rgba(156, 39, 176, 0.2);
+    border-color: rgba(156, 39, 176, 0.5);
+}
+
+.practice-btn:active {
+    transform: translateY(1px);
+}
+
+/* 优化进度显示 */
+.practice-progress {
+    margin-left: auto;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* 修改输入框容器样式 */
+.word-input-container {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* 修改输入框样式 */
+.word-input {
+    background: rgba(255, 255, 255, 0.07);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    width: var(--input-width, 60px);
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
+    letter-spacing: normal;
+    text-align: center; /* 居中显示文本 */
+}
+
+.word-input:focus {
+    outline: none;
+    border-color: rgba(156, 39, 176, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.2);
+}
+
+/* 优化输入框容器布局 */
+.word-inputs-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start; /* 确保从左开始排列 */
+    width: 100%;
+}
+
+/* 优化正确/错误状态 */
+.word-input.correct {
+    border-color: #81c995;
+    background: rgba(129, 201, 149, 0.1);
+    color: #81c995;
+}
+
+.word-input.incorrect {
+    border-color: #f28b82;
+    background: rgba(242, 139, 130, 0.1);
+    color: #f28b82;
+}
+
+/* 优化提示文本样式 */
+.word-hint {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    margin-top: 6px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    letter-spacing: 1px;
+    font-family: monospace;
+}
+
+.listening-practice-area.show-hints .word-hint {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 添加动画效果 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.listening-practice-area {
+    animation: fadeIn 0.3s ease;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .word-input {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .word-input:focus {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .word-input.correct {
+        background: rgba(129, 201, 149, 0.1);
+    }
+    
+    .word-input.incorrect {
+        background: rgba(242, 139, 130, 0.1);
+    }
+}
+
+/* 修改宽度计算器样式 */
+.width-calculator {
+    position: absolute;
+    visibility: hidden;
+    white-space: pre;
+    font-size: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 0;
+    box-sizing: border-box;
+    letter-spacing: normal;
 }
