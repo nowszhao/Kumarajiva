@@ -966,7 +966,15 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     box-sizing: border-box;
     letter-spacing: normal;
-    text-align: center; /* 居中显示文本 */
+    text-align: center;
+}
+
+/* 添加 placeholder 样式 */
+.word-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    font-family: monospace; /* 使用等宽字体确保占位符均匀分布 */
+    letter-spacing: 2px; /* 增加字符间距 */
+    font-size: 14px; /* 稍微调小字号 */
 }
 
 .word-input:focus {
@@ -974,6 +982,10 @@
     border-color: rgba(156, 39, 176, 0.5);
     background: rgba(255, 255, 255, 0.1);
     box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.2);
+}
+
+.word-input:focus::placeholder {
+    color: rgba(255, 255, 255, 0.15); /* 聚焦时降低占位符透明度 */
 }
 
 /* 优化输入框容器布局 */

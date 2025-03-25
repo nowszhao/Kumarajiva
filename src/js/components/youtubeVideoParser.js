@@ -1269,6 +1269,8 @@ class UIManager {
 
         const inputsHTML = words.map((word, index) => {
             const inputWidth = calculateInputWidth(word);
+            // 创建一个由下划线组成的占位符，长度与单词相同
+            const placeholder = '▢'.repeat(word.length); // 使用方块字符代替下划线，视觉效果更好
             return `
                 <div class="word-input-container">
                     <input type="text" 
@@ -1277,6 +1279,7 @@ class UIManager {
                            data-index="${index}"
                            autocomplete="off"
                            spellcheck="false"
+                           placeholder="${placeholder}"
                            style="--input-width: ${inputWidth}">
                     <span class="word-hint">${word[0]}${'•'.repeat(word.length - 1)}</span>
                 </div>
