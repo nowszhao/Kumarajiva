@@ -1307,8 +1307,16 @@ class UIManager {
 
         const inputsHTML = words.map((word, index) => {
             const inputWidth = calculateInputWidth(word);
-            // 创建一个由下划线组成的占位符，长度与单词相同
-            const placeholder = '▢'.repeat(word.length); // 使用方块字符代替下划线，视觉效果更好
+            // 计算实际字符长度，排除标点符号和特殊字符
+            const actualLength = word.toLowerCase()
+                .replace(/[.,!?;:'"]/g, '') // 移除标点符号
+                .replace(/\s/g, '')  // 移除空格
+                .replace(/['']/g, '') // 移除撇号
+                .length;
+            
+            // 使用实际长度创建占位符
+            const placeholder = '▢'.repeat(actualLength);
+            
             return `
                 <div class="word-input-container">
                     <input type="text" 
@@ -1317,9 +1325,10 @@ class UIManager {
                            data-index="${index}"
                            autocomplete="off"
                            spellcheck="false"
+                           maxlength="${actualLength}"
                            placeholder="${placeholder}"
                            style="--input-width: ${inputWidth}">
-                    <span class="word-hint">${word[0]}${'•'.repeat(word.length - 1)}</span>
+                    <span class="word-hint">${word[0]}${'•'.repeat(actualLength - 1)}</span>
                 </div>
             `;
         }).join('');
@@ -1382,7 +1391,11 @@ class UIManager {
             correctCount = 0;
             inputs.forEach((input) => {
                 const userInput = input.value.toLowerCase().trim();
-                const correctWord = input.dataset.word.toLowerCase();
+                // 获取正确的单词并进行相同的处理
+                const correctWord = input.dataset.word.toLowerCase()
+                    .replace(/[.,!?;:'"]/g, '') // 移除标点符号
+                    .replace(/\s/g, '')  // 移除空格
+                    .replace(/['']/g, ''); // 移除撇号
                 
                 if (userInput === correctWord) {
                     input.classList.add('correct');
@@ -1412,12 +1425,13 @@ class UIManager {
 
         // 修改输入事件处理
         inputs.forEach((input, index) => {
-            const maxLength = words[index].length;
-            input.maxLength = maxLength; // 添加最大长度限制
-
             input.addEventListener('input', (e) => {
                 const userInput = e.target.value.toLowerCase().trim();
-                const correctWord = e.target.dataset.word.toLowerCase();
+                // 获取正确的单词并进行相同的处理
+                const correctWord = input.dataset.word.toLowerCase()
+                    .replace(/[.,!?;:'"]/g, '')
+                    .replace(/\s/g, '')
+                    .replace(/['']/g, '');
                 
                 // 实时显示当前输入框的状态
                 if (userInput === correctWord) {
@@ -1434,9 +1448,9 @@ class UIManager {
                 // 阻止所有键盘事件冒泡，防止触发 YouTube 快捷键
                 e.stopPropagation();
                 
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    // 每次按回车键时检查所有单词
+                if (e.key === 'Enter' || e.key === ' ') { // 添加空格键检测
+                    e.preventDefault(); // 阻止空格键的默认行为
+                    // 每次按回车键或空格键时检查所有单词
                     checkAllWords();
                     // 如果不是最后一个输入框，跳转到下一个
                     if (index < inputs.length - 1) {
