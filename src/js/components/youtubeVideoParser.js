@@ -1095,12 +1095,12 @@ class UIManager {
 
     setupTextSelection() {
         document.addEventListener('selectionchange', () => {
-            const selection = window.getSelection();
-            const selectedText = selection.toString().trim();
+            // const selection = window.getSelection();
+            // const selectedText = selection.toString().trim();
             
-            if (selectedText && this.isSubtitleText(selection)) {
-                this.handleSubtitleSelection(selection);
-            }
+            // if (selectedText && this.isSubtitleText(selection)) {
+            //     this.handleSubtitleSelection(selection);
+            // }
         });
     }
 
