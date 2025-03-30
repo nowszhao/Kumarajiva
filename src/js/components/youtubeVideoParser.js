@@ -535,6 +535,7 @@ class UIManager {
         this.subtitleCache = new Map();
         this.currentSubtitles = [];
         this.isPracticeMode = false;
+        this.practiceInputsCache = new Map(); // 添加新的缓存来存储练习输入
 
         // 先定义所有需要的方法
         this.updateSubtitleDisplay = (subtitles) => {
@@ -856,6 +857,7 @@ class UIManager {
         let isLooping = false;
         let loopInterval = null;
         let currentLoopingIndex = -1;
+        let lastTime = 0; // 添加变量跟踪上一次的时间
         
         const startLoop = () => {
             if (loopInterval) clearInterval(loopInterval);
@@ -863,16 +865,33 @@ class UIManager {
             currentLoopingIndex = this.getCurrentSubtitleIndex();
             if (currentLoopingIndex === -1) return;
             
+            const currentSubtitle = this.currentSubtitles[currentLoopingIndex];
+            if (!currentSubtitle) return;
+            
+            // 确保初始播放位置在字幕开始处
+            if (this.player.currentTime * 1000 < currentSubtitle.startTime) {
+                this.player.currentTime = currentSubtitle.startTime / 1000;
+            }
+            
             loopInterval = setInterval(() => {
                 if (!isLooping || !this.player) return;
                 
                 const currentTime = this.player.currentTime * 1000;
-                const currentSubtitle = this.currentSubtitles[currentLoopingIndex];
                 
-                if (currentTime >= currentSubtitle.endTime || currentTime < currentSubtitle.startTime) {
+                // 检查是否在当前字幕范围内
+                if (currentTime >= currentSubtitle.endTime) {
+                    // 如果超出结束时间，立即跳回开始
                     this.player.currentTime = currentSubtitle.startTime / 1000;
+                    lastTime = currentSubtitle.startTime;
+                } else if (currentTime < currentSubtitle.startTime) {
+                    // 如果低于开始时间，也跳回开始
+                    this.player.currentTime = currentSubtitle.startTime / 1000;
+                    lastTime = currentSubtitle.startTime;
                 }
-            }, 100);
+                
+                // 更新上一次的时间
+                lastTime = currentTime;
+            }, 50); // 缩短检查间隔以提高精确度
         };
         
         const stopLoop = () => {
@@ -1233,17 +1252,16 @@ class UIManager {
         const container = document.getElementById('yt-subtitle-container');
         const contentContainer = container.querySelector('.subtitle-content');
         
-        // 切换练习模式状态
         this.isPracticeMode = !this.isPracticeMode;
         
         if (this.isPracticeMode) {
-            // 进入练习模式
             container.classList.add('practice-mode');
             this.createPracticeElements(contentContainer);
         } else {
-            // 退出练习模式
             container.classList.remove('practice-mode');
             this.removePracticeElements();
+            // 退出练习模式时清空缓存
+            this.practiceInputsCache.clear();
         }
     }
 
@@ -1307,15 +1325,15 @@ class UIManager {
 
         const inputsHTML = words.map((word, index) => {
             const inputWidth = calculateInputWidth(word);
-            // 计算实际字符长度，排除标点符号和特殊字符
             const actualLength = word.toLowerCase()
-                .replace(/[.,!?;:'"]/g, '') // 移除标点符号
-                .replace(/\s/g, '')  // 移除空格
-                .replace(/['']/g, '') // 移除撇号
+                .replace(/[.,!?;:'"]/g, '')
+                .replace(/\s/g, '')
+                .replace(/['']/g, '')
                 .length;
             
-            // 使用实际长度创建占位符
-            const placeholder = '▢'.repeat(actualLength);
+            // 获取缓存的输入值
+            const cachedInput = this.practiceInputsCache.get(`${currentIndex}-${index}`);
+            const inputValue = cachedInput || '';
             
             return `
                 <div class="word-input-container">
@@ -1323,10 +1341,11 @@ class UIManager {
                            class="word-input" 
                            data-word="${word.toLowerCase()}"
                            data-index="${index}"
+                           value="${inputValue}"
                            autocomplete="off"
                            spellcheck="false"
                            maxlength="${actualLength}"
-                           placeholder="${placeholder}"
+                           placeholder="${'▢'.repeat(actualLength)}"
                            style="--input-width: ${inputWidth}">
                     <span class="word-hint">${word[0]}${'•'.repeat(actualLength - 1)}</span>
                 </div>
@@ -1364,12 +1383,12 @@ class UIManager {
         // 清理宽度计算器
         document.body.removeChild(widthCalculator);
         
-        // 添加事件监听
-        this.setupPracticeEventListeners(practiceArea, words);
+        // 将 currentIndex 传递给 setupPracticeEventListeners
+        this.setupPracticeEventListeners(practiceArea, words, currentIndex);
     }
 
-    // 设置练习相关的事件监听
-    setupPracticeEventListeners(practiceArea, words) {
+    // 修改 setupPracticeEventListeners 方法，添加 currentIndex 参数
+    setupPracticeEventListeners(practiceArea, words, currentIndex) {
         const inputs = practiceArea.querySelectorAll('.word-input');
         const showHintBtn = practiceArea.querySelector('.show-hint-btn');
         const resetBtn = practiceArea.querySelector('.reset-practice-btn');
@@ -1423,21 +1442,18 @@ class UIManager {
             }
         };
 
-        // 修改输入事件处理
+        // 修改输入事件处理，使用传入的 currentIndex
         inputs.forEach((input, index) => {
             input.addEventListener('input', (e) => {
                 const userInput = e.target.value.toLowerCase().trim();
-                // 获取正确的单词并进行相同的处理
-                const correctWord = input.dataset.word.toLowerCase()
-                    .replace(/[.,!?;:'"]/g, '')
-                    .replace(/\s/g, '')
-                    .replace(/['']/g, '');
+                // 使用传入的 currentIndex
+                this.practiceInputsCache.set(`${currentIndex}-${index}`, userInput);
                 
                 // 实时显示当前输入框的状态
-                if (userInput === correctWord) {
+                if (userInput === input.dataset.word) {
                     input.classList.add('correct');
                     input.classList.remove('incorrect');
-                } else if (userInput && userInput.length >= correctWord.length) {
+                } else if (userInput && userInput.length >= input.dataset.word.length) {
                     input.classList.add('incorrect');
                     input.classList.remove('correct');
                 }
@@ -1481,17 +1497,19 @@ class UIManager {
             practiceArea.classList.toggle('show-hints');
         });
 
-        // 重置按钮 - 修改为使用新的检查函数
+        // 修改重置按钮处理，使用传入的 currentIndex
         resetBtn.addEventListener('click', () => {
-            inputs.forEach(input => {
+            inputs.forEach((input, index) => {
                 input.value = '';
                 input.classList.remove('correct', 'incorrect');
                 input.dataset.counted = '';
+                // 使用传入的 currentIndex
+                this.practiceInputsCache.delete(`${currentIndex}-${index}`);
             });
             correctCount = 0;
             progressText.textContent = `已完成: 0/${words.length}`;
             inputs[0].focus();
-            checkAllWords(); // 重置后检查所有单词
+            checkAllWords();
         });
 
         showAnswerBtn.addEventListener('click', () => {
@@ -1538,6 +1556,13 @@ class UIManager {
             const prevSubtitle = this.currentSubtitles[currentIndex - 1];
             this.player.currentTime = prevSubtitle.startTime / 1000;
         }
+    }
+
+    // 修改 cleanupCurrentSession 方法，添加清理练习缓存
+    cleanupCurrentSession() {
+        // ... existing code ...
+        this.practiceInputsCache.clear(); // 清空练习输入缓存
+        // ... rest of the cleanup code ...
     }
 }
 

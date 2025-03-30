@@ -112,6 +112,7 @@ class YuanBaoTranslator extends Translator {
                 agentId: "naQivTmsDa",
                 supportHint: 1,
                 version: "v2",
+                isTemporary:true,
                 chatModelId: "deep_seek_v3"
             };
 
