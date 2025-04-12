@@ -3,6 +3,12 @@
  * 工具函数类
  */
 export class Utils {
+    static parser = new DOMParser();
+
+    static decodeHTMLEntities = (text) => {
+        return Utils.parser.parseFromString(text, "text/html").body.textContent;
+    };
+
     static throttle(func, limit) {
         let inThrottle;
         return function(...args) {

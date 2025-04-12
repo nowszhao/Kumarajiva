@@ -2,6 +2,7 @@ import { TranslatorFactory } from '../translators';
 import config from '../config/config';
 import SubtitleAnalyzer from './subtitleAnalyzer';
 import AnalysisPanel from './analysisPanel';
+import { Utils } from '../utils/Utils';
 
 // 首先添加一个简单的事件总线来处理组件间通信
 class EventBus {
@@ -807,6 +808,8 @@ class UIManager {
         };
         
         prevButton.addEventListener('click', () => {
+
+            this.player.pause();
             this.showPreviousSubtitle();
             // 如果处于练习模式，更新练习区域
             if (this.isPracticeMode) {
@@ -814,9 +817,13 @@ class UIManager {
                 this.removePracticeElements();
                 this.createPracticeElements(contentContainer);
             }
+            this.player.play();
         });
         
         nextButton.addEventListener('click', () => {
+            this.player.pause();
+        
+
             this.showNextSubtitle();
             // 如果处于练习模式，更新练习区域
             if (this.isPracticeMode) {
@@ -824,6 +831,8 @@ class UIManager {
                 this.removePracticeElements();
                 this.createPracticeElements(contentContainer);
             }
+
+            this.player.play();
         });
         
         this.player.addEventListener('timeupdate', updateButtonStates);
@@ -1285,7 +1294,10 @@ class UIManager {
         const words = englishText
             .split(/\s+/)
             .filter(word => word.length > 0)
-            .map(word => word.replace(/[.,!?;:'"]/g, '')); // 移除标点符号
+            .map(word => word
+                .replace(/[.,!?;:'"]/g, '')
+                .replace(/\s/g, '')
+                .replace(/['']/g, '')); // 移除标点符号
         
         // 添加字符宽度计算容器
         const widthCalculator = document.createElement('div');
@@ -1324,12 +1336,11 @@ class UIManager {
         };
 
         const inputsHTML = words.map((word, index) => {
-            const inputWidth = calculateInputWidth(word);
-            const actualLength = word.toLowerCase()
-                .replace(/[.,!?;:'"]/g, '')
-                .replace(/\s/g, '')
-                .replace(/['']/g, '')
-                .length;
+            const decodedWord = Utils.decodeHTMLEntities(word);
+            const inputWidth = calculateInputWidth(decodedWord);
+            const actualLength = decodedWord.toLowerCase().length;
+
+            console.log("word:",decodedWord,"  ,actualLength:",actualLength);
             
             // 获取缓存的输入值
             const cachedInput = this.practiceInputsCache.get(`${currentIndex}-${index}`);
@@ -1339,7 +1350,7 @@ class UIManager {
                 <div class="word-input-container">
                     <input type="text" 
                            class="word-input" 
-                           data-word="${word.toLowerCase()}"
+                           data-word="${decodedWord.toLowerCase()}"
                            data-index="${index}"
                            value="${inputValue}"
                            autocomplete="off"
@@ -1347,7 +1358,7 @@ class UIManager {
                            maxlength="${actualLength}"
                            placeholder="${'▢'.repeat(actualLength)}"
                            style="--input-width: ${inputWidth}">
-                    <span class="word-hint">${word[0]}${'•'.repeat(actualLength - 1)}</span>
+                    <span class="word-hint">${decodedWord[0]}${'•'.repeat(actualLength - 1)}</span>
                 </div>
             `;
         }).join('');
