@@ -1,6 +1,6 @@
 .subtitle-container {
     position: absolute;
-    bottom: 80px;  /* 默认位置 */
+    bottom: 60px; /* 距离底部60px，避免遮挡控制面板 */
     left: 50%;
     transform: translateX(-50%);
     width: 80%; /* 改为百分比宽度 */
@@ -53,22 +53,18 @@
 }
 
 .subtitle-item {
-    margin-top: 5px; /* 移除顶部间距 */
-    padding: 8px 16px;
-    background-color: rgba(0, 0, 0, 0.75);
-    border-radius: 6px;
-    width: 80%;
-    display: inline-block;
-    min-width: 800px; /* 响应式最小宽度 */
-    transition: all 0.2s ease;
-    user-select: text; /* 允许文本选择 */
+    width: auto;           /* 宽度自适应内容 */
+    min-width: 0;          /* 取消最小宽度限制 */
+    padding: 2px 12px;     /* 减小上下内边距 */
+    margin: 0 auto;        /* 居中 */
+    background-color: rgba(0,0,0,0.7);
 }
 
 .subtitle-english {
     display: inline-block;
     color: #ffffff;
-    padding: 12px 16px 8px 16px; /* 调整内边距 */
-    font-size: 24px;
+    padding: 4px 0 2px 0;
+    font-size: 18px !important; /* 强制生效 */
     line-height: 1.4;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
     font-weight: 500;
@@ -84,8 +80,8 @@
 .subtitle-chinese {
     display: inline-block;
     color: rgba(208, 219, 169, 0.95);
-    padding: 4px 16px 12px 16px; /* 调整内边距 */
-    font-size: 22px;
+    padding: 2px 0 4px 0;
+    font-size: 16px !important; /* 强制生效 */
     line-height: 1.5;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
     font-weight: 400;
