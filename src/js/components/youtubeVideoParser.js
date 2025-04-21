@@ -651,6 +651,29 @@ class UIManager {
 
         // 添加文本选择处理
         this.setupTextSelection();
+
+        // 解决字幕容器在控制栏出现时自动隐藏的问题
+        this.updateSubtitleBottomByControlBar();
+
+    }
+
+    updateSubtitleBottomByControlBar() {
+        const player1 = document.getElementById('movie_player');
+        const subtitle1 = document.querySelector('.subtitle-container');
+        if (player1 && subtitle1) {
+            player1.addEventListener('mouseleave', () => {
+                subtitle1.style.bottom = '0px';
+            });
+            player1.addEventListener('mousemove', (e) => {
+                const rect = player1.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                if (y < rect.height / 16) {
+                    subtitle1.style.bottom = '0px';
+                } else {
+                    subtitle1.style.bottom = '60px';
+                }
+            });
+        }
     }
 
     createSubtitleContainer() {
@@ -866,43 +889,199 @@ class UIManager {
         let isLooping = false;
         let loopInterval = null;
         let currentLoopingIndex = -1;
-        let lastTime = 0; // 添加变量跟踪上一次的时间
         
-        const startLoop = () => {
-            if (loopInterval) clearInterval(loopInterval);
-            
-            currentLoopingIndex = this.getCurrentSubtitleIndex();
-            if (currentLoopingIndex === -1) return;
-            
-            const currentSubtitle = this.currentSubtitles[currentLoopingIndex];
-            if (!currentSubtitle) return;
-            
-            // 确保初始播放位置在字幕开始处
-            if (this.player.currentTime * 1000 < currentSubtitle.startTime) {
-                this.player.currentTime = currentSubtitle.startTime / 1000;
+        // 简单的提示音函数 - 使用系统提示音
+        const beep = () => {
+            try {
+                // 使用chrome.runtime.getURL获取插件内资源的完整URL
+                const audioUrl = chrome.runtime.getURL('nt.mp3'); // 直接使用文件名，因为已在manifest中声明
+                console.log('尝试加载音频文件:', audioUrl);
+                
+                const audio = new Audio(audioUrl);
+                
+                // 添加错误处理
+                audio.onerror = (e) => {
+                    console.warn('音频加载失败，错误码:', audio.error?.code, '尝试使用内置音频');
+                    playFallbackAudio();
+                };
+                
+                audio.play().catch(error => {
+                    console.warn('音频播放失败:', error);
+                    playFallbackAudio();
+                });
+            } catch (e) {
+                console.warn('音频初始化失败:', e);
+                playFallbackAudio();
             }
             
-            loopInterval = setInterval(() => {
-                if (!isLooping || !this.player) return;
-                
-                const currentTime = this.player.currentTime * 1000;
-                
-                // 检查是否在当前字幕范围内
-                if (currentTime >= currentSubtitle.endTime) {
-                    // 如果超出结束时间，立即跳回开始
-                    this.player.currentTime = currentSubtitle.startTime / 1000;
-                    lastTime = currentSubtitle.startTime;
-                } else if (currentTime < currentSubtitle.startTime) {
-                    // 如果低于开始时间，也跳回开始
-                    this.player.currentTime = currentSubtitle.startTime / 1000;
-                    lastTime = currentSubtitle.startTime;
+            // 回退音频播放函数
+            function playFallbackAudio() {
+                // 使用Web Audio API作为备用方案
+                useWebAudioAPI();
+            }
+            
+            // 使用Web Audio API作为最后的备用方案
+            function useWebAudioAPI() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 440;
+                    gainNode.gain.value = 0.3;
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    setTimeout(() => {
+                        oscillator.stop();
+                        setTimeout(() => audioContext.close(), 100);
+                    }, 300);
+                } catch (err) {
+                    console.error('所有提示音方法都失败:', err);
                 }
-                
-                // 更新上一次的时间
-                lastTime = currentTime;
-            }, 50); // 缩短检查间隔以提高精确度
+            }
+        }
+        
+        // 循环播放处理逻辑
+        const handleLoopPlayback = async () => {
+            if (!isLooping || !this.player) return;
+            
+            // 如果正在处理循环，直接返回
+            if (handleLoopPlayback.isProcessing) return;
+            
+            const currentIndex = this.getCurrentSubtitleIndex();
+            if (currentIndex === -1) return;
+            
+            const currentSubtitle = this.currentSubtitles[currentIndex];
+            if (!currentSubtitle) return;
+            
+            const currentTime = this.player.currentTime * 1000;
+            
+            // 提前200ms触发循环，确保不会播放到下一个字幕
+            if (currentTime >= currentSubtitle.endTime - 200) {
+                try {
+                    // 设置锁定标志
+                    handleLoopPlayback.isProcessing = true;
+                    
+                    // 记录当前播放速率和位置
+                    const currentRate = this.player.playbackRate;
+                    
+                    // 播放提示音
+                    beep();
+                    // 立即暂停视频，防止继续播放到下一个字幕
+                    this.player.pause();
+                    
+                    console.log('开始等待2秒...', new Date().toISOString());
+                    
+                    // 强制等待2秒 - 使用Promise.all确保至少等待指定时间
+                    await Promise.all([
+                        new Promise(resolve => setTimeout(resolve, 2000))
+                    ]);
+                    
+                    console.log('等待结束，重置位置', new Date().toISOString());
+                    
+                    // 设置回字幕开始位置
+                    this.player.currentTime = currentSubtitle.startTime / 1000;
+                    
+                    // 恢复原始播放速率
+                    this.player.playbackRate = currentRate;
+                    
+
+                    // 恢复播放
+                    try {
+                        await this.player.play();
+                    } catch (e) {
+                        console.warn('无法自动恢复播放:', e);
+                        showPlayButton(); // 显示播放按钮让用户手动继续
+                    }
+                    
+                } catch (error) {
+                    console.error('循环播放处理错误:', error);
+                } finally {
+                    // 延迟300ms后解除锁定，进一步防止重复触发
+                    setTimeout(() => {
+                        handleLoopPlayback.isProcessing = false;
+                        console.log('循环处理锁定已解除');
+                    }, 300);
+                }
+            }
         };
         
+        // 初始化处理状态
+        handleLoopPlayback.isProcessing = false;
+        
+        // 显示播放按钮
+        const showPlayButton = () => {
+            if (document.querySelector('.loop-play-button')) return;
+            
+            const button = document.createElement('button');
+            button.className = 'loop-play-button';
+            button.innerHTML = '点击继续播放';
+            button.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(156, 39, 176, 0.8);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                font-size: 16px;
+                cursor: pointer;
+                z-index: 2147483647;
+            `;
+            
+            button.addEventListener('click', () => {
+                if (this.player) {
+                    this.player.play().catch(() => {
+                        console.error('用户点击后仍无法播放');
+                    });
+                }
+                button.remove();
+            });
+            
+            // 添加到视频容器中
+            const videoContainer = document.querySelector('.html5-video-container');
+            if (videoContainer) {
+                videoContainer.appendChild(button);
+                
+                // 5秒后自动移除
+                setTimeout(() => {
+                    if (document.body.contains(button)) {
+                        button.remove();
+                    }
+                }, 5000);
+            }
+        };
+        
+        // 启动循环
+        const startLoop = () => {
+            // 先清除之前的循环
+            if (loopInterval) {
+                clearInterval(loopInterval);
+            }
+            
+            // 每50毫秒检查一次是否需要循环
+            loopInterval = setInterval(handleLoopPlayback, 50);
+            
+            // 找到当前字幕索引
+            currentLoopingIndex = this.getCurrentSubtitleIndex();
+            if (currentLoopingIndex !== -1) {
+                const currentSubtitle = this.currentSubtitles[currentLoopingIndex];
+                if (currentSubtitle && this.player) {
+                    // 确保从字幕起始位置开始播放
+                    if (this.player.currentTime * 1000 < currentSubtitle.startTime) {
+                        this.player.currentTime = currentSubtitle.startTime / 1000;
+                    }
+                }
+            }
+        };
+        
+        // 停止循环
         const stopLoop = () => {
             if (loopInterval) {
                 clearInterval(loopInterval);
@@ -911,6 +1090,7 @@ class UIManager {
             currentLoopingIndex = -1;
         };
         
+        // 循环开关点击事件
         loopSwitchContainer.addEventListener('click', () => {
             isLooping = !isLooping;
             if (isLooping) {
@@ -922,26 +1102,32 @@ class UIManager {
             }
         });
         
-        this.player.addEventListener('timeupdate', () => {
-            if (isLooping) {
-                const newIndex = this.getCurrentSubtitleIndex();
-                if (newIndex !== -1 && newIndex !== currentLoopingIndex) {
-                    currentLoopingIndex = newIndex;
-                    startLoop();
-                }
-            }
-        });
-        
+        // 监听视频暂停事件
         this.player.addEventListener('pause', () => {
+            // 只有在暂停时暂时清除循环检查
             if (loopInterval) {
                 clearInterval(loopInterval);
                 loopInterval = null;
             }
         });
         
+        // 监听视频播放事件
         this.player.addEventListener('play', () => {
-            if (isLooping) {
+            // 如果循环已开启，恢复循环检查
+            if (isLooping && !loopInterval) {
                 startLoop();
+            }
+        });
+        
+        // 监听字幕切换事件
+        this.player.addEventListener('timeupdate', () => {
+            if (isLooping) {
+                const newIndex = this.getCurrentSubtitleIndex();
+                if (newIndex !== -1 && newIndex !== currentLoopingIndex) {
+                    currentLoopingIndex = newIndex;
+                    // 字幕变更时，重启循环
+                    startLoop();
+                }
             }
         });
     }
@@ -1284,84 +1470,25 @@ class UIManager {
         if (!currentSubtitle) return;
 
         const cachedData = this.subtitleCache.get(currentSubtitle.text);
-        const englishText = cachedData?.correctedText || currentSubtitle.text;
+        // 先对英文文本进行预处理，转换HTML实体
+        let englishText = cachedData?.correctedText || currentSubtitle.text;
+        englishText = englishText.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
         
         // 创建练习区域
         const practiceArea = document.createElement('div');
         practiceArea.className = 'listening-practice-area';
         
-        // 分词并创建输入框 - 改进分词逻辑
-        const words = englishText
-            .split(/\s+/)
-            .filter(word => word.length > 0)
-            .map(word => word
-                .replace(/[.,!?;:'"]/g, '')
-                .replace(/\s/g, '')
-                .replace(/['']/g, '')); // 移除标点符号
+        // 保存原始句子文本，用于后续比对
+        practiceArea.dataset.originalText = englishText.trim();
         
-        // 添加字符宽度计算容器
-        const widthCalculator = document.createElement('div');
-        widthCalculator.className = 'width-calculator';
-        // 修改样式以更准确匹配输入框
-        widthCalculator.style.cssText = `
-            position: absolute;
-            visibility: hidden;
-            white-space: pre;
-            font-size: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 8px 12px;
-            border: 2px solid transparent;
-            letter-spacing: normal;
-            box-sizing: border-box;
-            display: inline-block;
-        `;
-        document.body.appendChild(widthCalculator);
-
-        // 改进宽度计算函数
-        const calculateInputWidth = (word) => {
-            // 添加一些额外字符来测试宽度
-            widthCalculator.textContent = word + 'W'; // 添加一个宽字符作为缓冲
-            const wordWidth = widthCalculator.getBoundingClientRect().width;
-            
-            // 根据字符数量动态调整额外空间
-            const extraSpace = word.length <= 3 ? 16 : 24; // 短词给更少的额外空间
-            const totalWidth = Math.ceil(wordWidth) + extraSpace;
-            
-            // 根据单词长度设置不同的最小宽度
-            const minWidth = word.length <= 3 ? 50 : 
-                            word.length <= 6 ? 70 :
-                            90;
-            
-            return Math.max(minWidth, totalWidth) + 'px';
-        };
-
-        const inputsHTML = words.map((word, index) => {
-            const decodedWord = Utils.decodeHTMLEntities(word);
-            const inputWidth = calculateInputWidth(decodedWord);
-            const actualLength = decodedWord.toLowerCase().length;
-
-            console.log("word:",decodedWord,"  ,actualLength:",actualLength);
-            
-            // 获取缓存的输入值
-            const cachedInput = this.practiceInputsCache.get(`${currentIndex}-${index}`);
-            const inputValue = cachedInput || '';
-            
-            return `
-                <div class="word-input-container">
-                    <input type="text" 
-                           class="word-input" 
-                           data-word="${decodedWord.toLowerCase()}"
-                           data-index="${index}"
-                           value="${inputValue}"
-                           autocomplete="off"
-                           spellcheck="false"
-                           maxlength="${actualLength}"
-                           placeholder="${'▢'.repeat(actualLength)}"
-                           style="--input-width: ${inputWidth}">
-                    <span class="word-hint">${decodedWord[0]}${'•'.repeat(actualLength - 1)}</span>
-                </div>
-            `;
-        }).join('');
+        // 分词 - 更有效地处理单词分割
+        const words = this.extractWords(englishText);
+        
+        console.log("=======englishText-ori", englishText);
+        console.log("=======englishText-words", words);
+        
+        // 获取之前的输入（如果有）
+        const cachedInput = this.practiceInputsCache.get(`${currentIndex}-fullInput`) || '';
 
         practiceArea.innerHTML = `
             <div class="practice-controls">
@@ -1377,170 +1504,267 @@ class UIManager {
                     </svg>
                     重新开始
                 </button>
-                <button class="practice-btn show-answer-btn">
-                    查看答案
-                </button>
                 <div class="practice-progress">
                     <span class="progress-text">已完成: 0/${words.length}</span>
                 </div>
             </div>
-            <div class="word-inputs-container">
-                ${inputsHTML}
+            <div class="sentence-input-container">
+                <div class="hint-text">${englishText}</div>
+                <textarea 
+                    class="sentence-input" 
+                    placeholder="请输入听到的句子..."
+                    spellcheck="false"
+                    autocomplete="off"
+                    rows="3"
+                >${cachedInput}</textarea>
+                <div class="words-stats">
+                    <span class="input-words-count">输入单词: 0</span>
+                    <span class="correct-words-count">正确单词: 0</span>
+                    <span class="total-words-count">总单词数: ${words.length}</span>
+                </div>
+                <div class="matched-preview"></div>
             </div>
         `;
 
         contentContainer.appendChild(practiceArea);
         
-        // 清理宽度计算器
-        document.body.removeChild(widthCalculator);
-        
-        // 将 currentIndex 传递给 setupPracticeEventListeners
+        // 设置事件监听器
         this.setupPracticeEventListeners(practiceArea, words, currentIndex);
     }
-
-    // 修改 setupPracticeEventListeners 方法，添加 currentIndex 参数
+    
+    // 新增方法：更智能地提取单词
+    extractWords(text) {
+        // 预处理文本，规范标点和空格
+        let processedText = text.trim()
+            .replace(/[""]/g, '"')
+            .replace(/['']/g, "'");
+            
+        // 特殊处理：修复可能的编码问题，比如'39'实际上是撇号
+        processedText = processedText.replace(/'39'/g, "'")
+                                    .replace(/'39/g, "'")
+                                    .replace(/39'/g, "'")
+                                    .replace(/&#39;/g, "'")
+                                    .replace(/\\'39\\'/g, "'")
+                                    .replace(/\\'/g, "'");
+            
+        console.log("处理后的文本:", processedText);
+            
+        // 更精确的单词分割正则表达式
+        // 这个正则表达式匹配连续的字母、数字、撇号或连字符
+        const wordRegex = /[\w''-]+/g;
+        const matches = processedText.match(wordRegex) || [];
+        
+        return matches.map(word => {
+            // 存储原始单词形式
+            const original = word;
+            
+            // 清理后的单词，用于匹配
+            let clean = word
+                .replace(/[.,!?;:'""`]/g, '')
+                .replace(/\s/g, '')
+                .replace(/&quot;/g, '')
+                .replace(/'39'/g, "'")
+                .replace(/39/g, "'")
+                .toLowerCase();
+                
+            return { original, clean };
+        });
+    }
+    
+    // 添加更新事件监听器函数
     setupPracticeEventListeners(practiceArea, words, currentIndex) {
-        const inputs = practiceArea.querySelectorAll('.word-input');
+        const sentenceInput = practiceArea.querySelector('.sentence-input');
+        const matchedPreview = practiceArea.querySelector('.matched-preview');
         const showHintBtn = practiceArea.querySelector('.show-hint-btn');
         const resetBtn = practiceArea.querySelector('.reset-practice-btn');
-        const showAnswerBtn = practiceArea.querySelector('.show-answer-btn');
-
+        const hintText = practiceArea.querySelector('.hint-text');
         const progressText = practiceArea.querySelector('.progress-text');
-        let correctCount = 0;
+        const originalText = practiceArea.dataset.originalText;
 
-        // 添加输入框动画效果
-        inputs.forEach((input, index) => {
-            setTimeout(() => {
-                input.style.opacity = '1';
-                input.style.transform = 'translateY(0)';
-            }, index * 50);
-        });
+        // 隐藏提示文本
+        hintText.style.visibility = 'hidden';
+        hintText.style.position = 'absolute';
+        hintText.style.opacity = '0';
+        
+        // 初始化匹配预览 - 不显示未匹配的单词，只显示已匹配的
+        matchedPreview.innerHTML = '';
 
-        // 检查所有单词的函数
-        const checkAllWords = () => {
-            correctCount = 0;
-            inputs.forEach((input) => {
-                const userInput = input.value.toLowerCase().trim();
-                // 获取正确的单词并进行相同的处理
-                const correctWord = input.dataset.word.toLowerCase()
-                    .replace(/[.,!?;:'"]/g, '') // 移除标点符号
-                    .replace(/\s/g, '')  // 移除空格
-                    .replace(/['']/g, ''); // 移除撇号
-                
-                if (userInput === correctWord) {
-                    input.classList.add('correct');
-                    input.classList.remove('incorrect');
-                    if (!input.dataset.counted) {
-                        correctCount++;
-                        input.dataset.counted = 'true';
-                    }
-                } else if (userInput) {
-                    input.classList.add('incorrect');
-                    input.classList.remove('correct');
-                    input.dataset.counted = '';
-                } else {
-                    input.classList.remove('correct', 'incorrect');
-                    input.dataset.counted = '';
-                }
-            });
-
-            progressText.textContent = `已完成: ${correctCount}/${words.length}`;
-            
-            // 检查是否全部完成
-            if (correctCount === words.length) {
-                this.showToast('🎉 太棒了！所有单词都正确了！');
-                practiceArea.classList.add('completed');
-            }
-        };
-
-        // 修改输入事件处理，使用传入的 currentIndex
-        inputs.forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                const userInput = e.target.value.toLowerCase().trim();
-                // 使用传入的 currentIndex
-                this.practiceInputsCache.set(`${currentIndex}-${index}`, userInput);
-                
-                // 实时显示当前输入框的状态
-                if (userInput === input.dataset.word) {
-                    input.classList.add('correct');
-                    input.classList.remove('incorrect');
-                } else if (userInput && userInput.length >= input.dataset.word.length) {
-                    input.classList.add('incorrect');
-                    input.classList.remove('correct');
-                }
-            });
-
-            // 修改键盘事件监听
-            input.addEventListener('keydown', (e) => {
-                // 阻止所有键盘事件冒泡，防止触发 YouTube 快捷键
-                e.stopPropagation();
-                
-                if (e.key === 'Enter' || e.key === ' ') { // 添加空格键检测
-                    e.preventDefault(); // 阻止空格键的默认行为
-                    // 每次按回车键或空格键时检查所有单词
-                    checkAllWords();
-                    // 如果不是最后一个输入框，跳转到下一个
-                    if (index < inputs.length - 1) {
-                        inputs[index + 1].focus();
-                    }
-                } else if (e.key === 'Tab') {
-                    e.preventDefault();
-                    if (index < inputs.length - 1) {
-                        inputs[index + 1].focus();
-                    }
-                } else if (e.key === 'Backspace' && !input.value && index > 0) {
-                    inputs[index - 1].focus();
-                }
-            });
-
-            // 添加 keyup 和 keypress 事件监听，也阻止冒泡
-            input.addEventListener('keyup', (e) => {
-                e.stopPropagation();
-            });
-
-            input.addEventListener('keypress', (e) => {
-                e.stopPropagation();
-            });
-        });
-
+        // 设置输入框焦点
+        setTimeout(() => sentenceInput.focus(), 100);
+        
         // 显示提示按钮
         showHintBtn.addEventListener('click', () => {
-            practiceArea.classList.toggle('show-hints');
-        });
-
-        // 修改重置按钮处理，使用传入的 currentIndex
-        resetBtn.addEventListener('click', () => {
-            inputs.forEach((input, index) => {
-                input.value = '';
-                input.classList.remove('correct', 'incorrect');
-                input.dataset.counted = '';
-                // 使用传入的 currentIndex
-                this.practiceInputsCache.delete(`${currentIndex}-${index}`);
-            });
-            correctCount = 0;
-            progressText.textContent = `已完成: 0/${words.length}`;
-            inputs[0].focus();
-            checkAllWords();
-        });
-
-        showAnswerBtn.addEventListener('click', () => {
-
-            const container = document.getElementById('yt-subtitle-container');
-            
-            if (container.classList.contains('practice-mode')) {
-                // 退出练习模式
-                container.classList.remove('practice-mode');
+            if (hintText.style.visibility === 'hidden') {
+                hintText.style.visibility = 'visible';
+                hintText.style.position = 'static';
+                hintText.style.opacity = '0.7';
+                showHintBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    隐藏提示`;
             } else {
-                // 进入练习模式
-                container.classList.add('practice-mode');
+                hintText.style.visibility = 'hidden';
+                hintText.style.position = 'absolute';
+                hintText.style.opacity = '0';
+                showHintBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    显示提示`;
             }
-
         });
 
+        // 重置按钮
+        resetBtn.addEventListener('click', () => {
+            sentenceInput.value = '';
+            matchedPreview.innerHTML = '';
+            this.practiceInputsCache.set(`${currentIndex}-fullInput`, '');
+            this.checkMatchedWords(sentenceInput.value, words, matchedPreview, progressText, false);
+            sentenceInput.focus();
+        });
 
+        // 输入变化事件 - 实时检查匹配
+        sentenceInput.addEventListener('input', () => {
+            this.practiceInputsCache.set(`${currentIndex}-fullInput`, sentenceInput.value);
+            this.checkMatchedWords(sentenceInput.value, words, matchedPreview, progressText, false);
+        });
 
-        // 自动聚焦第一个输入框
-        inputs[0].focus();
+        // 键盘事件
+        sentenceInput.addEventListener('keydown', (e) => {
+            // 阻止所有键盘事件冒泡，防止触发 YouTube 快捷键
+            e.stopPropagation();
+            
+            // 按下 Enter 键时计算匹配情况
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.checkMatchedWords(sentenceInput.value, words, matchedPreview, progressText, false);
+            }
+        });
+        
+        // 添加 keyup 和 keypress 事件监听，也阻止冒泡
+        sentenceInput.addEventListener('keyup', (e) => {
+            e.stopPropagation();
+        });
+
+        sentenceInput.addEventListener('keypress', (e) => {
+            e.stopPropagation();
+        });
+
+        // 初始检查
+        if (sentenceInput.value) {
+            this.checkMatchedWords(sentenceInput.value, words, matchedPreview, progressText, false);
+        }
+    }
+    
+    // 修改方法：检查匹配的单词
+    checkMatchedWords(inputText, originalWords, previewElement, progressElement, showUnmatched = true) {
+        // 使用相同的提取单词方法确保一致性
+        const inputMatches = this.extractWords(inputText);
+        const inputWords = inputMatches.map(w => w.clean);
+
+        console.log("输入单词:", inputWords);
+        console.log("原始单词:", originalWords.map(w => w.clean));
+        
+        // 跟踪匹配状态
+        const matchedStatus = originalWords.map(() => false);
+        let matchedCount = 0;
+        
+        // 为每个输入单词寻找匹配
+        inputWords.forEach(inputWord => {
+            if (!inputWord) return;
+            let matched = false;
+            
+            // 尝试匹配尚未匹配的原始单词 - 精确匹配
+            for (let i = 0; i < originalWords.length; i++) {
+                if (matchedStatus[i]) continue; // 已匹配的跳过
+                
+                const originalClean = originalWords[i].clean;
+                
+                // 尝试多种匹配方式
+                if (originalClean === inputWord || 
+                    // 处理可能的撇号问题
+                    originalClean.replace(/39/g, "'") === inputWord ||
+                    inputWord.replace(/39/g, "'") === originalClean ||
+                    // 忽略撇号的匹配
+                    originalClean.replace(/'/g, "") === inputWord.replace(/'/g, "") ||
+                    // 附加的灵活匹配 - 考虑词形变化
+                    (originalClean.includes(inputWord) && inputWord.length > 3) ||
+                    (inputWord.includes(originalClean) && originalClean.length > 3)
+                   ) {
+                    matchedStatus[i] = true;
+                    matchedCount++;
+                    matched = true;
+                    console.log(`匹配成功: "${inputWord}" 匹配到了 "${originalWords[i].original}" (清理后: "${originalClean}")`);
+                    break;
+                }
+            }
+            
+            if (!matched) {
+                console.log(`未匹配: "${inputWord}" 没有找到匹配`);
+                // 打印出所有可能的匹配，帮助调试
+                originalWords.forEach((word, idx) => {
+                    if (!matchedStatus[idx]) {
+                        console.log(`  可能的匹配 #${idx}: "${word.original}" (清理后: "${word.clean}")`);
+                    }
+                });
+            }
+        });
+
+        // 更新进度
+        progressElement.textContent = `已完成: ${matchedCount}/${originalWords.length}`;
+        
+        // 获取和更新详细单词统计
+        const practiceArea = previewElement.closest('.listening-practice-area');
+        if (practiceArea) {
+            const inputWordsCount = practiceArea.querySelector('.input-words-count');
+            const correctWordsCount = practiceArea.querySelector('.correct-words-count');
+            
+            if (inputWordsCount) {
+                inputWordsCount.textContent = `输入单词: ${inputWords.length}`;
+            }
+            
+            if (correctWordsCount) {
+                correctWordsCount.textContent = `正确单词: ${matchedCount}`;
+                
+                // 视觉指示器 - 根据匹配比例更改颜色
+                if (matchedCount > 0) {
+                    const matchRatio = matchedCount / Math.max(1, inputWords.length);
+                    if (matchRatio >= 0.8) {
+                        correctWordsCount.className = 'correct-words-count high-match';
+                    } else if (matchRatio >= 0.5) {
+                        correctWordsCount.className = 'correct-words-count medium-match';
+                    } else {
+                        correctWordsCount.className = 'correct-words-count low-match';
+                    }
+                } else {
+                    correctWordsCount.className = 'correct-words-count';
+                }
+            }
+        }
+        
+        // 生成匹配预览 - 只显示已匹配的单词，未匹配的显示为空格
+        let previewHTML = '';
+        originalWords.forEach((word, index) => {
+            if (matchedStatus[index]) {
+                previewHTML += `<span class="matched-word">${word.original}</span> `;
+            } else if (showUnmatched) {
+                previewHTML += `<span class="unmatched-word">${word.original}</span> `;
+            } else {
+                // 用空格占位，保持文本对齐
+                previewHTML += `<span class="placeholder-word"></span> `;
+            }
+        });
+        
+        previewElement.innerHTML = previewHTML;
+        
+        // 检查是否全部完成
+        if (matchedCount === originalWords.length) {
+            this.showToast('🎉 太棒了！所有单词都正确了！');
+            previewElement.classList.add('all-matched');
+        } else {
+            previewElement.classList.remove('all-matched');
+        }
     }
 
     // 移除练习元素
@@ -1601,5 +1825,7 @@ class StorageManager {
         }
     }
 }
+ 
 
 export { EventBus, SubtitleManager, TranslationProcessor, UIManager, StorageManager };
+

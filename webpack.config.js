@@ -47,6 +47,10 @@ module.exports = {
                 { 
                     from: "src/icons",
                     to: "icons"
+                },
+                {
+                    from: "src/nt.mp3",
+                    to: "nt.mp3"
                 }
             ],
         }),
