@@ -537,6 +537,7 @@ class UIManager {
         this.currentSubtitles = [];
         this.isPracticeMode = false;
         this.practiceInputsCache = new Map(); // 添加新的缓存来存储练习输入
+        this.isBlurMode = false;
 
         // 先定义所有需要的方法
         this.updateSubtitleDisplay = (subtitles) => {
@@ -570,8 +571,9 @@ class UIManager {
             // 创建字幕项
             const item = document.createElement('div');
             item.className = 'subtitle-item';
+            // 根据 isBlurMode 切换英文字幕样式
             item.innerHTML = `
-                <div class="subtitle-english">${englishText}</div>
+                <div class="subtitle-english${this.isBlurMode ? ' blur-mode' : ''}">${englishText}</div>
                 <div class="subtitle-chinese">${chineseText}</div>
             `;
             
@@ -688,12 +690,15 @@ class UIManager {
                 <button class="nav-button prev-button">上一句</button>
                 <button class="nav-button next-button">下一句</button>
             </div>
-            <div class="subtitle-controls-group">
+            <div class="subtitle-controls-group loop-practice-blur-group">
                 <div class="loop-switch-container">
-                    <div class="loop-switch"></div>
+                    <div class="loop-switch"></div><div class="loop-switch-label">循环</div>
                 </div>
                 <div class="practice-switch-container">
-                    <div class="practice-switch"></div>
+                    <div class="practice-switch"></div><div class="practice-switch-label">听力</div>
+                </div>
+                <div class="blur-switch-container">
+                    <div class="blur-switch"></div><div class="blur-switch-label">模糊</div>
                 </div>
             </div>
             <div class="subtitle-controls-group">
@@ -754,6 +759,13 @@ class UIManager {
         practiceSwitch.addEventListener('click', () => {
             practiceSwitch.classList.toggle('active');
             this.toggleListeningPractice();
+        });
+        // 新增模糊字幕开关
+        const blurSwitch = controlPanel.querySelector('.blur-switch');
+        blurSwitch.addEventListener('click', () => {
+            this.isBlurMode = !this.isBlurMode;
+            blurSwitch.classList.toggle('active', this.isBlurMode);
+            this.updateSubtitleDisplay(this.currentSubtitles);
         });
     }
 

@@ -47,6 +47,7 @@ class YuanBaoTranslator extends Translator {
     }
 
     async deleteConversation() {
+        if(1==1) return;
         if (!this.currentChatId) return;
 
         const url = 'https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear';
@@ -113,9 +114,13 @@ class YuanBaoTranslator extends Translator {
                 supportHint: 1,
                 version: "v2",
                 isTemporary:true,
+                "supportFunctions": [
+                    "closeInternetSearch"
+                ],
                 chatModelId: "deep_seek_v3"
             };
-
+            
+         
             const options = {
                 method: 'POST',
                 headers,
