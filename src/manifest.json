@@ -12,10 +12,9 @@
     ],
     "host_permissions": [
         "*://*.youtube.com/*",
-        "https://kimi.moonshot.cn/*",
+        "*://kimi.moonshot.cn/*",
         "*://47.121.117.100/*",
-        "https://chat.baidu.com/*",
-        "https://yuanbao.tencent.com/*",
+        "*://yuanbao.tencent.com/*",
         "https://cdn.jsdelivr.net/*",
         "https://dict.youdao.com/*"
     ],
