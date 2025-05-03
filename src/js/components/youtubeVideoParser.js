@@ -347,13 +347,6 @@ class TranslationProcessor {
             - 将输入的所有text作为上下文，对text字段进行英文纠错（当前字幕基于机器转录，存在错误）
             - 生成准确流畅的中文翻译(translation字段)
             - 所有数字时间值保持整数格式
-            - 分析给定字幕中的语言最难点，这些难点可能包括对非母语学习者具有挑战性的词汇、短语、俚语、缩写、简写以及网络用语等，有了这些解析，用户将能完整理解字幕内容，输出请遵循以下要求：
-                - 中文翻译：根据字幕语境给出最贴切的含义
-                - 词汇：识别出句子中所有词汇，包括短语/词块、俚语、缩写
-                - 类型：包括短语/词块、俚语、缩写（Phrases, Slang, Abbreviations）
-                - 词性：使用n., v., adj., adv., phrase等标准缩写
-                - 音标：提供美式音标
-                - 中英混合句子：使用词汇造一个句子，中文句子除了该词汇外，其他均为中文，需要保证语法正确，通过在完整中文语境中嵌入单一核心英语术语，帮助学习者直观理解专业概念的实际用法；英语句子在括号中展示。
             2. 遵守的JSON规范：
             - 使用双引号("")
             - 禁止尾随逗号
@@ -371,18 +364,7 @@ class TranslationProcessor {
                     "startTime": 120,
                     "endTime": 1800,
                     "correctedText": "Hey, welcome back! So this week, the world",
-                    "translation": "嘿，欢迎回来！本周我们将讨论",
-                    "difficultVocabulary": [
-                        {
-                            "vocabulary": "welcome back",
-                            "type": "Phrases",
-                            "part_of_speech": "phrase",
-                            "phonetic": "/ˈwelkəm bæk/",
-                            "chinese_meaning":  "欢迎回来",
-                            "chinese_english_sentence": "当他出差回来时，同事们对他说Welcome back。（When he came back from a business trip, his colleagues said 'Welcome back'to him.）" //中文句子中必要包含待解析的英文词汇
-                        },
-                        ...
-                    ]
+                    "translation": "嘿，欢迎回来！本周我们将讨论"
                 },
                 ...
             ]

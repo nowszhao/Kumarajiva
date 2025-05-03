@@ -74,6 +74,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // 处理元宝API - 创建会话
   if (request.type === 'YUANBAO_CREATE_CONVERSATION') {
+    console.log('元宝API - 创建会话请求:', {
+      url: 'http://47.121.117.100:3000/api/llm/conversation/create',
+      method: 'POST',
+      body: {
+        agentId: "naQivTmsDa",
+        cookie: request.apiToken ? '已提供' : '未提供' // 不打印实际token，只显示是否提供
+      }
+    });
+    
     fetch('http://47.121.117.100:3000/api/llm/conversation/create', {
       method: 'POST',
       headers: {
@@ -86,10 +95,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })
     .then(response => response.json())
     .then(data => {
+      console.log('元宝API - 创建会话响应:', data);
       sendResponse({ success: true, data });
     })
     .catch(error => {
       console.error('YuanBao API error:', error);
+      console.log('元宝API - 创建会话错误:', error.message);
       sendResponse({ success: false, error: error.message });
     });
     return true;
@@ -97,6 +108,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // 处理元宝API - 翻译
   if (request.type === 'YUANBAO_TRANSLATE') {
+    console.log('元宝API - 翻译请求:', {
+      url: `http://47.121.117.100:3000/api/llm/chat/${request.chatId}`,
+      method: 'POST',
+      body: {
+        prompt: request.text,
+        cookie: request.apiToken ? '已提供' : '未提供', // 不打印实际token，只显示是否提供
+        agentId: "naQivTmsDa",
+        model: request.model || "gpt_175B_0404"
+      }
+    });
+    
     fetch(`http://47.121.117.100:3000/api/llm/chat/${request.chatId}`, {
       method: 'POST',
       headers: {
@@ -111,10 +133,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })
     .then(response => response.json())
     .then(data => {
+      console.log('元宝API - 翻译响应:', data);
       sendResponse({ success: true, data });
     })
     .catch(error => {
       console.error('YuanBao translation error:', error);
+      console.log('元宝API - 翻译错误:', error.message);
       sendResponse({ success: false, error: error.message });
     });
     return true;
