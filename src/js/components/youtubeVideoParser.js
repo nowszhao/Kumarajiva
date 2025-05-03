@@ -559,8 +559,23 @@ class UIManager {
                 return;
             }
             
-            // 只处理第一条字幕（当前时间点的字幕）
-            const currentSubtitle = subtitles[0];
+            // 获取当前播放的字幕
+            let currentSubtitle;
+            
+            // 如果是模糊模式切换或者其他非时间更新触发的情况，优先获取当前播放时间对应的字幕
+            const currentIndex = this.getCurrentSubtitleIndex();
+            if (currentIndex !== -1) {
+                currentSubtitle = this.currentSubtitles[currentIndex];
+            } 
+            // 如果找不到当前播放的字幕，再考虑使用传入的字幕
+            else if (subtitles.length > 0 && subtitles[0]) {
+                currentSubtitle = subtitles[0];
+            } 
+            // 最后的兜底方案，使用第一个字幕
+            else {
+                currentSubtitle = this.currentSubtitles[0];
+            }
+            
             if (!currentSubtitle) return;
             
             // 获取缓存数据
