@@ -538,6 +538,9 @@ class UIManager {
         this.isPracticeMode = false;
         this.practiceInputsCache = new Map(); // 添加新的缓存来存储练习输入
         this.isBlurMode = false;
+        
+        // 初始化快捷键
+        this.initializeShortcuts();
 
         // 先定义所有需要的方法
         this.updateSubtitleDisplay = (subtitles) => {
@@ -799,6 +802,59 @@ class UIManager {
         this.initializeHoverControl(container);
         this.initializeNavigation(container);
         this.initializeLoopControl(container);
+    }
+    
+    // 添加快捷键初始化方法
+    initializeShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // 防止与输入框冲突
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            // Ctrl+1: 切换循环
+            if (e.ctrlKey && e.key === '1') {
+                e.preventDefault(); // 阻止默认行为
+                const loopSwitch = document.querySelector('.loop-switch');
+                if (loopSwitch) {
+                    loopSwitch.click(); // 模拟点击循环开关
+                }
+            }
+            
+            // Ctrl+2: 切换听力练习
+            else if (e.ctrlKey && e.key === '2') {
+                e.preventDefault(); // 阻止默认行为
+                const practiceSwitch = document.querySelector('.practice-switch');
+                if (practiceSwitch) {
+                    practiceSwitch.click(); // 模拟点击听力练习开关
+                }
+            }
+            
+            // Ctrl+3: 切换模糊
+            else if (e.ctrlKey && e.key === '3') {
+                e.preventDefault(); // 阻止默认行为
+                const blurSwitch = document.querySelector('.blur-switch');
+                if (blurSwitch) {
+                    blurSwitch.click(); // 模拟点击模糊开关
+                }
+            }
+            
+            // Ctrl+N: 下一句
+            else if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) {
+                e.preventDefault(); // 阻止默认行为
+                const nextButton = document.querySelector('.next-button');
+                if (nextButton && !nextButton.disabled) {
+                    nextButton.click(); // 模拟点击下一句按钮
+                }
+            }
+            
+            // Ctrl+B: 上一句
+            else if (e.ctrlKey && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault(); // 阻止默认行为
+                const prevButton = document.querySelector('.prev-button');
+                if (prevButton && !prevButton.disabled) {
+                    prevButton.click(); // 模拟点击上一句按钮
+                }
+            }
+        });
     }
 
     initializeHoverControl(container) {
