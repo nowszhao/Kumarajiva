@@ -954,6 +954,7 @@ class UIManager {
         let isLooping = false;
         let loopInterval = null;
         let currentLoopingIndex = -1;
+        let loopCount = 0; // 添加循环计数器
         
         // 简单的提示音函数 - 使用系统提示音
         const beep = () => {
@@ -1010,6 +1011,22 @@ class UIManager {
             }
         }
         
+        // 根据循环次数设置播放速度
+        const setPlaybackRateByLoopCount = () => {
+            if (!this.player) return;
+            
+            // 根据循环次数设置播放速度
+            if (loopCount <= 5) {
+                this.player.playbackRate = 1.0; // 正常速度
+            } else if (loopCount < 10) {
+                this.player.playbackRate = 0.75; // 降低到0.75速度
+            } else {
+                this.player.playbackRate = 0.5; // 降低到0.5速度
+            }
+            
+            console.log(`循环次数: ${loopCount}, 播放速度: ${this.player.playbackRate}`);
+        };
+        
         // 循环播放处理逻辑
         const handleLoopPlayback = async () => {
             if (!isLooping || !this.player) return;
@@ -1031,8 +1048,8 @@ class UIManager {
                     // 设置锁定标志
                     handleLoopPlayback.isProcessing = true;
                     
-                    // 记录当前播放速率和位置
-                    const currentRate = this.player.playbackRate;
+                    // 增加循环计数
+                    loopCount++;
                     
                     // 播放提示音
                     beep();
@@ -1051,8 +1068,8 @@ class UIManager {
                     // 设置回字幕开始位置
                     this.player.currentTime = currentSubtitle.startTime / 1000;
                     
-                    // 恢复原始播放速率
-                    this.player.playbackRate = currentRate;
+                    // 根据循环次数设置播放速度
+                    setPlaybackRateByLoopCount();
                     
 
                     // 恢复播放
@@ -1130,6 +1147,9 @@ class UIManager {
                 clearInterval(loopInterval);
             }
             
+            // 重置循环计数
+            loopCount = 0;
+            
             // 每50毫秒检查一次是否需要循环
             loopInterval = setInterval(handleLoopPlayback, 50);
             
@@ -1142,6 +1162,9 @@ class UIManager {
                     if (this.player.currentTime * 1000 < currentSubtitle.startTime) {
                         this.player.currentTime = currentSubtitle.startTime / 1000;
                     }
+                    
+                    // 初始化播放速度为正常
+                    this.player.playbackRate = 1.0;
                 }
             }
         };
@@ -1153,6 +1176,12 @@ class UIManager {
                 loopInterval = null;
             }
             currentLoopingIndex = -1;
+            loopCount = 0;
+            
+            // 恢复正常播放速度
+            if (this.player) {
+                this.player.playbackRate = 1.0;
+            }
         };
         
         // 循环开关点击事件
@@ -1180,7 +1209,7 @@ class UIManager {
         this.player.addEventListener('play', () => {
             // 如果循环已开启，恢复循环检查
             if (isLooping && !loopInterval) {
-                startLoop();
+                loopInterval = setInterval(handleLoopPlayback, 50);
             }
         });
         
@@ -1190,7 +1219,7 @@ class UIManager {
                 const newIndex = this.getCurrentSubtitleIndex();
                 if (newIndex !== -1 && newIndex !== currentLoopingIndex) {
                     currentLoopingIndex = newIndex;
-                    // 字幕变更时，重启循环
+                    // 字幕变更时，重启循环（重置循环计数）
                     startLoop();
                 }
             }
