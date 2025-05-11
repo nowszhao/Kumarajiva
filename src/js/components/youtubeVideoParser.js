@@ -1016,9 +1016,9 @@ class UIManager {
             if (!this.player) return;
             
             // 根据循环次数设置播放速度
-            if (loopCount <= 5) {
+            if (loopCount <= 2) {
                 this.player.playbackRate = 1.0; // 正常速度
-            } else if (loopCount < 10) {
+            } else if (loopCount < 8) {
                 this.player.playbackRate = 0.75; // 降低到0.75速度
             } else {
                 this.player.playbackRate = 0.5; // 降低到0.5速度
