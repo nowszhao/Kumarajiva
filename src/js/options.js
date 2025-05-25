@@ -1,10 +1,15 @@
 import config from './config/config';
 import { VocabularyManager } from './components/vocabularyManager';
 import { ManualAddDrawer } from './components/manualAddDrawer';
+import { GitHubAuth } from './components/githubAuth';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 初始化导航切换功能
     initializeNavigation();
+    
+    // 初始化GitHub认证
+    const githubAuth = new GitHubAuth();
+    await githubAuth.initialize();
     
     // 加载所有保存的设置
     await loadSettings();
@@ -12,6 +17,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 初始化生词表管理
     const vocabularyManager = new VocabularyManager();
     await vocabularyManager.initialize();
+
+    // 初始化认证UI
+    await initializeAuthUI(githubAuth, vocabularyManager);
 
     // 设置表单提交处理
     document.getElementById('settingsForm').addEventListener('submit', handleSettingsSubmit);
@@ -127,13 +135,11 @@ async function loadSettings() {
 
         // 加载同步设置
         const syncSettings = await chrome.storage.sync.get([
-            'syncServerUrl',
             'enableAutoSync',
             'syncInterval',
             'lastSyncTime'
         ]);
 
-        document.getElementById('syncServerUrl').value = syncSettings.syncServerUrl || '';
         document.getElementById('enableAutoSync').checked = syncSettings.enableAutoSync || false;
         document.getElementById('syncInterval').value = syncSettings.syncInterval || 60;
 
@@ -246,9 +252,8 @@ async function handleSettingsSubmit(e) {
         const enableAutoSync = document.getElementById('enableAutoSync');
         const syncInterval = document.getElementById('syncInterval');
 
-        if (syncServerUrl && enableAutoSync && syncInterval) {
+        if (enableAutoSync && syncInterval) {
             const syncSettings = {
-                syncServerUrl: syncServerUrl.value,
                 enableAutoSync: enableAutoSync.checked,
                 syncInterval: parseInt(syncInterval.value, 10)
             };
@@ -455,4 +460,87 @@ async function handleServiceChange(e) {
         document.getElementById('maxRetries').value = defaultConfig.maxRetries || 3;
         document.getElementById('serviceUrl').value = defaultConfig.url || '';
     }
+}
+
+// 初始化认证UI
+async function initializeAuthUI(githubAuth, vocabularyManager) {
+    const loginSection = document.getElementById('loginSection');
+    const userSection = document.getElementById('userSection');
+    const authStatus = document.getElementById('authStatus');
+    const githubLogin = document.getElementById('githubLogin');
+    const githubLogout = document.getElementById('githubLogout');
+
+    // 更新UI状态
+    function updateAuthUI() {
+        if (githubAuth.isAuthenticated()) {
+            const userInfo = githubAuth.getUserInfo();
+            
+            // 显示用户信息
+            document.getElementById('userName').textContent = userInfo.name || userInfo.login;
+            document.getElementById('userEmail').textContent = userInfo.email || '';
+            document.getElementById('userAvatar').src = userInfo.avatar_url || '';
+            
+            // 切换显示状态
+            loginSection.style.display = 'none';
+            userSection.style.display = 'block';
+            authStatus.classList.add('authenticated');
+            authStatus.classList.remove('error');
+        } else {
+            loginSection.style.display = 'block';
+            userSection.style.display = 'none';
+            authStatus.classList.remove('authenticated');
+        }
+        
+        // 更新同步按钮状态
+        if (vocabularyManager && vocabularyManager.sync) {
+            vocabularyManager.sync.updateSyncStatus();
+        }
+    }
+
+    // GitHub登录处理
+    githubLogin.addEventListener('click', async () => {
+        try {
+            githubLogin.disabled = true;
+            githubLogin.textContent = '登录中...';
+            
+            await githubAuth.login();
+            updateAuthUI();
+            
+            // 重新初始化同步功能
+            await vocabularyManager.sync.initialize();
+            
+            showStatus('GitHub登录成功', 'success');
+        } catch (error) {
+            console.error('GitHub login failed:', error);
+            showStatus('GitHub登录失败: ' + error.message, 'error');
+            authStatus.classList.add('error');
+        } finally {
+            githubLogin.disabled = false;
+            githubLogin.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 8px;">
+                    <path fill="currentColor" d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                登录 GitHub
+            `;
+        }
+    });
+
+    // GitHub登出处理
+    githubLogout.addEventListener('click', async () => {
+        try {
+            await githubAuth.logout();
+            updateAuthUI();
+            
+            // 停止自动同步
+            vocabularyManager.sync.stopAutoSync();
+            
+            showStatus('已登出GitHub账户', 'success');
+        } catch (error) {
+            console.error('GitHub logout failed:', error);
+            showStatus('登出失败: ' + error.message, 'error');
+        }
+    });
+
+    // 初始化UI状态
+    updateAuthUI();
 } 

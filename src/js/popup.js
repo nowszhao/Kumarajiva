@@ -12,6 +12,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('[Popup] Plugin status for domain:', domain, isEnabled);
     pluginSwitch.checked = isEnabled;
 
+    // 检查GitHub登录状态
+    const authData = await chrome.storage.sync.get(['githubAccessToken', 'githubUserInfo']);
+    if (authData.githubAccessToken && authData.githubUserInfo) {
+        const authInfo = document.getElementById('authInfo');
+        const userAvatar = document.getElementById('popupUserAvatar');
+        const userName = document.getElementById('popupUserName');
+        
+        userAvatar.src = authData.githubUserInfo.avatar_url || '';
+        userName.textContent = authData.githubUserInfo.name || authData.githubUserInfo.login || '';
+        authInfo.style.display = 'block';
+    }
+
     // 监听开关变化
     pluginSwitch.addEventListener('change', async (e) => {
         const isEnabled = e.target.checked;

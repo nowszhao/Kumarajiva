@@ -571,6 +571,11 @@ input:checked + .status-slider:before {
     color: #d93025;
 }
 
+.status-badge.warning {
+    background-color: #fef7e0;
+    color: #f9ab00;
+}
+
 .status-badge.syncing {
     background-color: #e8f0fe;
     color: #1a73e8;
@@ -613,4 +618,86 @@ input:checked + .status-slider:before {
 @keyframes rotate {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* GitHub 登录样式 */
+.auth-status {
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 16px;
+    background: #f8f9fa;
+}
+
+.login-section {
+    text-align: center;
+}
+
+.auth-description {
+    margin: 0 0 16px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.user-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #e1e4e8;
+}
+
+.user-details {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 500;
+    color: #1d1d1f;
+    margin-bottom: 2px;
+}
+
+.user-email {
+    font-size: 12px;
+    color: #666;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+#githubLogin {
+    background: #24292e;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+#githubLogin:hover {
+    background: #1b1f23;
+}
+
+/* 登录状态指示器 */
+.auth-status.authenticated {
+    border-color: #34a853;
+    background: #e6f4ea;
+}
+
+.auth-status.error {
+    border-color: #d93025;
+    background: #fce8e6;
 }

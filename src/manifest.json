@@ -14,6 +14,8 @@
         "*://*.youtube.com/*",
         "*://kimi.moonshot.cn/*",
         "*://47.121.117.100/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
         "*://yuanbao.tencent.com/*",
         "https://cdn.jsdelivr.net/*",
         "https://dict.youdao.com/*"

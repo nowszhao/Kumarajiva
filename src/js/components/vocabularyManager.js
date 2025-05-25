@@ -126,8 +126,30 @@ export class VocabularyManager {
         // 应用搜索过滤
         if (this.searchQuery) {
             filteredWords = filteredWords.filter(([word, info]) => {
-                return word.toLowerCase().includes(this.searchQuery) ||
-                    info.definitions.some(def => def.meaning.toLowerCase().includes(this.searchQuery));
+                const searchLower = this.searchQuery.toLowerCase();
+                
+                // 搜索单词本身
+                if (word.toLowerCase().includes(searchLower)) {
+                    return true;
+                }
+                
+                // 搜索释义
+                if (info.definitions) {
+                    if (Array.isArray(info.definitions)) {
+                        return info.definitions.some(def => {
+                            if (typeof def === 'object' && def.meaning) {
+                                return def.meaning.toLowerCase().includes(searchLower);
+                            } else if (typeof def === 'string') {
+                                return def.toLowerCase().includes(searchLower);
+                            }
+                            return false;
+                        });
+                    } else if (typeof info.definitions === 'string') {
+                        return info.definitions.toLowerCase().includes(searchLower);
+                    }
+                }
+                
+                return false;
             });
         }
 
@@ -339,8 +361,26 @@ export class VocabularyManager {
     }
 
     formatDefinitions(definitions) {
-        if (!definitions || definitions.length === 0) return '-';
-        return definitions.map(def => `${def.pos} ${def.meaning}`).join('; ');
+        if (!definitions) return '-';
+        
+        if (Array.isArray(definitions)) {
+            if (definitions.length === 0) return '-';
+            return definitions.map(def => {
+                if (typeof def === 'object' && def.pos && def.meaning) {
+                    return `${def.pos} ${def.meaning}`;
+                } else if (typeof def === 'object' && def.meaning) {
+                    return def.meaning;
+                } else if (typeof def === 'string') {
+                    return def;
+                } else {
+                    return String(def);
+                }
+            }).join('; ');
+        } else if (typeof definitions === 'string') {
+            return definitions || '-';
+        } else {
+            return '-';
+        }
     }
 
     formatTimestamp(timestamp) {

@@ -112,6 +112,33 @@
             background: #d2d2d7;
             margin: 0 -20px;
         }
+
+        .auth-info {
+            padding: 8px 0;
+            margin-bottom: 8px;
+        }
+
+        .auth-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .popup-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid #e1e4e8;
+        }
+
+        .popup-username {
+            font-size: 13px;
+            color: #666;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -125,6 +152,12 @@
             <input type="checkbox" id="pluginSwitch">
             <span class="slider"></span>
         </label>
+    </div>
+    <div class="auth-info" id="authInfo" style="display: none;">
+        <div class="auth-user">
+            <img id="popupUserAvatar" class="popup-avatar" src="" alt="">
+            <span id="popupUserName" class="popup-username"></span>
+        </div>
     </div>
     <div class="divider"></div>
     <a href="options.html" class="settings-link" target="_blank">访问插件首页</a>
