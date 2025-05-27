@@ -213,8 +213,8 @@ export class VocabularySync {
                     
                     vocabularies[word] = {
                         word: word,
-                        definitions: this.formatDefinitionsForCloud(info.definitions),
-                        pronunciation: this.formatPronunciationForCloud(info.pronunciation),
+                        definitions: info.definitions,
+                        pronunciation: info.pronunciation,
                         memory_method: info.memory_method || '',
                         mastered: Boolean(info.mastered),
                         timestamp: timestamp
