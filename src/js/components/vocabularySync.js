@@ -381,24 +381,31 @@ export class VocabularySync {
     }
 
     parseDefinitionsFromCloud(definitions) {
-        // 从云端字符串格式转换为本地对象数组格式
+        // 从云端格式转换为本地对象数组格式
         if (typeof definitions === 'string' && definitions) {
-            // 解析 "adj. 无线的; n. 设备" 格式
-            return definitions.split('; ').map(def => {
-                const parts = def.trim().split(' ');
-                if (parts.length >= 2) {
-                    const pos = parts[0];
-                    const meaning = parts.slice(1).join(' ');
-                    return { pos, meaning };
-                } else {
-                    return { pos: '', meaning: def.trim() };
+            try {
+                // 首先尝试解析JSON格式（新格式）
+                const parsed = JSON.parse(definitions);
+                if (Array.isArray(parsed)) {
+                    return parsed;
                 }
-            });
+            } catch {
+                // 如果JSON解析失败，尝试解析旧的字符串格式 "adj. 无线的; n. 设备"
+                return definitions.split('; ').map(def => {
+                    const parts = def.trim().split(' ');
+                    if (parts.length >= 2) {
+                        const pos = parts[0];
+                        const meaning = parts.slice(1).join(' ');
+                        return { pos, meaning };
+                    } else {
+                        return { pos: '', meaning: def.trim() };
+                    }
+                });
+            }
         } else if (Array.isArray(definitions)) {
             return definitions;
-        } else {
-            return [];
         }
+        return [];
     }
 
     parsePronunciationFromCloud(pronunciation) {
@@ -419,13 +426,7 @@ export class VocabularySync {
     formatDefinitionsForCloud(definitions) {
         // 从本地对象数组格式转换为云端字符串格式
         if (Array.isArray(definitions)) {
-            return definitions.map(def => {
-                if (def.pos && def.meaning) {
-                    return `${def.pos} ${def.meaning}`;
-                } else {
-                    return def.meaning || def;
-                }
-            }).join('; ');
+            return JSON.stringify(definitions);
         } else if (typeof definitions === 'string') {
             return definitions;
         } else {
