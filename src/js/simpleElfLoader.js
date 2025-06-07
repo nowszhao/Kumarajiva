@@ -640,7 +640,7 @@
                 toolbar.style.opacity = '1';
                 toolbar.style.transform = 'translateY(0) scale(1)';
                 // 确保宽度保持固定
-                toolbar.style.width = '48px';
+                toolbar.style.width = '30px';
                 console.log('[SimpleElfLoader] Toolbar shown');
             }
         }
