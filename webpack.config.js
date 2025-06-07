@@ -6,6 +6,8 @@ module.exports = {
         background: './src/background.js',
         contentScript: './src/js/contentScript.js',
         inlineTranslator: './src/js/inlineTranslator.js',
+        learningElfLoader: './src/js/learningElfLoader.js',
+        simpleElfLoader: './src/js/simpleElfLoader.js',
         options: './src/js/options.js',
         popup: './src/js/popup.js'
     },
@@ -51,6 +53,14 @@ module.exports = {
                 {
                     from: "src/nt.mp3",
                     to: "nt.mp3"
+                },
+                {
+                    from: "src/js/components",
+                    to: "js/components"
+                },
+                {
+                    from: "src/js/ui",
+                    to: "js/ui"
                 }
             ],
         }),

@@ -143,4 +143,79 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  // 处理学习精灵 - 获取今日单词
+  if (request.type === 'LEARNING_ELF_GET_TODAY_WORDS') {
+    console.log('学习精灵 - 获取今日单词请求');
+    
+    // 计算当天的开始和结束时间戳
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const startDate = startOfDay.getTime();
+    const endDate = endOfDay.getTime() - 1000; // 减去1秒，确保是当天的结束
+    
+    const apiUrl = `http://47.121.117.100:3000/api/review/history?startDate=${startDate}&endDate=${endDate}&limit=100&offset=0`;
+    console.log('请求URL:', apiUrl);
+    
+    fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${request.token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('学习精灵 - 获取今日单词响应:', data);
+      // 新API返回的是 { success: true, data: { total: x, data: [...] } }
+      // 需要提取 data.data 作为单词数组
+      if (data.success && data.data && Array.isArray(data.data.data)) {
+        sendResponse({ success: true, data: { success: true, data: data.data.data } });
+      } else {
+        sendResponse({ success: true, data: { success: true, data: [] } });
+      }
+    })
+    .catch(error => {
+      console.error('Learning Elf get today words error:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  // 处理学习精灵 - 获取学习测验
+  if (request.type === 'LEARNING_ELF_GET_QUIZ') {
+    console.log('学习精灵 - 获取学习测验请求，单词:', request.word);
+    
+    fetch('http://47.121.117.100:3000/api/review/quiz', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${request.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        word: request.word
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('学习精灵 - 获取学习测验响应:', data);
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error('Learning Elf get quiz error:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
 });

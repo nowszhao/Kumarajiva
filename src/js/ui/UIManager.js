@@ -2,6 +2,7 @@ import { TranslationServiceWrapper } from '../services/TranslationServiceWrapper
 import { ManualAddDrawer } from '../components/manualAddDrawer';
 import { WordCollector } from '../components/wordCollector';
 import { VocabularyStorage } from '../components/vocabularyStorage';
+import { LearningElf } from '../components/learningElf';
 
 
 /**
@@ -12,6 +13,91 @@ export class UIManager {
         this.selectionToolbar = null;
         this.hoverToolbar = null;
         this.manualAddDrawer = null; // 添加 manualAddDrawer 属性
+        this.learningElf = null; // 添加学习精灵属性
+        this.toolbarVisible = false; // 工具栏显示状态
+    }
+
+    async initializeLearningElf() {
+        try {
+            console.log('[UIManager] Initializing Learning Elf...');
+            this.learningElf = new LearningElf();
+            await this.learningElf.initialize();
+            
+            // 监听工具栏切换事件（保留兼容性）
+            document.addEventListener('toggleToolbar', () => {
+                this.handleToolbarToggle();
+            });
+            
+            // 监听hover显示工具栏事件
+            document.addEventListener('showToolbar', () => {
+                this.handleShowToolbar();
+            });
+            
+            // 监听hover隐藏工具栏事件
+            document.addEventListener('hideToolbar', () => {
+                this.handleHideToolbar();
+            });
+            
+            console.log('[UIManager] Learning Elf initialized successfully');
+        } catch (error) {
+            console.error('[UIManager] Failed to initialize Learning Elf:', error);
+        }
+    }
+
+    handleToolbarToggle() {
+        this.toolbarVisible = !this.toolbarVisible;
+        
+        // 显示或隐藏现有工具栏
+        const existingToolbar = document.querySelector('.translation-toolbar');
+        if (existingToolbar) {
+            if (this.toolbarVisible) {
+                existingToolbar.style.display = 'flex';
+            } else {
+                existingToolbar.style.display = 'none';
+            }
+        } else if (this.toolbarVisible) {
+            // 如果没有工具栏，创建一个
+            this.createTranslationToolbar();
+        }
+        
+        // 更新精灵状态
+        if (this.learningElf) {
+            this.learningElf.setToolbarVisible(this.toolbarVisible);
+        }
+    }
+
+    handleShowToolbar() {
+        console.log('[UIManager] handleShowToolbar called');
+        this.toolbarVisible = true;
+        
+        // 显示现有工具栏或创建新工具栏
+        const existingToolbar = document.querySelector('.translation-toolbar');
+        if (existingToolbar) {
+            existingToolbar.style.display = 'flex';
+            existingToolbar.style.opacity = '1';
+            existingToolbar.style.transform = 'translateY(0)';
+        } else {
+            // 如果没有工具栏，创建一个
+            this.createTranslationToolbar();
+        }
+    }
+
+    handleHideToolbar() {
+        console.log('[UIManager] handleHideToolbar called');
+        this.toolbarVisible = false;
+        
+        // 隐藏工具栏
+        const existingToolbar = document.querySelector('.translation-toolbar');
+        if (existingToolbar) {
+            existingToolbar.style.opacity = '0';
+            existingToolbar.style.transform = 'translateY(-10px)';
+            // 延迟隐藏，等待动画完成
+            setTimeout(() => {
+                if (!this.toolbarVisible) {
+                    existingToolbar.style.display = 'none';
+                }
+            }, 200);
+        }
     }
 
     createLoadingIndicator(text="正在翻译中...") {
@@ -159,6 +245,15 @@ export class UIManager {
     createTranslationToolbar() {
         const toolbar = document.createElement('div');
         toolbar.className = 'translation-toolbar';
+        
+        // 添加平滑动画和初始状态
+        toolbar.style.cssText = `
+            ${toolbar.style.cssText || ''}
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            opacity: ${this.toolbarVisible ? '1' : '0'};
+            transform: translateY(${this.toolbarVisible ? '0' : '-10px'});
+            display: ${this.toolbarVisible ? 'flex' : 'none'};
+        `;
 
         // 进度条
         const progress = document.createElement('div');
@@ -913,5 +1008,31 @@ export class UIManager {
         setTimeout(() => {
             this.analysisPanel.host.style.pointerEvents = 'none';
         }, 300); // 等待过渡动画完成
+    }
+
+    destroy() {
+        // 销毁学习精灵
+        if (this.learningElf) {
+            this.learningElf.destroy();
+            this.learningElf = null;
+        }
+        
+        // 移除工具栏切换事件监听
+        document.removeEventListener('toggleToolbar', this.handleToolbarToggle);
+        
+        // 清理其他UI元素
+        const elementsToRemove = [
+            '.translation-toolbar',
+            '.translation-progress',
+            '.analysis-panel-host',
+            '.study-card-overlay'
+        ];
+        
+        elementsToRemove.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.remove();
+            }
+        });
     }
 }

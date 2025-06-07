@@ -136,7 +136,7 @@ Kumarajiva-API is the backend cloud service for [Kumarajiva](https://github.com/
    ```
 
 2. **测试不同客户端类型的GitHub OAuth登录:**
-   ```bash
+```bash
    # Web应用登录
    open "http://localhost:3000/api/auth/github?client_type=web"
    
@@ -151,7 +151,7 @@ Kumarajiva-API is the backend cloud service for [Kumarajiva](https://github.com/
    ```
 
 3. **获取API文档:**
-   ```bash
+```bash
    # 查看Swagger API文档
    open http://localhost:3000/documentation
    ```
@@ -574,6 +574,8 @@ Authorization: Bearer {access_token} (可选，但获取完整信息需要认证
 | `/api/review/history` | GET | 获取学习历史记录 | JWT* |
 | `/api/review/stats` | GET | 获取详细学习统计 | JWT* |
 | `/api/review/reset` | POST | 重置今日学习进度 | JWT* |
+| `/api/review/word-history/:word` | GET | 获取单词学习记录 | JWT* |
+| `/api/review/contribution` | GET | 获取用户贡献图信息 | JWT* |
 
 ### 🤖 LLM API | LLM Integration APIs
 
@@ -1297,6 +1299,66 @@ curl -X POST \
      "http://localhost:3000/api/review/reset"
 ```
 
+#### 获取单词学习记录
+```bash
+curl -H "Authorization: Bearer $JWT_TOKEN" \
+     "http://localhost:3000/api/review/word-history/serendipity"
+```
+
+响应示例:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "review_date": "2024-01-15 14:30:25",
+      "review_result": 1
+    },
+    {
+      "review_date": "2024-01-14 10:15:42",
+      "review_result": 0
+    },
+    {
+      "review_date": "2024-01-13 09:20:13",
+      "review_result": 1
+    }
+  ]
+}
+```
+
+#### 获取用户贡献图信息
+```bash
+curl -H "Authorization: Bearer $JWT_TOKEN" \
+     "http://localhost:3000/api/review/contribution"
+```
+
+响应示例:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "date": "2024-08-25",
+      "total_words": 0,
+      "completed": 0,
+      "correct": 0
+    },
+    {
+      "date": "2024-08-26",
+      "total_words": 20,
+      "completed": 20,
+      "correct": 18
+    },
+    {
+      "date": "2025-01-15",
+      "total_words": 15,
+      "completed": 15,
+      "correct": 12
+    }
+  ]
+}
+```
+
 ### 🤖 LLM API 示例 | LLM API Examples
 
 #### 创建LLM对话会话
@@ -1348,7 +1410,19 @@ curl "http://localhost:3000/health"
   "status": "healthy",
   "timestamp": "2024-01-15T10:30:00.000Z",
   "legacyMode": false,
-  "supportedClients": ["web", "ios", "android", "desktop", "extension"]
+  "supportedClients": ["web", "ios", "android", "desktop", "extension"],
+  "features": [
+    "Multi-user authentication via GitHub OAuth",
+    "Cross-platform support (Web, iOS, Android, Desktop, Chrome Extension)",
+    "Vocabulary management",
+    "Spaced repetition learning system",
+    "Learning progress tracking",
+    "Individual word learning history tracking",
+    "User contribution graph (GitHub-style learning heatmap)",
+    "LLM integration for enhanced learning",
+    "JWT + Refresh Token authentication",
+    "Legacy mode for backward compatibility"
+  ]
 }
 ```
 
@@ -1371,6 +1445,8 @@ curl "http://localhost:3000/api/info"
       "Vocabulary management",
       "Spaced repetition learning system",
       "Learning progress tracking",
+      "Individual word learning history tracking",
+      "User contribution graph (GitHub-style learning heatmap)",
       "LLM integration for enhanced learning",
       "JWT + Refresh Token authentication",
       "Legacy mode for backward compatibility"
@@ -1393,6 +1469,109 @@ curl "http://localhost:3000/api/info"
 }
 ```
 
+
+
+#### 获取今日复习词汇
+```
+curl -H "Authorization: Bearer xxxx" \
+     "http://47.121.117.100:3000/api/review/today"
+
+{
+	"success": true,
+	"data": [{
+		"word": "drift off",
+		"definitions": [{
+			"meaning": "渐渐入睡；（思想）开小差；漂走",
+			"pos": "phrase"
+		}],
+		"memory_method": "听着轻柔的音乐，她慢慢地drifted off进入梦乡。（Listening to the gentle music, she slowly drifted off to sleep.）",
+		"pronunciation": {
+			"American": "/ˈdrɪft ɔːf/",
+			"British": ""
+		},
+		"mastered": 0,
+		"timestamp": 1743328441643,
+		"user_id": 2,
+		"is_new": true,
+		"review_count": 0
+	},
+	...
+	]
+} 
+```
+
+
+#### 生成练习题
+```
+curl -X POST \
+     -H "Authorization: Bearer xxxx" \
+     -H "Content-Type: application/json" \
+     -d '{"word": "gem"}' \
+     "http://47.121.117.100:3000/api/review/quiz"
+{
+	"success": true,
+	"data": {
+		"word": "gem",
+		"phonetic": "/dʒem/",
+		"audio": null,
+		"definitions": [{
+			"meaning": "宝石；珍品",
+			"pos": "n."
+		}],
+		"examples": [],
+		"memory_method": "这本书是文学领域的一颗gem。(This book is a gem in the field of literature.)",
+		"correct_answer": "宝石；珍品",
+		"options": [{
+			"definition": "宝石；珍品",
+			"pos": "n."
+		}, {
+			"definition": "给（某人）盖好被子；把……塞进去",
+			"pos": "phrase"
+		}, {
+			"definition": "小摆设；小玩意儿",
+			"pos": "n."
+		}, {
+			"definition": "名人；明星；名望",
+			"pos": "n."
+		}]
+	}
+}
+```
+
+
+
+#### 获取历史复习词汇
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJjbGllbnRUeXBlIjoiZXh0ZW5zaW9uIiwiaWF0IjoxNzQ4OTE3MDczLCJleHAiOjE3NDk1MjE4NzN9.Azn4eZ1EjOYSKjxnLhyXw_elqfQz0D6w4YyRBCp-58s" \
+     "http://47.121.117.100:3000/api/review/history?startDate=1749225600000&endDate=1749311999000&limit=100&offset=0"
+{
+	"success": true,
+	"data": {
+		"total": 30,
+		"data": [{
+			"word": "root causes",
+			"definitions": [{
+				"meaning": "根本原因",
+				"pos": "n."
+			}],
+			"memory_method": "我们需要分析冲突的root causes。（We need to analyze the root causes of the conflict.）",
+			"pronunciation": {
+				"American": "/ruːt ˈkɔːzɪz/",
+				"British": ""
+			},
+			"mastered": 0,
+			"timestamp": 1742698130038,
+			"user_id": 2,
+			"last_review_date": 1749253519384,
+			"review_count": 3,
+			"correct_count": 3,
+			"examples": []
+		}, ...],
+		"limit": 100,
+		"offset": 0
+	}
+}
+ 
+ 
 #### 访问Swagger API文档
 ```bash
 # 在浏览器中打开

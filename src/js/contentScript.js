@@ -382,5 +382,7 @@ class YouTubeSubtitleApp {
 const app = new YouTubeSubtitleApp();
 app.initializeExtension();
 
+// YouTube专用功能已由专门的学习精灵加载器处理（learningElfLoader.js）
+console.log('[YouTube] YouTube-specific features loaded. Learning Elf handled by learningElfLoader.js');
 
 console.log("contentScript.js loaded");

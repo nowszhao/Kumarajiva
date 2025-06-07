@@ -44,15 +44,23 @@
             "styles/wordCollector.css",
             "styles/manualAddDrawer.css"
         ],
-        "js": ["js/inlineTranslator.js"],
+        "js": ["js/inlineTranslator.js", "js/simpleElfLoader.js"],
         "run_at": "document_end"
     }],
     "background": {
         "service_worker": "js/background.js"
     },
     "web_accessible_resources": [{
-        "resources": ["nt.mp3"],
-        "matches": ["*://*.youtube.com/*"]
+        "resources": [
+            "nt.mp3",
+            "icons/elf.png",
+            "js/ui/UIManager.js",
+            "js/components/learningElf.js",
+            "js/components/studyCard.js",
+            "js/components/notificationManager.js",
+            "js/components/githubAuth.js"
+        ],
+        "matches": ["<all_urls>"]
     }],
     "icons": {
         "16": "icons/icon16.png",
