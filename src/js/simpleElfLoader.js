@@ -180,8 +180,21 @@
                 return;
             }
             
-            // 随机选择一个单词进行测验
-            const randomWord = words[Math.floor(Math.random() * words.length)];
+            // 在开始学习前，更新徽章数字确保显示最新状态
+            const pendingWords = words.filter(w => !w.mastered);
+            console.log('[SimpleElfLoader] 📖 开始学习前状态检查:', {
+                总单词数: words.length,
+                待学习数: pendingWords.length,
+                已掌握数: words.length - pendingWords.length
+            });
+            
+            if (pendingWords.length === 0) {
+                alert('🎉 恭喜！今日所有单词都已掌握完成！');
+                return;
+            }
+            
+            // 从待学习单词中随机选择一个进行测验
+            const randomWord = pendingWords[Math.floor(Math.random() * pendingWords.length)];
             const quiz = await getStudyQuiz(randomWord.word);
             
             if (!quiz) {
@@ -189,9 +202,16 @@
                 return;
             }
             
-            // 显示测验 - 使用自定义UI
-            // API返回格式: { word, phonetic, definitions, memory_method, correct_answer, options }
-            await showCustomQuizModal(quiz);
+            // 随机选择学习模式
+            const quizTypes = ['choice', 'spelling', 'fillBlank'];
+            const randomQuizType = quizTypes[Math.floor(Math.random() * quizTypes.length)];
+            
+            console.log(`[SimpleElfLoader] 🎯 选择学习模式: ${randomQuizType} (单词: ${randomWord.word})`);
+            console.log(`[SimpleElfLoader] 📊 Quiz数据:`, quiz);
+            console.log(`[SimpleElfLoader] 📝 单词数据:`, randomWord);
+            
+            // 显示对应的测验UI
+            await showQuizModal(quiz, randomWord, randomQuizType);
         } catch (error) {
             console.error('[SimpleElfLoader] Study prompt error:', error);
             alert('学习功能出现错误，请稍后再试。');
@@ -227,8 +247,8 @@
         }
     }
 
-    // 创建简约酷炫的自定义测验弹框
-    async function showCustomQuizModal(quiz) {
+    // 创建多模式学习测验弹框
+    async function showQuizModal(quiz, wordData, quizType) {
         return new Promise((resolve) => {
             // 创建遮罩层
             const overlay = document.createElement('div');
@@ -273,133 +293,16 @@
                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
              `;
 
-                         // 标题
-             const title = document.createElement('div');
-             title.innerHTML = '🧚‍♀️ 学习时间！';
-             title.style.cssText = `
-                 font-size: 20px;
-                 font-weight: 700;
-                 color: #2d3748;
-                 margin-bottom: 20px;
-                 background: linear-gradient(135deg, #667eea, #764ba2);
-                 -webkit-background-clip: text;
-                 -webkit-text-fill-color: transparent;
-                 background-clip: text;
-             `;
-
-                         // 单词信息
-             const wordInfo = document.createElement('div');
-             wordInfo.style.cssText = `
-                 margin-bottom: 24px;
-                 padding: 16px;
-                 background: linear-gradient(135deg, #f7fafc, #edf2f7);
-                 border-radius: 12px;
-                 border-left: 4px solid #667eea;
-             `;
- 
-             const wordText = document.createElement('div');
-             wordText.textContent = quiz.word;
-             wordText.style.cssText = `
-                 font-size: 24px;
-                 font-weight: 700;
-                 color: #2d3748;
-                 margin-bottom: 6px;
-             `;
- 
-             const phoneticText = document.createElement('div');
-             phoneticText.textContent = quiz.phonetic || '';
-             phoneticText.style.cssText = `
-                 font-size: 14px;
-                 color: #718096;
-                 font-style: italic;
-             `;
-
-            wordInfo.appendChild(wordText);
-            wordInfo.appendChild(phoneticText);
-
-                         // 题目描述
-             const questionText = document.createElement('div');
-             questionText.textContent = '选择正确的定义：';
-             questionText.style.cssText = `
-                 font-size: 16px;
-                 font-weight: 600;
-                 color: #4a5568;
-                 margin-bottom: 16px;
-             `;
-
-                         // 选项容器
-             const optionsContainer = document.createElement('div');
-             optionsContainer.style.cssText = `
-                 margin-bottom: 24px;
-             `;
-
-            const correctIndex = quiz.options.findIndex(opt => opt.definition === quiz.correct_answer);
-
-            // 创建选项按钮
-            quiz.options.forEach((option, index) => {
-                                 const optionButton = document.createElement('button');
-                 optionButton.textContent = `${index + 1}. ${option.definition}`;
-                 optionButton.style.cssText = `
-                     display: block;
-                     width: 100%;
-                     padding: 12px 16px;
-                     margin-bottom: 8px;
-                     background: #f7fafc;
-                     border: 2px solid #e2e8f0;
-                     border-radius: 10px;
-                     color: #2d3748;
-                     font-size: 14px;
-                     font-weight: 500;
-                     cursor: pointer;
-                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                     text-align: left;
-                     line-height: 1.4;
-                     word-wrap: break-word;
-                     white-space: normal;
-                 `;
-
-                optionButton.addEventListener('mouseenter', () => {
-                    optionButton.style.transform = 'translateY(-2px)';
-                    optionButton.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.15)';
-                    optionButton.style.borderColor = '#667eea';
-                });
-
-                optionButton.addEventListener('mouseleave', () => {
-                    optionButton.style.transform = 'translateY(0)';
-                    optionButton.style.boxShadow = 'none';
-                    optionButton.style.borderColor = '#e2e8f0';
-                });
-
-                optionButton.addEventListener('click', () => {
-                    // 禁用所有按钮
-                    const allButtons = optionsContainer.querySelectorAll('button');
-                    allButtons.forEach(btn => {
-                        btn.style.pointerEvents = 'none';
-                        btn.style.opacity = '0.6';
-                    });
-
-                    // 显示结果
-                    if (index === correctIndex) {
-                        optionButton.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
-                        optionButton.style.color = 'white';
-                        optionButton.style.borderColor = '#48bb78';
-                        showResult(true, quiz.memory_method, overlay);
-                    } else {
-                        optionButton.style.background = 'linear-gradient(135deg, #f56565, #e53e3e)';
-                        optionButton.style.color = 'white';
-                        optionButton.style.borderColor = '#f56565';
-                        
-                        // 高亮正确答案
-                        allButtons[correctIndex].style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
-                        allButtons[correctIndex].style.color = 'white';
-                        allButtons[correctIndex].style.borderColor = '#48bb78';
-                        
-                        showResult(false, quiz.memory_method, overlay, quiz.correct_answer);
-                    }
-                });
-
-                optionsContainer.appendChild(optionButton);
+            // 根据测验类型创建不同的内容
+            const quizContent = createQuizContent(quiz, wordData, quizType);
+            
+            // 组装弹框内容
+            Object.keys(quizContent.elements).forEach(key => {
+                content.appendChild(quizContent.elements[key]);
             });
+            
+            // 设置测验逻辑
+            quizContent.setupQuizLogic(overlay, quiz);
 
             // 关闭按钮
             const closeButton = document.createElement('button');
@@ -435,11 +338,6 @@
             });
 
             // 组装弹框
-            content.appendChild(title);
-            content.appendChild(wordInfo);
-            content.appendChild(questionText);
-            content.appendChild(optionsContainer);
-            
             modal.appendChild(content);
             modal.appendChild(closeButton);
             overlay.appendChild(modal);
@@ -467,6 +365,585 @@
             };
             document.addEventListener('keydown', handleEsc);
         });
+    }
+
+    // 创建不同类型的测验内容
+    function createQuizContent(quiz, wordData, quizType) {
+        switch (quizType) {
+            case 'choice':
+                return createChoiceQuiz(quiz, wordData);
+            case 'spelling':
+                return createSpellingQuiz(quiz, wordData);
+            case 'fillBlank':
+                return createFillBlankQuiz(quiz, wordData);
+            default:
+                return createChoiceQuiz(quiz, wordData);
+        }
+    }
+
+    // 选择题模式
+    function createChoiceQuiz(quiz, wordData) {
+        const elements = {};
+
+        // 标题
+        elements.title = document.createElement('div');
+        elements.title.innerHTML = '🧚‍♀️ 选择题模式';
+        elements.title.style.cssText = `
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        `;
+
+        // 单词信息
+        elements.wordInfo = document.createElement('div');
+        elements.wordInfo.style.cssText = `
+            margin-bottom: 24px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        `;
+
+        const wordText = document.createElement('div');
+        wordText.textContent = quiz.word;
+        wordText.style.cssText = `
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 6px;
+        `;
+
+        const phoneticText = document.createElement('div');
+        phoneticText.textContent = quiz.phonetic || '';
+        phoneticText.style.cssText = `
+            font-size: 14px;
+            color: #718096;
+            font-style: italic;
+        `;
+
+        elements.wordInfo.appendChild(wordText);
+        elements.wordInfo.appendChild(phoneticText);
+
+        // 题目描述
+        elements.questionText = document.createElement('div');
+        elements.questionText.textContent = '选择正确的定义：';
+        elements.questionText.style.cssText = `
+            font-size: 16px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 16px;
+        `;
+
+        // 选项容器
+        elements.optionsContainer = document.createElement('div');
+        elements.optionsContainer.style.cssText = `
+            margin-bottom: 24px;
+        `;
+
+        const setupQuizLogic = (overlay, quiz) => {
+            const correctIndex = quiz.options.findIndex(opt => opt.definition === quiz.correct_answer);
+
+            quiz.options.forEach((option, index) => {
+                const optionButton = document.createElement('button');
+                optionButton.textContent = `${index + 1}. ${option.definition}`;
+                optionButton.style.cssText = `
+                    display: block;
+                    width: 100%;
+                    padding: 12px 16px;
+                    margin-bottom: 8px;
+                    background: #f7fafc;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 10px;
+                    color: #2d3748;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    text-align: left;
+                    line-height: 1.4;
+                    word-wrap: break-word;
+                    white-space: normal;
+                `;
+
+                optionButton.addEventListener('mouseenter', () => {
+                    optionButton.style.transform = 'translateY(-2px)';
+                    optionButton.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.15)';
+                    optionButton.style.borderColor = '#667eea';
+                });
+
+                optionButton.addEventListener('mouseleave', () => {
+                    optionButton.style.transform = 'translateY(0)';
+                    optionButton.style.boxShadow = 'none';
+                    optionButton.style.borderColor = '#e2e8f0';
+                });
+
+                optionButton.addEventListener('click', () => {
+                    const allButtons = elements.optionsContainer.querySelectorAll('button');
+                    allButtons.forEach(btn => {
+                        btn.style.pointerEvents = 'none';
+                        btn.style.opacity = '0.6';
+                    });
+
+                    if (index === correctIndex) {
+                        optionButton.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
+                        optionButton.style.color = 'white';
+                        optionButton.style.borderColor = '#48bb78';
+                        showResult(true, quiz.memory_method, overlay);
+                    } else {
+                        optionButton.style.background = 'linear-gradient(135deg, #f56565, #e53e3e)';
+                        optionButton.style.color = 'white';
+                        optionButton.style.borderColor = '#f56565';
+                        
+                        allButtons[correctIndex].style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
+                        allButtons[correctIndex].style.color = 'white';
+                        allButtons[correctIndex].style.borderColor = '#48bb78';
+                        
+                        showResult(false, quiz.memory_method, overlay, quiz.correct_answer);
+                    }
+                });
+
+                elements.optionsContainer.appendChild(optionButton);
+            });
+        };
+
+        return { elements, setupQuizLogic };
+    }
+
+    // 拼写题模式
+    function createSpellingQuiz(quiz, wordData) {
+        const elements = {};
+
+        // 标题
+        elements.title = document.createElement('div');
+        elements.title.innerHTML = '✏️ 拼写模式';
+        elements.title.style.cssText = `
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        `;
+
+        // 释义信息
+        elements.meaningInfo = document.createElement('div');
+        elements.meaningInfo.style.cssText = `
+            margin-bottom: 24px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+            border-left: 4px solid #f6ad55;
+        `;
+
+        const meaningText = document.createElement('div');
+        const meaning = quiz.definitions?.[0]?.meaning || quiz.correct_answer;
+        meaningText.textContent = meaning;
+        meaningText.style.cssText = `
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 6px;
+        `;
+
+        const phoneticHint = document.createElement('div');
+        phoneticHint.textContent = quiz.phonetic ? `发音: ${quiz.phonetic}` : '';
+        phoneticHint.style.cssText = `
+            font-size: 14px;
+            color: #718096;
+            font-style: italic;
+        `;
+
+        elements.meaningInfo.appendChild(meaningText);
+        if (quiz.phonetic) {
+            elements.meaningInfo.appendChild(phoneticHint);
+        }
+
+        // 题目描述
+        elements.questionText = document.createElement('div');
+        elements.questionText.textContent = '请输入对应的英文单词：';
+        elements.questionText.style.cssText = `
+            font-size: 16px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 16px;
+        `;
+
+        // 输入框容器
+        elements.inputContainer = document.createElement('div');
+        elements.inputContainer.style.cssText = `
+            margin-bottom: 24px;
+        `;
+
+        const inputField = document.createElement('input');
+        inputField.type = 'text';
+        inputField.placeholder = '输入英文单词...';
+        inputField.style.cssText = `
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            background: #f7fafc;
+            color: #2d3748;
+            outline: none;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        `;
+
+        inputField.addEventListener('focus', () => {
+            inputField.style.borderColor = '#667eea';
+            inputField.style.background = '#ffffff';
+        });
+
+        inputField.addEventListener('blur', () => {
+            inputField.style.borderColor = '#e2e8f0';
+            inputField.style.background = '#f7fafc';
+        });
+
+        const submitButton = document.createElement('button');
+        submitButton.textContent = '提交答案';
+        submitButton.style.cssText = `
+            width: 100%;
+            padding: 12px 24px;
+            margin-top: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        `;
+
+        elements.inputContainer.appendChild(inputField);
+        elements.inputContainer.appendChild(submitButton);
+
+        const setupQuizLogic = (overlay, quiz) => {
+            let answered = false;
+
+            const checkAnswer = () => {
+                if (answered) return;
+                answered = true;
+
+                const userAnswer = inputField.value.trim().toLowerCase();
+                const correctAnswer = quiz.word.toLowerCase();
+                const isCorrect = userAnswer === correctAnswer;
+
+                inputField.disabled = true;
+                submitButton.disabled = true;
+                submitButton.style.opacity = '0.5';
+
+                if (isCorrect) {
+                    inputField.style.background = 'linear-gradient(135deg, #c6f6d5, #9ae6b4)';
+                    inputField.style.borderColor = '#48bb78';
+                    inputField.style.color = '#2d3748';
+                    showResult(true, quiz.memory_method, overlay);
+                } else {
+                    inputField.style.background = 'linear-gradient(135deg, #fed7d7, #fc8181)';
+                    inputField.style.borderColor = '#f56565';
+                    inputField.value = `${userAnswer} → ${quiz.word}`;
+                    inputField.style.color = '#2d3748';
+                    showResult(false, quiz.memory_method, overlay);
+                }
+            };
+
+            // 输入时启用按钮
+            inputField.addEventListener('input', () => {
+                if (inputField.value.trim()) {
+                    submitButton.style.opacity = '1';
+                    submitButton.style.cursor = 'pointer';
+                } else {
+                    submitButton.style.opacity = '0.7';
+                    submitButton.style.cursor = 'not-allowed';
+                }
+            });
+
+            // 回车提交
+            inputField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && inputField.value.trim()) {
+                    checkAnswer();
+                }
+            });
+
+            // 点击提交
+            submitButton.addEventListener('click', () => {
+                if (inputField.value.trim()) {
+                    checkAnswer();
+                }
+            });
+
+            // 自动聚焦
+            setTimeout(() => inputField.focus(), 500);
+        };
+
+        return { elements, setupQuizLogic };
+    }
+
+    // 填空题模式
+    function createFillBlankQuiz(quiz, wordData) {
+        const elements = {};
+
+        // 标题
+        elements.title = document.createElement('div');
+        elements.title.innerHTML = '📝 填空模式';
+        elements.title.style.cssText = `
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        `;
+
+        // 从memory_method获取例句
+        const { sentence, hint } = parseMemoryMethod(quiz.memory_method, quiz.word);
+        
+        // 句子信息
+        elements.sentenceInfo = document.createElement('div');
+        elements.sentenceInfo.style.cssText = `
+            margin-bottom: 24px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+            border-left: 4px solid #805ad5;
+        `;
+
+        const sentenceText = document.createElement('div');
+        sentenceText.innerHTML = sentence;
+        sentenceText.style.cssText = `
+            font-size: 18px;
+            line-height: 1.6;
+            color: #2d3748;
+            margin-bottom: 8px;
+        `;
+
+        const hintText = document.createElement('div');
+        hintText.textContent = `提示: ${hint}`;
+        hintText.style.cssText = `
+            font-size: 14px;
+            color: #718096;
+            font-style: italic;
+        `;
+
+        elements.sentenceInfo.appendChild(sentenceText);
+        elements.sentenceInfo.appendChild(hintText);
+
+        // 题目描述
+        elements.questionText = document.createElement('div');
+        elements.questionText.textContent = '请填入正确的单词：';
+        elements.questionText.style.cssText = `
+            font-size: 16px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 16px;
+        `;
+
+        // 输入框容器
+        elements.inputContainer = document.createElement('div');
+        elements.inputContainer.style.cssText = `
+            margin-bottom: 24px;
+        `;
+
+        const inputField = document.createElement('input');
+        inputField.type = 'text';
+        inputField.placeholder = '填入单词...';
+        inputField.style.cssText = `
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            background: #f7fafc;
+            color: #2d3748;
+            outline: none;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        `;
+
+        inputField.addEventListener('focus', () => {
+            inputField.style.borderColor = '#805ad5';
+            inputField.style.background = '#ffffff';
+        });
+
+        const submitButton = document.createElement('button');
+        submitButton.textContent = '提交答案';
+        submitButton.style.cssText = `
+            width: 100%;
+            padding: 12px 24px;
+            margin-top: 12px;
+            background: linear-gradient(135deg, #805ad5, #9f7aea);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        `;
+
+        elements.inputContainer.appendChild(inputField);
+        elements.inputContainer.appendChild(submitButton);
+
+        const setupQuizLogic = (overlay, quiz) => {
+            let answered = false;
+
+            const checkAnswer = () => {
+                if (answered) return;
+                answered = true;
+
+                const userAnswer = inputField.value.trim().toLowerCase();
+                const correctAnswer = quiz.word.toLowerCase();
+                const isCorrect = userAnswer === correctAnswer;
+
+                inputField.disabled = true;
+                submitButton.disabled = true;
+                submitButton.style.opacity = '0.5';
+
+                if (isCorrect) {
+                    inputField.style.background = 'linear-gradient(135deg, #c6f6d5, #9ae6b4)';
+                    inputField.style.borderColor = '#48bb78';
+                    showResult(true, quiz.memory_method, overlay);
+                } else {
+                    inputField.style.background = 'linear-gradient(135deg, #fed7d7, #fc8181)';
+                    inputField.style.borderColor = '#f56565';
+                    inputField.value = `${userAnswer} → ${quiz.word}`;
+                    showResult(false, quiz.memory_method, overlay);
+                }
+            };
+
+            inputField.addEventListener('input', () => {
+                if (inputField.value.trim()) {
+                    submitButton.style.opacity = '1';
+                } else {
+                    submitButton.style.opacity = '0.7';
+                }
+            });
+
+            inputField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && inputField.value.trim()) {
+                    checkAnswer();
+                }
+            });
+
+            submitButton.addEventListener('click', () => {
+                if (inputField.value.trim()) {
+                    checkAnswer();
+                }
+            });
+
+            setTimeout(() => inputField.focus(), 500);
+        };
+
+        return { elements, setupQuizLogic };
+    }
+
+    // 解析memory_method生成填空题
+    function parseMemoryMethod(memoryMethod, targetWord) {
+        if (!memoryMethod) {
+            // 如果没有memory_method，使用默认模板
+            return generateDefaultSentence(targetWord);
+        }
+
+        try {
+            // 提取中文句子（括号前的部分）
+            const chineseMatch = memoryMethod.match(/^([^（(]+)/);
+            let chineseSentence = chineseMatch ? chineseMatch[1].trim() : '';
+            
+            // 提取英文句子（括号内的部分）
+            const englishMatch = memoryMethod.match(/[（(]([^）)]+)[）)]/);
+            let englishSentence = englishMatch ? englishMatch[1].trim() : '';
+
+            // 优先使用中文句子进行填空
+            let baseSentence = chineseSentence || englishSentence;
+            let hintSentence = englishSentence || '参考英文句子';
+            
+            if (!baseSentence) {
+                return generateDefaultSentence(targetWord);
+            }
+
+            // 将目标单词替换为填空
+            const wordRegex = new RegExp(`\\b${targetWord}\\b`, 'gi');
+            let fillBlankSentence = baseSentence.replace(wordRegex, 
+                '<span style="background: linear-gradient(135deg, #fed7e2, #fbb6ce); padding: 2px 8px; border-radius: 6px; font-weight: 600;">______</span>'
+            );
+
+            // 如果替换后没有变化，说明句子中没有目标单词，尝试其他形式
+            if (fillBlankSentence === baseSentence) {
+                // 尝试查找单词的复数、过去式等形式
+                const variations = [
+                    targetWord + 's',
+                    targetWord + 'es', 
+                    targetWord + 'ed',
+                    targetWord + 'ing'
+                ];
+                
+                let found = false;
+                for (const variation of variations) {
+                    const variationRegex = new RegExp(`\\b${variation}\\b`, 'gi');
+                    if (baseSentence.match(variationRegex)) {
+                        fillBlankSentence = baseSentence.replace(variationRegex, 
+                            '<span style="background: linear-gradient(135deg, #fed7e2, #fbb6ce); padding: 2px 8px; border-radius: 6px; font-weight: 600;">______</span>'
+                        );
+                        found = true;
+                        break;
+                    }
+                }
+                
+                // 如果都没找到，在句子中添加填空占位符
+                if (!found) {
+                    // 尝试查找可能的插入位置
+                    if (baseSentence.includes('的')) {
+                        fillBlankSentence = baseSentence.replace(/的([^的]*?)/, '的<span style="background: linear-gradient(135deg, #fed7e2, #fbb6ce); padding: 2px 8px; border-radius: 6px; font-weight: 600;">______</span>$1');
+                    } else {
+                        fillBlankSentence = '<span style="background: linear-gradient(135deg, #fed7e2, #fbb6ce); padding: 2px 8px; border-radius: 6px; font-weight: 600;">______</span> ' + baseSentence;
+                    }
+                }
+            }
+
+            // 从提示句子中移除答案
+            let cleanHint = hintSentence;
+            if (cleanHint) {
+                cleanHint = cleanHint.replace(new RegExp(`\\b${targetWord}\\b`, 'gi'), '___');
+                // 也移除可能的变形
+                const variations = [targetWord + 's', targetWord + 'es', targetWord + 'ed', targetWord + 'ing'];
+                variations.forEach(variation => {
+                    cleanHint = cleanHint.replace(new RegExp(`\\b${variation}\\b`, 'gi'), '___');
+                });
+            }
+
+            return {
+                sentence: fillBlankSentence,
+                hint: cleanHint || '填入正确的单词'
+            };
+
+        } catch (error) {
+            console.error('解析memory_method失败:', error);
+            return generateDefaultSentence(targetWord);
+        }
+    }
+
+    // 生成默认例句（备用）
+    function generateDefaultSentence(word) {
+        return {
+            sentence: `Please fill in the correct word: <span style="background: linear-gradient(135deg, #fed7e2, #fbb6ce); padding: 2px 8px; border-radius: 6px; font-weight: 600;">______</span>`,
+            hint: '填入正确的单词'
+        };
     }
 
     // 显示结果
@@ -541,6 +1018,9 @@
                         resultContainer.parentNode.removeChild(resultContainer);
                     }
                     closeModal(overlay);
+                    
+                    // 学习完成后，更新徽章数字
+                    updateBadgeAfterLearning();
                 }, 300);
             }, 3000);
         }, 1000);
@@ -560,6 +1040,58 @@
             }
             if (resolve) resolve();
         }, 300);
+    }
+
+    // 学习完成后更新徽章
+    async function updateBadgeAfterLearning() {
+        try {
+            console.log('[SimpleElfLoader] 🔄 学习完成，更新徽章数字...');
+            
+            // 获取学习精灵元素
+            const elfElement = document.querySelector('.simple-learning-elf');
+            if (!elfElement) {
+                console.log('[SimpleElfLoader] ❌ 学习精灵元素未找到，无法更新徽章');
+                return;
+            }
+            
+            // 重新获取今日单词状态
+            const words = await getTodayWords();
+            
+            if (words && words.length > 0) {
+                // 计算待学习单词数量
+                const pendingWords = words.filter(w => !w.mastered);
+                
+                console.log('[SimpleElfLoader] 📊 学习后单词状态更新:', {
+                    总单词数: words.length,
+                    待学习数: pendingWords.length,
+                    已掌握数: words.length - pendingWords.length,
+                    更新后徽章数字: Math.min(pendingWords.length, 99)
+                });
+                
+                // 更新徽章数字
+                const badge = elfElement.querySelector('.elf-badge');
+                if (badge) {
+                    const newCount = Math.min(pendingWords.length, 99);
+                    badge.setAttribute('data-word-count', newCount);
+                    
+                    if (newCount > 0) {
+                        // 更新显示的数字
+                        badge.textContent = newCount;
+                        console.log(`[SimpleElfLoader] ✅ 徽章已更新 - 新的待学习单词数: ${newCount}`);
+                    } else {
+                        // 没有待学习单词了，隐藏徽章
+                        badge.style.display = 'none';
+                        badge.style.opacity = '0';
+                        badge.classList.add('hidden');
+                        console.log('[SimpleElfLoader] 🎉 恭喜！所有单词都已掌握，徽章已隐藏');
+                    }
+                }
+            } else {
+                console.log('[SimpleElfLoader] ℹ️ 无法获取今日单词状态');
+            }
+        } catch (error) {
+            console.error('[SimpleElfLoader] 更新徽章失败:', error);
+        }
     }
 
     // 添加hover事件控制工具栏显示/隐藏
@@ -765,13 +1297,16 @@
             const words = await getTodayWords();
             
             if (words && words.length > 0) {
-                // 存储单词数量，但徽章保持隐藏
-                badge.setAttribute('data-word-count', Math.min(words.length, 99));
+                // 计算待学习单词数量（未掌握的单词）
+                const pendingWords = words.filter(w => !w.mastered);
+                // 存储待学习单词数量，但徽章保持隐藏
+                badge.setAttribute('data-word-count', Math.min(pendingWords.length, 99));
                 
                 console.log(`[SimpleElfLoader] 🎯 学习功能初始化完成:`, {
                     总单词数: words.length,
-                    待学习数: words.filter(w => !w.mastered).length,
-                    已掌握数: words.filter(w => w.mastered).length
+                    待学习数: pendingWords.length,
+                    已掌握数: words.filter(w => w.mastered).length,
+                    徽章显示数字: Math.min(pendingWords.length, 99)
                 });
                 
                 // 显示前几个单词的信息
@@ -827,10 +1362,14 @@
     // 初始化提醒系统 - 从background.js获取提醒状态
     async function initializeReminders(element) {
         try {
+            console.log('[SimpleElfLoader] 🚀 开始初始化提醒系统');
+            
             // 获取background.js中的提醒状态
             const response = await chrome.runtime.sendMessage({
                 type: 'GET_REMINDER_STATUS'
             });
+            
+            console.log('[SimpleElfLoader] 📬 提醒状态响应:', response);
             
             if (response.success) {
                 console.log(`[SimpleElfLoader] 📅 下次学习提醒时间: ${response.data.timeString} (${response.data.remainingMinutes}分钟后)`);
@@ -841,7 +1380,25 @@
             // 监听来自background.js的提醒消息
             if (!chrome.runtime.onMessage.hasListener(handleBackgroundMessage)) {
                 chrome.runtime.onMessage.addListener(handleBackgroundMessage);
+                console.log('[SimpleElfLoader] ✅ 已注册消息监听器');
+            } else {
+                console.log('[SimpleElfLoader] ℹ️ 消息监听器已存在');
             }
+            
+            // 添加测试功能 - 点击学习精灵时长按可以立即测试提醒
+            element.addEventListener('contextmenu', async (e) => {
+                e.preventDefault();
+                console.log('[SimpleElfLoader] 🧪 右键点击，发送测试提醒请求');
+                try {
+                    const testResponse = await chrome.runtime.sendMessage({
+                        type: 'TEST_REMINDER_NOW'
+                    });
+                    console.log('[SimpleElfLoader] 🧪 测试提醒响应:', testResponse);
+                } catch (error) {
+                    console.error('[SimpleElfLoader] 测试提醒失败:', error);
+                }
+            });
+            
         } catch (error) {
             console.error('[SimpleElfLoader] 初始化提醒系统失败:', error);
         }
@@ -849,15 +1406,23 @@
     
     // 处理来自background.js的消息
     function handleBackgroundMessage(message, sender, sendResponse) {
+        console.log('[SimpleElfLoader] 📨 收到来自background.js的消息:', message);
+        
         if (message.type === 'LEARNING_ELF_REMINDER') {
             console.log('[SimpleElfLoader] 🔔 收到来自background.js的提醒');
+            console.log('[SimpleElfLoader] 📄 页面可见性状态:', document.visibilityState);
             
             // 检查用户是否在活动状态
             if (document.visibilityState === 'visible') {
                 const element = document.querySelector('.simple-learning-elf');
+                console.log('[SimpleElfLoader] 🧚‍♀️ 学习精灵元素:', element ? '找到' : '未找到');
                 if (element) {
                     handleReminderTrigger(element);
+                } else {
+                    console.log('[SimpleElfLoader] ❌ 学习精灵元素未找到，无法显示提醒');
                 }
+            } else {
+                console.log('[SimpleElfLoader] ℹ️ 页面不可见，跳过提醒显示');
             }
         }
     }
@@ -886,6 +1451,12 @@
         });
         
         if (pendingWords.length > 0) {
+            // 更新徽章数字为最新的待学习单词数
+            const badge = element.querySelector('.elf-badge');
+            if (badge) {
+                badge.setAttribute('data-word-count', Math.min(pendingWords.length, 99));
+            }
+            
             // 随机选择一个待学习单词显示信息
             const randomWord = pendingWords[Math.floor(Math.random() * pendingWords.length)];
             console.log(`[SimpleElfLoader] 🎯 推荐学习单词:`, {
@@ -910,14 +1481,16 @@
         const badge = element.querySelector('.elf-badge');
         if (badge) {
             const wordCount = badge.getAttribute('data-word-count');
-            if (wordCount && parseInt(wordCount) > 0) {
-                badge.textContent = wordCount;
+            const count = parseInt(wordCount);
+            
+            if (wordCount && count > 0) {
+                badge.textContent = count;
                 badge.style.display = 'flex';
                 badge.style.opacity = '1';
                 badge.style.transform = 'scale(1)';
                 badge.classList.remove('hidden');
                 
-                console.log(`[SimpleElfLoader] ✅ 徽章已显示 - 待学习单词数: ${wordCount}`);
+                console.log(`[SimpleElfLoader] ✅ 徽章已显示 - 待学习单词数: ${count}`);
                 
                 // 添加摇摆动画
                 element.style.animation = 'shake 0.5s infinite';
@@ -928,7 +1501,11 @@
                     console.log(`[SimpleElfLoader] 🎭 摇摆动画结束`);
                 }, 3000);
             } else {
-                console.log(`[SimpleElfLoader] ℹ️ 无待学习单词，跳过徽章显示`);
+                console.log(`[SimpleElfLoader] ℹ️ 无待学习单词 (${count})，跳过徽章显示`);
+                // 隐藏徽章
+                badge.style.display = 'none';
+                badge.style.opacity = '0';
+                badge.classList.add('hidden');
             }
         }
     }

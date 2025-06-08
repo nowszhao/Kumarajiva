@@ -55,7 +55,9 @@ async function initializeReminderSystem() {
 
 // 生成下一次提醒时间
 async function generateNextReminder() {
+  // 正式提醒间隔：10-60分钟
   const minutes = Math.floor(Math.random() * 51) + 10; // 10-60分钟
+  // const minutes = Math.floor(Math.random() * 3) + 1; // 1-3分钟 (测试用)
   const delay = minutes * 60 * 1000;
   const nextReminderTime = Date.now() + delay;
   
@@ -95,15 +97,26 @@ async function triggerReminder() {
   try {
     // 通知所有标签页显示提醒
     const tabs = await chrome.tabs.query({});
+    console.log(`[Background] 找到 ${tabs.length} 个标签页`);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
     for (const tab of tabs) {
       try {
+        console.log(`[Background] 尝试向标签页 ${tab.id} (${tab.url}) 发送提醒消息`);
         await chrome.tabs.sendMessage(tab.id, {
           type: 'LEARNING_ELF_REMINDER'
         });
+        successCount++;
+        console.log(`[Background] ✅ 成功向标签页 ${tab.id} 发送提醒消息`);
       } catch (error) {
-        // 忽略无法发送消息的标签页（如chrome://页面）
+        failCount++;
+        console.log(`[Background] ❌ 向标签页 ${tab.id} 发送消息失败:`, error.message);
       }
     }
+    
+    console.log(`[Background] 提醒消息发送完成: 成功 ${successCount} 个, 失败 ${failCount} 个`);
     
     // 生成下一次提醒时间
     generateNextReminder();
@@ -166,6 +179,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         error: error.message
       });
     });
+    return true;
+  }
+
+  // 处理立即测试提醒请求（用于调试）
+  if (request.type === 'TEST_REMINDER_NOW') {
+    console.log('[Background] 🧪 收到立即测试提醒请求');
+    triggerReminder();
+    sendResponse({ success: true, message: '测试提醒已触发' });
     return true;
   }
 
