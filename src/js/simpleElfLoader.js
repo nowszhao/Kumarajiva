@@ -186,6 +186,9 @@
                 return;
             }
             
+            // 清理过期的本地掌握记录
+            await cleanupOldMasteredWords();
+            
             // 获取今日单词列表以选择测验单词
             const words = await getTodayWords();
             const localMasteredWords = await getLocalMasteredWords();
@@ -207,7 +210,7 @@
             });
             
             if (actualPendingWords.length === 0) {
-                alert('🎉 恭喜！今日所有单词都已掌握完成！');
+                await showCelebrationModal(words.length, localMasteredWords.size);
                 return;
             }
             
@@ -269,6 +272,297 @@
         });
         
         console.log('[SimpleElfLoader] 清理了可能存在的旧弹框');
+    }
+
+    // 显示华丽的完成庆祝弹窗
+    async function showCelebrationModal(totalWords, masteredCount) {
+        return new Promise((resolve) => {
+            // 创建遮罩层
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(15px);
+                z-index: 1000003;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            `;
+
+            // 创建庆祝弹窗容器
+            const celebrationModal = document.createElement('div');
+            celebrationModal.style.cssText = `
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+                border-radius: 25px;
+                padding: 3px;
+                box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+                max-width: 500px;
+                width: 90%;
+                transform: scale(0.5) translateY(50px);
+                transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            `;
+
+            // 创建内容区域
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: #ffffff;
+                border-radius: 22px;
+                padding: 32px 24px;
+                text-align: center;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                position: relative;
+                overflow: hidden;
+            `;
+
+            // 添加彩带动画背景
+            const confetti = document.createElement('div');
+            confetti.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                overflow: hidden;
+                border-radius: 22px;
+            `;
+
+            // 创建多个彩带元素
+            for (let i = 0; i < 20; i++) {
+                const confettiPiece = document.createElement('div');
+                confettiPiece.style.cssText = `
+                    position: absolute;
+                    width: 10px;
+                    height: 10px;
+                    background: ${['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd', '#98d8c8'][i % 7]};
+                    border-radius: 50%;
+                    left: ${Math.random() * 100}%;
+                    top: -10px;
+                    animation: confetti-fall ${2 + Math.random() * 3}s ${Math.random() * 2}s infinite linear;
+                `;
+                confetti.appendChild(confettiPiece);
+            }
+
+            // 大标题 - 恭喜
+            const mainTitle = document.createElement('div');
+            mainTitle.innerHTML = '🎉 太棒了！🎉';
+            mainTitle.style.cssText = `
+                font-size: 36px;
+                font-weight: 800;
+                margin-bottom: 12px;
+                background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                animation: celebration-bounce 0.8s ease-out;
+            `;
+
+            // 副标题
+            const subtitle = document.createElement('div');
+            subtitle.textContent = '今日学习任务完美达成！';
+            subtitle.style.cssText = `
+                font-size: 24px;
+                font-weight: 700;
+                color: #2d3748;
+                margin-bottom: 20px;
+                animation: celebration-fade-in 1s ease-out 0.3s both;
+            `;
+
+            // 成就统计区域
+            const statsContainer = document.createElement('div');
+            statsContainer.style.cssText = `
+                display: flex;
+                justify-content: space-around;
+                margin: 24px 0;
+                animation: celebration-fade-in 1s ease-out 0.6s both;
+            `;
+
+            // 总单词数统计
+            const totalStat = document.createElement('div');
+            totalStat.style.cssText = `
+                text-align: center;
+                padding: 16px;
+                background: linear-gradient(135deg, #e6fffa, #b2f5ea);
+                border-radius: 12px;
+                flex: 1;
+                margin: 0 8px;
+                border: 2px solid #4fd1c7;
+            `;
+            totalStat.innerHTML = `
+                <div style="font-size: 28px; font-weight: 800; color: #2c7a7b; margin-bottom: 4px;">${totalWords}</div>
+                <div style="font-size: 14px; color: #234e52; font-weight: 600;">今日单词总数</div>
+            `;
+
+            // 掌握单词数统计
+            const masteredStat = document.createElement('div');
+            masteredStat.style.cssText = `
+                text-align: center;
+                padding: 16px;
+                background: linear-gradient(135deg, #fef5e7, #fed7aa);
+                border-radius: 12px;
+                flex: 1;
+                margin: 0 8px;
+                border: 2px solid #f6ad55;
+            `;
+            masteredStat.innerHTML = `
+                <div style="font-size: 28px; font-weight: 800; color: #c2410c; margin-bottom: 4px;">${masteredCount}</div>
+                <div style="font-size: 14px; color: #7c2d12; font-weight: 600;">已掌握单词</div>
+            `;
+
+            statsContainer.appendChild(totalStat);
+            statsContainer.appendChild(masteredStat);
+
+            // 鼓励文案
+            const encouragement = document.createElement('div');
+            const encouragements = [
+                '🌟 学习的路上，你就是那颗最亮的星！',
+                '📚 知识的积累，让你变得更加强大！',
+                '🚀 坚持不懈的努力，终将成就不凡的自己！',
+                '💎 每一个单词都是你智慧宝库中的珍珠！',
+                '🏆 今天的完美表现值得为自己骄傲！'
+            ];
+            encouragement.textContent = encouragements[Math.floor(Math.random() * encouragements.length)];
+            encouragement.style.cssText = `
+                font-size: 16px;
+                color: #4a5568;
+                line-height: 1.6;
+                margin: 20px 0;
+                font-style: italic;
+                background: linear-gradient(135deg, #f7fafc, #edf2f7);
+                padding: 16px;
+                border-radius: 10px;
+                border-left: 4px solid #667eea;
+                animation: celebration-fade-in 1s ease-out 0.9s both;
+            `;
+
+            // 按钮容器
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                display: flex;
+                gap: 12px;
+                margin-top: 24px;
+                animation: celebration-fade-in 1s ease-out 1.2s both;
+            `;
+
+            // 继续学习按钮（可能有新单词）
+            const continueButton = document.createElement('button');
+            continueButton.innerHTML = '🔄 继续努力';
+            continueButton.style.cssText = `
+                flex: 1;
+                padding: 14px 20px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                border: none;
+                border-radius: 10px;
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            `;
+
+            continueButton.addEventListener('mouseenter', () => {
+                continueButton.style.transform = 'translateY(-2px)';
+                continueButton.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.4)';
+            });
+
+            continueButton.addEventListener('mouseleave', () => {
+                continueButton.style.transform = 'translateY(0)';
+                continueButton.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+            });
+
+            // 休息一下按钮
+            const restButton = document.createElement('button');
+            restButton.innerHTML = '😌 休息一下';
+            restButton.style.cssText = `
+                flex: 1;
+                padding: 14px 20px;
+                background: linear-gradient(135deg, #6b7280, #4b5563);
+                border: none;
+                border-radius: 10px;
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+            `;
+
+            restButton.addEventListener('mouseenter', () => {
+                restButton.style.transform = 'translateY(-2px)';
+                restButton.style.boxShadow = '0 8px 25px rgba(107, 114, 128, 0.4)';
+            });
+
+            restButton.addEventListener('mouseleave', () => {
+                restButton.style.transform = 'translateY(0)';
+                restButton.style.boxShadow = '0 4px 15px rgba(107, 114, 128, 0.3)';
+            });
+
+            // 按钮事件
+            continueButton.addEventListener('click', () => {
+                closeCelebration();
+            });
+
+            restButton.addEventListener('click', () => {
+                closeCelebration();
+            });
+
+            function closeCelebration() {
+                overlay.style.opacity = '0';
+                celebrationModal.style.transform = 'scale(0.8) translateY(-20px)';
+                setTimeout(() => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                    resolve();
+                }, 500);
+            }
+
+            // 组装内容
+            buttonContainer.appendChild(continueButton);
+            buttonContainer.appendChild(restButton);
+
+            content.appendChild(confetti);
+            content.appendChild(mainTitle);
+            content.appendChild(subtitle);
+            content.appendChild(statsContainer);
+            content.appendChild(encouragement);
+            content.appendChild(buttonContainer);
+
+            celebrationModal.appendChild(content);
+            overlay.appendChild(celebrationModal);
+            document.body.appendChild(overlay);
+
+            // 显示动画
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                celebrationModal.style.transform = 'scale(1) translateY(0)';
+            });
+
+            // ESC键关闭
+            const handleEsc = (e) => {
+                if (e.key === 'Escape') {
+                    closeCelebration();
+                    document.removeEventListener('keydown', handleEsc);
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
+
+            // 点击遮罩关闭
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    closeCelebration();
+                }
+            });
+        });
     }
     
     async function getStudyQuiz(word) {
@@ -606,21 +900,25 @@
         `;
 
         const phoneticHint = document.createElement('div');
-        phoneticHint.textContent = quiz.phonetic ? `发音: ${quiz.phonetic}` : '';
+        phoneticHint.textContent = quiz.phonetic ? `🔊 发音: ${quiz.phonetic}` : '🔊 发音: /音标信息暂无/';
         phoneticHint.style.cssText = `
-            font-size: 14px;
-            color: #718096;
+            font-size: 16px;
+            color: #805ad5;
             font-style: italic;
+            font-weight: 600;
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: rgba(128, 90, 213, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #805ad5;
         `;
 
         elements.meaningInfo.appendChild(meaningText);
-        if (quiz.phonetic) {
-            elements.meaningInfo.appendChild(phoneticHint);
-        }
+        elements.meaningInfo.appendChild(phoneticHint);
 
         // 题目描述
         elements.questionText = document.createElement('div');
-        elements.questionText.textContent = '请输入对应的英文单词：';
+        elements.questionText.textContent = '请根据释义和音标输入对应的英文单词：';
         elements.questionText.style.cssText = `
             font-size: 16px;
             font-weight: 600;
@@ -794,9 +1092,42 @@
         elements.sentenceInfo.appendChild(sentenceText);
         elements.sentenceInfo.appendChild(hintText);
 
+        // 音标重点提示区域
+        elements.phoneticPrompt = document.createElement('div');
+        elements.phoneticPrompt.style.cssText = `
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #e6fffa, #b2f5ea);
+            border-radius: 10px;
+            border: 2px solid #4fd1c7;
+            text-align: center;
+        `;
+
+        const phoneticLabel = document.createElement('div');
+        phoneticLabel.textContent = '🎵 音标提示';
+        phoneticLabel.style.cssText = `
+            font-size: 14px;
+            font-weight: 600;
+            color: #234e52;
+            margin-bottom: 4px;
+        `;
+
+        const phoneticDisplay = document.createElement('div');
+        phoneticDisplay.textContent = quiz.phonetic || '/音标信息暂无/';
+        phoneticDisplay.style.cssText = `
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c7a7b;
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 1px;
+        `;
+
+        elements.phoneticPrompt.appendChild(phoneticLabel);
+        elements.phoneticPrompt.appendChild(phoneticDisplay);
+
         // 题目描述
         elements.questionText = document.createElement('div');
-        elements.questionText.textContent = '请填入正确的单词：';
+        elements.questionText.textContent = '请根据释义和音标填入正确的单词：';
         elements.questionText.style.cssText = `
             font-size: 16px;
             font-weight: 600;
@@ -1518,18 +1849,26 @@
         }
     }
 
-    // 新增：本地掌握单词管理
+    // 新增：本地掌握单词管理（按日期管理）
     async function addWordToLocalMastered(word) {
         try {
-            const result = await chrome.storage.local.get(['localMasteredWords']);
-            const masteredWords = new Set(result.localMasteredWords || []);
-            masteredWords.add(word);
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const result = await chrome.storage.local.get(['localMasteredWordsByDate']);
+            const masteredByDate = result.localMasteredWordsByDate || {};
+            
+            if (!masteredByDate[today]) {
+                masteredByDate[today] = [];
+            }
+            
+            if (!masteredByDate[today].includes(word)) {
+                masteredByDate[today].push(word);
+            }
             
             await chrome.storage.local.set({
-                localMasteredWords: Array.from(masteredWords)
+                localMasteredWordsByDate: masteredByDate
             });
             
-            console.log(`[SimpleElfLoader] 📝 单词 "${word}" 已添加到本地掌握列表，总数: ${masteredWords.size}`);
+            console.log(`[SimpleElfLoader] 📝 单词 "${word}" 已添加到今日(${today})掌握列表，今日总数: ${masteredByDate[today].length}`);
             return true;
         } catch (error) {
             console.error('[SimpleElfLoader] 保存本地掌握单词失败:', error);
@@ -1537,14 +1876,52 @@
         }
     }
 
-    // 新增：获取本地掌握的单词
+    // 新增：获取今日本地掌握的单词
     async function getLocalMasteredWords() {
         try {
-            const result = await chrome.storage.local.get(['localMasteredWords']);
-            return new Set(result.localMasteredWords || []);
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const result = await chrome.storage.local.get(['localMasteredWordsByDate']);
+            const masteredByDate = result.localMasteredWordsByDate || {};
+            
+            const todayMastered = masteredByDate[today] || [];
+            console.log(`[SimpleElfLoader] 📅 获取今日(${today})已掌握单词:`, todayMastered);
+            
+            return new Set(todayMastered);
         } catch (error) {
             console.error('[SimpleElfLoader] 获取本地掌握单词失败:', error);
             return new Set();
+        }
+    }
+    
+    // 新增：清理过期的本地掌握记录（保留最近7天）
+    async function cleanupOldMasteredWords() {
+        try {
+            const result = await chrome.storage.local.get(['localMasteredWordsByDate']);
+            const masteredByDate = result.localMasteredWordsByDate || {};
+            
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+            
+            let cleanedCount = 0;
+            Object.keys(masteredByDate).forEach(date => {
+                if (date < cutoffDate) {
+                    delete masteredByDate[date];
+                    cleanedCount++;
+                }
+            });
+            
+            if (cleanedCount > 0) {
+                await chrome.storage.local.set({
+                    localMasteredWordsByDate: masteredByDate
+                });
+                console.log(`[SimpleElfLoader] 🧹 已清理 ${cleanedCount} 天的过期掌握记录`);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('[SimpleElfLoader] 清理过期记录失败:', error);
+            return false;
         }
     }
 
@@ -2178,6 +2555,43 @@
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-3px) rotate(-2deg); }
             75% { transform: translateX(3px) rotate(2deg); }
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-10px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(600px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes celebration-bounce {
+            0% {
+                transform: scale(0.3) translateY(20px);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1) translateY(-10px);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes celebration-fade-in {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     `;
     document.head.appendChild(style);

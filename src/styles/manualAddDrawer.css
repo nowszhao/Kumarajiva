@@ -59,6 +59,7 @@
     margin-bottom: 16px;
     height: 38px; /* 默认一行高度 */
     transition: height 0.3s ease, margin 0.3s ease;
+    position: relative;
 }
 
 /* 聚焦时全屏显示 */
@@ -70,6 +71,87 @@
 /* 聚焦时隐藏预览 */
 .drawer.input-focused .preview-section {
     display: none !important;
+}
+
+/* 剪贴板建议样式 */
+.clipboard-suggestion {
+    top: 10px;
+    left: 0;
+    right: 0;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.suggestion-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.suggestion-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #856404;
+    flex: 1;
+    font-weight: 500;
+}
+
+.suggestion-buttons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.suggestion-buttons .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-width: 60px;
+    z-index: 20;
+    position: relative;
+    font-weight: 500;
+}
+
+.suggestion-buttons .btn-primary {
+    background: var(--primary-color);
+    color: white;
+    border: 1px solid var(--primary-color);
+}
+
+.suggestion-buttons .btn-primary:hover {
+    background: var(--hover-color);
+    border-color: var(--hover-color);
+}
+
+.suggestion-buttons .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: 1px solid #6c757d;
+}
+
+.suggestion-buttons .btn-secondary:hover {
+    background: #5a6268;
+    border-color: #5a6268;
 }
 
 .json-input {
