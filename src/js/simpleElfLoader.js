@@ -162,39 +162,57 @@
         await showSimpleStudyPrompt();
     }
     
+    let isStudyInProgress = false; // 添加全局标志防止重复触发
+    
     async function showSimpleStudyPrompt() {
         try {
+            // 防止重复触发学习
+            if (isStudyInProgress) {
+                console.log('[SimpleElfLoader] 学习正在进行中，跳过重复请求');
+                return;
+            }
+            
+            isStudyInProgress = true;
+            
+            // 清理可能存在的旧弹框
+            cleanupExistingModals();
+            
             // 获取认证信息
             const authData = await chrome.storage.sync.get(['githubAccessToken', 'githubUserInfo']);
             
             if (!authData.githubAccessToken || !authData.githubUserInfo) {
+                isStudyInProgress = false;
                 alert('需要先登录GitHub账户才能使用学习功能。请在插件设置中登录。');
                 return;
             }
             
             // 获取今日单词列表以选择测验单词
             const words = await getTodayWords();
+            const localMasteredWords = await getLocalMasteredWords();
             
             if (!words || words.length === 0) {
                 alert('今日暂无学习单词，请稍后再试。');
                 return;
             }
             
-            // 在开始学习前，更新徽章数字确保显示最新状态
-            const pendingWords = words.filter(w => !w.mastered);
+            // 在开始学习前，计算真正的待学习单词
+            const apiPendingWords = words.filter(w => !w.mastered);
+            const actualPendingWords = apiPendingWords.filter(w => !localMasteredWords.has(w.word));
+            
             console.log('[SimpleElfLoader] 📖 开始学习前状态检查:', {
-                总单词数: words.length,
-                待学习数: pendingWords.length,
-                已掌握数: words.length - pendingWords.length
+                API总单词数: words.length,
+                API待学习数: apiPendingWords.length,
+                本地已掌握数: localMasteredWords.size,
+                实际待学习数: actualPendingWords.length
             });
             
-            if (pendingWords.length === 0) {
+            if (actualPendingWords.length === 0) {
                 alert('🎉 恭喜！今日所有单词都已掌握完成！');
                 return;
             }
             
-            // 从待学习单词中随机选择一个进行测验
-            const randomWord = pendingWords[Math.floor(Math.random() * pendingWords.length)];
+            // 从真正待学习的单词中随机选择一个进行测验
+            const randomWord = actualPendingWords[Math.floor(Math.random() * actualPendingWords.length)];
             const quiz = await getStudyQuiz(randomWord.word);
             
             if (!quiz) {
@@ -216,7 +234,41 @@
         } catch (error) {
             console.error('[SimpleElfLoader] Study prompt error:', error);
             alert('学习功能出现错误，请稍后再试。');
+        } finally {
+            // 确保在任何情况下都重置标志
+            isStudyInProgress = false;
         }
+    }
+    
+    // 清理可能存在的旧弹框
+    function cleanupExistingModals() {
+        // 清理所有学习相关的弹框
+        const existingOverlays = document.querySelectorAll('div[style*="position: fixed"][style*="z-index: 1000001"]');
+        const existingResults = document.querySelectorAll('div[style*="position: fixed"][style*="z-index: 1000002"]');
+        
+        [...existingOverlays, ...existingResults].forEach(element => {
+            if (element && element.parentNode) {
+                element.style.opacity = '0';
+                element.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    if (element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
+                }, 100);
+            }
+        });
+        
+        // 清理可能残留的样式标签
+        const existingStyles = document.querySelectorAll('style');
+        existingStyles.forEach(style => {
+            if (style.textContent && style.textContent.includes('.result-content::-webkit-scrollbar')) {
+                if (style.parentNode) {
+                    style.parentNode.removeChild(style);
+                }
+            }
+        });
+        
+        console.log('[SimpleElfLoader] 清理了可能存在的旧弹框');
     }
     
     async function getStudyQuiz(word) {
@@ -1008,18 +1060,18 @@
             `;
             resultIcon.textContent = isCorrect ? '🎉' : '😅';
 
-            const resultText = document.createElement('div');
-            resultText.style.cssText = `
-                font-size: 18px;
-                font-weight: 700;
+                         const resultText = document.createElement('div');
+             resultText.style.cssText = `
+                 font-size: 18px;
+                 font-weight: 700;
                 margin-bottom: 4px;
-            `;
+             `;
             resultText.textContent = isCorrect ? '恭喜答对了！' : '答错了，没关系继续加油！';
-
+ 
             const encourageText = document.createElement('div');
             encourageText.style.cssText = `
-                font-size: 13px;
-                opacity: 0.9;
+                 font-size: 13px;
+                 opacity: 0.9;
             `;
             encourageText.textContent = isCorrect ? '继续保持这种学习状态！' : '通过错误学习是进步的好方法！';
 
@@ -1188,8 +1240,8 @@
                     font-size: 12px;
                     color: #374151;
                     white-space: pre-wrap;
-                    word-wrap: break-word;
-                `;
+                 word-wrap: break-word;
+             `;
                 memoryContent.textContent = limitedContent;
 
                 memorySection.appendChild(memoryTitle);
@@ -1236,27 +1288,51 @@
             });
 
             nextButton.addEventListener('click', async () => {
-                // 如果答对了，在本地更新徽章数字
+                // 立即禁用按钮防止重复点击
+                nextButton.disabled = true;
+                nextButton.style.opacity = '0.5';
+                nextButton.style.cursor = 'not-allowed';
+                exitButton.disabled = true;
+                exitButton.style.opacity = '0.5';
+                exitButton.style.cursor = 'not-allowed';
+                
+                // 如果答对了，保存到本地并更新徽章数字
                 if (isCorrect) {
-                    console.log(`[SimpleElfLoader] 🎯 用户答对了单词 "${quiz.word}"，本地更新徽章数字`);
+                    console.log(`[SimpleElfLoader] 🎯 用户答对了单词 "${quiz.word}"，保存到本地存储`);
+                    await addWordToLocalMastered(quiz.word);
                     updateBadgeAfterLearning(true); // 传递true表示答对了，需要减少徽章数字
                 }
                 
+                // 首先关闭结果弹框
                 resultContainer.style.opacity = '0';
                 resultContainer.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                
+                // 同时开始关闭原题目弹框
+                overlay.style.opacity = '0';
+                const modal = overlay.querySelector('div');
+                if (modal) {
+                    modal.style.transform = 'scale(0.8) translateY(20px)';
+                }
+                
                 setTimeout(() => {
+                    // 移除结果弹框
                     if (resultContainer.parentNode) {
                         resultContainer.parentNode.removeChild(resultContainer);
                     }
                     if (scrollbarStyle.parentNode) {
                         scrollbarStyle.parentNode.removeChild(scrollbarStyle);
                     }
-                    closeModal(overlay);
                     
-                    // 延迟一下再开始下一题，让动画完成
+                    // 移除原题目弹框
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                    
+                    // 重置学习状态标志，然后开始下一题
+                    isStudyInProgress = false;
                     setTimeout(() => {
                         showSimpleStudyPrompt();
-                    }, 500);
+                    }, 200);
                 }, 300);
             });
 
@@ -1291,22 +1367,48 @@
             });
 
             exitButton.addEventListener('click', async () => {
-                // 如果答对了，在本地更新徽章数字
+                // 立即禁用按钮防止重复点击
+                nextButton.disabled = true;
+                nextButton.style.opacity = '0.5';
+                nextButton.style.cursor = 'not-allowed';
+                exitButton.disabled = true;
+                exitButton.style.opacity = '0.5';
+                exitButton.style.cursor = 'not-allowed';
+                
+                // 如果答对了，保存到本地并更新徽章数字
                 if (isCorrect) {
-                    console.log(`[SimpleElfLoader] 🎯 用户答对了单词 "${quiz.word}"，本地更新徽章数字`);
+                    console.log(`[SimpleElfLoader] 🎯 用户答对了单词 "${quiz.word}"，保存到本地存储`);
+                    await addWordToLocalMastered(quiz.word);
                     updateBadgeAfterLearning(true); // 传递true表示答对了，需要减少徽章数字
                 }
                 
+                // 关闭结果弹框
                 resultContainer.style.opacity = '0';
                 resultContainer.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                
+                // 同时开始关闭原题目弹框
+                overlay.style.opacity = '0';
+                const modal = overlay.querySelector('div');
+                if (modal) {
+                    modal.style.transform = 'scale(0.8) translateY(20px)';
+                }
+                
                 setTimeout(() => {
+                    // 移除结果弹框
                     if (resultContainer.parentNode) {
                         resultContainer.parentNode.removeChild(resultContainer);
                     }
                     if (scrollbarStyle.parentNode) {
                         scrollbarStyle.parentNode.removeChild(scrollbarStyle);
                     }
-                    closeModal(overlay);
+                    
+                    // 移除原题目弹框
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                    
+                    // 重置学习状态标志
+                    isStudyInProgress = false;
                 }, 300);
             });
 
@@ -1359,6 +1461,8 @@
             if (overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
             }
+            // 重置学习状态标志
+            isStudyInProgress = false;
             if (resolve) resolve();
         }, 300);
     }
@@ -1392,40 +1496,85 @@
                     答对状态: '正确答案'
                 });
                 
-                badge.setAttribute('data-word-count', newCount);
-                
-                if (newCount > 0) {
-                    // 更新显示的数字
-                    badge.textContent = newCount;
-                    console.log(`[SimpleElfLoader] ✅ 徽章已更新 - 新的待学习单词数: ${newCount}`);
-                } else {
-                    // 没有待学习单词了，隐藏徽章
-                    badge.style.display = 'none';
-                    badge.style.opacity = '0';
-                    badge.classList.add('hidden');
-                    console.log('[SimpleElfLoader] 🎉 恭喜！所有单词都已掌握，徽章已隐藏');
-                }
+                    badge.setAttribute('data-word-count', newCount);
+                    
+                    if (newCount > 0) {
+                        // 更新显示的数字
+                        badge.textContent = newCount;
+                        console.log(`[SimpleElfLoader] ✅ 徽章已更新 - 新的待学习单词数: ${newCount}`);
+                    } else {
+                        // 没有待学习单词了，隐藏徽章
+                        badge.style.display = 'none';
+                        badge.style.opacity = '0';
+                        badge.classList.add('hidden');
+                        console.log('[SimpleElfLoader] 🎉 恭喜！所有单词都已掌握，徽章已隐藏');
+                    }
             } else {
-                // 如果不是答对的情况，可能是初始化或刷新，重新获取数据
-                const words = await getTodayWords();
+                // 如果不是答对的情况，可能是初始化或刷新，重新计算徽章数字
+                await refreshBadgeFromLocalState();
+            }
+        } catch (error) {
+            console.error('[SimpleElfLoader] 更新徽章失败:', error);
+        }
+    }
+
+    // 新增：本地掌握单词管理
+    async function addWordToLocalMastered(word) {
+        try {
+            const result = await chrome.storage.local.get(['localMasteredWords']);
+            const masteredWords = new Set(result.localMasteredWords || []);
+            masteredWords.add(word);
+            
+            await chrome.storage.local.set({
+                localMasteredWords: Array.from(masteredWords)
+            });
+            
+            console.log(`[SimpleElfLoader] 📝 单词 "${word}" 已添加到本地掌握列表，总数: ${masteredWords.size}`);
+            return true;
+        } catch (error) {
+            console.error('[SimpleElfLoader] 保存本地掌握单词失败:', error);
+            return false;
+        }
+    }
+
+    // 新增：获取本地掌握的单词
+    async function getLocalMasteredWords() {
+        try {
+            const result = await chrome.storage.local.get(['localMasteredWords']);
+            return new Set(result.localMasteredWords || []);
+        } catch (error) {
+            console.error('[SimpleElfLoader] 获取本地掌握单词失败:', error);
+            return new Set();
+        }
+    }
+
+    // 新增：根据本地状态刷新徽章
+    async function refreshBadgeFromLocalState() {
+        try {
+            const words = await getTodayWords();
+            const localMasteredWords = await getLocalMasteredWords();
+            
+            if (words && words.length > 0) {
+                // 计算待学习单词数量：API未掌握的单词 - 本地已掌握的单词
+                const apiPendingWords = words.filter(w => !w.mastered);
+                const actualPendingWords = apiPendingWords.filter(w => !localMasteredWords.has(w.word));
                 
-                if (words && words.length > 0) {
-                    // 计算待学习单词数量
-                    const pendingWords = words.filter(w => !w.mastered);
-                    
-                    console.log('[SimpleElfLoader] 📊 刷新后单词状态:', {
-                        总单词数: words.length,
-                        待学习数: pendingWords.length,
-                        已掌握数: words.length - pendingWords.length,
-                        更新后徽章数字: Math.min(pendingWords.length, 99)
-                    });
-                    
-                    const newCount = Math.min(pendingWords.length, 99);
+                console.log('[SimpleElfLoader] 📊 刷新后单词状态:', {
+                    API总单词数: words.length,
+                    API待学习数: apiPendingWords.length,
+                    本地已掌握数: localMasteredWords.size,
+                    实际待学习数: actualPendingWords.length,
+                    更新后徽章数字: Math.min(actualPendingWords.length, 99)
+                });
+                
+                const badge = document.querySelector('.simple-learning-elf .elf-badge');
+                if (badge) {
+                    const newCount = Math.min(actualPendingWords.length, 99);
                     badge.setAttribute('data-word-count', newCount);
                     
                     if (newCount > 0) {
                         badge.textContent = newCount;
-                        badge.style.display = '';
+                        badge.style.display = 'flex';
                         badge.style.opacity = '1';
                         badge.classList.remove('hidden');
                         console.log(`[SimpleElfLoader] ✅ 徽章已刷新 - 待学习单词数: ${newCount}`);
@@ -1435,12 +1584,12 @@
                         badge.classList.add('hidden');
                         console.log('[SimpleElfLoader] 🎉 恭喜！所有单词都已掌握，徽章已隐藏');
                     }
-                } else {
-                    console.log('[SimpleElfLoader] ℹ️ 无法获取今日单词状态');
                 }
+            } else {
+                console.log('[SimpleElfLoader] ℹ️ 无法获取今日单词状态');
             }
         } catch (error) {
-            console.error('[SimpleElfLoader] 更新徽章失败:', error);
+            console.error('[SimpleElfLoader] 刷新徽章状态失败:', error);
         }
     }
 
@@ -1643,20 +1792,24 @@
                 return;
             }
             
-            // 获取今日单词数量，但不立即显示徽章
+            // 获取今日单词数量，结合本地掌握状态计算徽章
             const words = await getTodayWords();
+            const localMasteredWords = await getLocalMasteredWords();
             
             if (words && words.length > 0) {
-                // 计算待学习单词数量（未掌握的单词）
-                const pendingWords = words.filter(w => !w.mastered);
-                // 存储待学习单词数量，但徽章保持隐藏
-                badge.setAttribute('data-word-count', Math.min(pendingWords.length, 99));
+                // 计算待学习单词数量：API未掌握的单词 - 本地已掌握的单词
+                const apiPendingWords = words.filter(w => !w.mastered);
+                const actualPendingWords = apiPendingWords.filter(w => !localMasteredWords.has(w.word));
+                
+                // 存储实际待学习单词数量，但徽章保持隐藏
+                badge.setAttribute('data-word-count', Math.min(actualPendingWords.length, 99));
                 
                 console.log(`[SimpleElfLoader] 🎯 学习功能初始化完成:`, {
-                    总单词数: words.length,
-                    待学习数: pendingWords.length,
-                    已掌握数: words.filter(w => w.mastered).length,
-                    徽章显示数字: Math.min(pendingWords.length, 99)
+                    API总单词数: words.length,
+                    API待学习数: apiPendingWords.length,
+                    本地已掌握数: localMasteredWords.size,
+                    实际待学习数: actualPendingWords.length,
+                    徽章显示数字: Math.min(actualPendingWords.length, 99)
                 });
                 
                 // 显示前几个单词的信息
@@ -1664,7 +1817,9 @@
                 console.log(`[SimpleElfLoader] 📚 单词预览 (前3个):`, preview.map(w => ({
                     单词: w.word,
                     释义: w.definitions?.[0]?.meaning || '无释义',
-                    掌握状态: w.mastered ? '已掌握' : '待学习'
+                    API掌握状态: w.mastered ? 'API已掌握' : 'API待学习',
+                    本地掌握状态: localMasteredWords.has(w.word) ? '本地已掌握' : '本地待学习',
+                    最终状态: (w.mastered || localMasteredWords.has(w.word)) ? '已掌握' : '待学习'
                 })));
                 
                 // 从background.js获取提醒状态
@@ -1792,23 +1947,26 @@
         
         // 获取最新的单词信息
         const words = await getTodayWords();
-        const pendingWords = words.filter(w => !w.mastered);
+        const localMasteredWords = await getLocalMasteredWords();
+        const apiPendingWords = words.filter(w => !w.mastered);
+        const actualPendingWords = apiPendingWords.filter(w => !localMasteredWords.has(w.word));
         
         console.log(`[SimpleElfLoader] 📊 学习状态统计:`, {
-            总单词数: words.length,
-            待学习数: pendingWords.length,
-            已掌握数: words.length - pendingWords.length
+            API总单词数: words.length,
+            API待学习数: apiPendingWords.length,
+            本地已掌握数: localMasteredWords.size,
+            实际待学习数: actualPendingWords.length
         });
         
-        if (pendingWords.length > 0) {
+        if (actualPendingWords.length > 0) {
             // 更新徽章数字为最新的待学习单词数
             const badge = element.querySelector('.elf-badge');
             if (badge) {
-                badge.setAttribute('data-word-count', Math.min(pendingWords.length, 99));
+                badge.setAttribute('data-word-count', Math.min(actualPendingWords.length, 99));
             }
             
             // 随机选择一个待学习单词显示信息
-            const randomWord = pendingWords[Math.floor(Math.random() * pendingWords.length)];
+            const randomWord = actualPendingWords[Math.floor(Math.random() * actualPendingWords.length)];
             console.log(`[SimpleElfLoader] 🎯 推荐学习单词:`, {
                 单词: randomWord.word,
                 释义: randomWord.definitions?.[0]?.meaning || '无释义',
