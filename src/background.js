@@ -28,9 +28,147 @@ chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 }); 
 
+// 学习精灵提醒管理
+let reminderTimer = null;
+
+// 初始化提醒系统
+async function initializeReminderSystem() {
+  try {
+    const result = await chrome.storage.local.get(['nextReminderTime']);
+    const now = Date.now();
+    
+    if (result.nextReminderTime && result.nextReminderTime > now) {
+      // 有有效的提醒时间，继续使用
+      const delay = result.nextReminderTime - now;
+      console.log(`[Background] 恢复提醒定时器，剩余时间: ${Math.round(delay / 1000 / 60)}分钟`);
+      scheduleReminder(delay);
+    } else {
+      // 没有有效的提醒时间，生成新的
+      console.log('[Background] 生成新的提醒时间');
+      generateNextReminder();
+    }
+  } catch (error) {
+    console.error('[Background] 初始化提醒系统失败:', error);
+    generateNextReminder();
+  }
+}
+
+// 生成下一次提醒时间
+async function generateNextReminder() {
+  const minutes = Math.floor(Math.random() * 51) + 10; // 10-60分钟
+  const delay = minutes * 60 * 1000;
+  const nextReminderTime = Date.now() + delay;
+  
+  // 保存到存储
+  await chrome.storage.local.set({ nextReminderTime });
+  
+  const timeString = new Date(nextReminderTime).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  
+  console.log(`[Background] 📅 下次学习提醒时间: ${timeString} (${minutes}分钟后)`);
+  
+  scheduleReminder(delay);
+}
+
+// 设置提醒定时器
+function scheduleReminder(delay) {
+  // 清除现有定时器
+  if (reminderTimer) {
+    clearTimeout(reminderTimer);
+  }
+  
+  reminderTimer = setTimeout(() => {
+    triggerReminder();
+  }, delay);
+}
+
+// 触发提醒
+async function triggerReminder() {
+  console.log('[Background] 🔔 触发学习提醒');
+  
+  try {
+    // 通知所有标签页显示提醒
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'LEARNING_ELF_REMINDER'
+        });
+      } catch (error) {
+        // 忽略无法发送消息的标签页（如chrome://页面）
+      }
+    }
+    
+    // 生成下一次提醒时间
+    generateNextReminder();
+  } catch (error) {
+    console.error('[Background] 触发提醒失败:', error);
+  }
+}
+
+// 插件启动时初始化提醒系统
+chrome.runtime.onStartup.addListener(() => {
+  console.log('[Background] 插件启动，初始化提醒系统');
+  initializeReminderSystem();
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('[Background] 插件安装/更新，初始化提醒系统');
+  initializeReminderSystem();
+});
+
+// 立即初始化（用于开发时的热重载）
+initializeReminderSystem();
 
 // 处理有道词典 API 请求
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 处理获取提醒状态请求
+  if (request.type === 'GET_REMINDER_STATUS') {
+    chrome.storage.local.get(['nextReminderTime']).then(result => {
+      const now = Date.now();
+      const nextTime = result.nextReminderTime;
+      
+      if (nextTime && nextTime > now) {
+        const remainingMs = nextTime - now;
+        const remainingMinutes = Math.round(remainingMs / 1000 / 60);
+        const timeString = new Date(nextTime).toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        
+        sendResponse({
+          success: true,
+          data: {
+            nextReminderTime: nextTime,
+            remainingMinutes: remainingMinutes,
+            timeString: timeString
+          }
+        });
+      } else {
+        sendResponse({
+          success: false,
+          error: 'No valid reminder time'
+        });
+      }
+    }).catch(error => {
+      sendResponse({
+        success: false,
+        error: error.message
+      });
+    });
+    return true;
+  }
+
   if (request.type === 'FETCH_WORD_INFO') {
       fetch(`https://dict.youdao.com/jsonapi_s?doctype=json&jsonversion=4&q=${encodeURIComponent(request.word)}`, {
           headers: {

@@ -782,10 +782,10 @@
                     掌握状态: w.mastered ? '已掌握' : '待学习'
                 })));
                 
-                // 开始提醒
-                startReminders(element);
+                // 从background.js获取提醒状态
+                await initializeReminders(element);
                 
-                console.log(`[SimpleElfLoader] ⏰ 提醒系统已启动 - 将在10-60分钟内随机提醒`);
+                console.log(`[SimpleElfLoader] ⏰ 提醒系统已启动`);
             } else {
                 console.log('[SimpleElfLoader] ℹ️ 今日无学习单词');
             }
@@ -824,48 +824,46 @@
                 return [];
     }
     
-    function startReminders(element) {
-        // 随机10-60分钟提醒一次
-        const scheduleNext = () => {
-            const minutes = Math.floor(Math.random() * 51) + 10; // 10-60分钟
-            const delay = minutes * 60 * 1000;
-            
-            // 计算下次提醒的具体时间
-            const nextReminderTime = new Date(Date.now() + delay);
-            const timeString = nextReminderTime.toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
+    // 初始化提醒系统 - 从background.js获取提醒状态
+    async function initializeReminders(element) {
+        try {
+            // 获取background.js中的提醒状态
+            const response = await chrome.runtime.sendMessage({
+                type: 'GET_REMINDER_STATUS'
             });
             
-            console.log(`[SimpleElfLoader] 📅 下次学习提醒时间: ${timeString} (${minutes}分钟后)`);
+            if (response.success) {
+                console.log(`[SimpleElfLoader] 📅 下次学习提醒时间: ${response.data.timeString} (${response.data.remainingMinutes}分钟后)`);
+            } else {
+                console.log('[SimpleElfLoader] 获取提醒状态失败，background.js将自动生成新的提醒时间');
+            }
             
-            setTimeout(async () => {
-                // 检查用户是否在活动状态
-                if (document.visibilityState === 'visible') {
-                    // 获取当前的学习单词信息
-                    const words = await getTodayWords();
-                    console.log(`[SimpleElfLoader] 📚 触发学习提醒 - 当前待学习单词数量: ${words.length}`);
-                    if (words.length > 0) {
-                        console.log(`[SimpleElfLoader] 📖 单词列表:`, words.map(w => ({
-                            word: w.word,
-                            meaning: w.definitions?.[0]?.meaning || '无释义',
-                            mastered: w.mastered
-                        })));
-                    }
-                    triggerReminder(element);
-                }
-                scheduleNext();
-            }, delay);
-        };
-        
-        scheduleNext();
+            // 监听来自background.js的提醒消息
+            if (!chrome.runtime.onMessage.hasListener(handleBackgroundMessage)) {
+                chrome.runtime.onMessage.addListener(handleBackgroundMessage);
+            }
+        } catch (error) {
+            console.error('[SimpleElfLoader] 初始化提醒系统失败:', error);
+        }
     }
-
-    async function triggerReminder(element) {
+    
+    // 处理来自background.js的消息
+    function handleBackgroundMessage(message, sender, sendResponse) {
+        if (message.type === 'LEARNING_ELF_REMINDER') {
+            console.log('[SimpleElfLoader] 🔔 收到来自background.js的提醒');
+            
+            // 检查用户是否在活动状态
+            if (document.visibilityState === 'visible') {
+                const element = document.querySelector('.simple-learning-elf');
+                if (element) {
+                    handleReminderTrigger(element);
+                }
+            }
+        }
+    }
+    
+    // 处理提醒触发
+    async function handleReminderTrigger(element) {
         const currentTime = new Date().toLocaleString('zh-CN', {
             year: 'numeric',
             month: '2-digit',
@@ -898,8 +896,16 @@
                 复习次数: randomWord.review_count || 0,
                 正确次数: randomWord.correct_count || 0
             });
+            
+            // 触发提醒UI
+            triggerReminder(element);
+        } else {
+            console.log(`[SimpleElfLoader] ℹ️ 无待学习单词，跳过提醒显示`);
         }
-        
+    }
+
+    // 触发提醒UI显示（仅负责UI显示逻辑）
+    function triggerReminder(element) {
         // 显示徽章
         const badge = element.querySelector('.elf-badge');
         if (badge) {
@@ -912,20 +918,19 @@
                 badge.classList.remove('hidden');
                 
                 console.log(`[SimpleElfLoader] ✅ 徽章已显示 - 待学习单词数: ${wordCount}`);
+                
+                // 添加摇摆动画
+                element.style.animation = 'shake 0.5s infinite';
+                console.log(`[SimpleElfLoader] 🎭 开始摇摆动画 (持续3秒)`);
+                
+                setTimeout(() => {
+                    element.style.animation = '';
+                    console.log(`[SimpleElfLoader] 🎭 摇摆动画结束`);
+                }, 3000);
             } else {
                 console.log(`[SimpleElfLoader] ℹ️ 无待学习单词，跳过徽章显示`);
-                return; // 没有待学习单词，不进行提醒
             }
         }
-        
-        // 添加摇摆动画
-        element.style.animation = 'shake 0.5s infinite';
-        console.log(`[SimpleElfLoader] 🎭 开始摇摆动画 (持续3秒)`);
-        
-        setTimeout(() => {
-            element.style.animation = '';
-            console.log(`[SimpleElfLoader] 🎭 摇摆动画结束`);
-        }, 3000);
     }
 
     // 页面加载完成后初始化
