@@ -203,7 +203,8 @@
             }
             
             // 随机选择学习模式
-            const quizTypes = ['choice', 'spelling', 'fillBlank'];
+            // const quizTypes = ['choice', 'spelling', 'fillBlank'];
+            const quizTypes = ['spelling', 'fillBlank'];
             const randomQuizType = quizTypes[Math.floor(Math.random() * quizTypes.length)];
             
             console.log(`[SimpleElfLoader] 🎯 选择学习模式: ${randomQuizType} (单词: ${randomWord.word})`);
