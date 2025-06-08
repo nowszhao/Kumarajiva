@@ -303,7 +303,7 @@
             });
             
             // 设置测验逻辑
-            quizContent.setupQuizLogic(overlay, quiz);
+            quizContent.setupQuizLogic(overlay, quiz, wordData);
 
             // 关闭按钮
             const closeButton = document.createElement('button');
@@ -446,7 +446,7 @@
             margin-bottom: 24px;
         `;
 
-        const setupQuizLogic = (overlay, quiz) => {
+        const setupQuizLogic = (overlay, quiz, wordData) => {
             const correctIndex = quiz.options.findIndex(opt => opt.definition === quiz.correct_answer);
 
             quiz.options.forEach((option, index) => {
@@ -494,7 +494,7 @@
                         optionButton.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
                         optionButton.style.color = 'white';
                         optionButton.style.borderColor = '#48bb78';
-                        showResult(true, quiz.memory_method, overlay);
+                        showResult(true, quiz, wordData, overlay);
                     } else {
                         optionButton.style.background = 'linear-gradient(135deg, #f56565, #e53e3e)';
                         optionButton.style.color = 'white';
@@ -504,7 +504,7 @@
                         allButtons[correctIndex].style.color = 'white';
                         allButtons[correctIndex].style.borderColor = '#48bb78';
                         
-                        showResult(false, quiz.memory_method, overlay, quiz.correct_answer);
+                        showResult(false, quiz, wordData, overlay);
                     }
                 });
 
@@ -630,7 +630,7 @@
         elements.inputContainer.appendChild(inputField);
         elements.inputContainer.appendChild(submitButton);
 
-        const setupQuizLogic = (overlay, quiz) => {
+        const setupQuizLogic = (overlay, quiz, wordData) => {
             let answered = false;
 
             const checkAnswer = () => {
@@ -649,13 +649,13 @@
                     inputField.style.background = 'linear-gradient(135deg, #c6f6d5, #9ae6b4)';
                     inputField.style.borderColor = '#48bb78';
                     inputField.style.color = '#2d3748';
-                    showResult(true, quiz.memory_method, overlay);
+                    showResult(true, quiz, wordData, overlay);
                 } else {
                     inputField.style.background = 'linear-gradient(135deg, #fed7d7, #fc8181)';
                     inputField.style.borderColor = '#f56565';
                     inputField.value = `${userAnswer} → ${quiz.word}`;
                     inputField.style.color = '#2d3748';
-                    showResult(false, quiz.memory_method, overlay);
+                    showResult(false, quiz, wordData, overlay);
                 }
             };
 
@@ -801,7 +801,7 @@
         elements.inputContainer.appendChild(inputField);
         elements.inputContainer.appendChild(submitButton);
 
-        const setupQuizLogic = (overlay, quiz) => {
+        const setupQuizLogic = (overlay, quiz, wordData) => {
             let answered = false;
 
             const checkAnswer = () => {
@@ -819,12 +819,12 @@
                 if (isCorrect) {
                     inputField.style.background = 'linear-gradient(135deg, #c6f6d5, #9ae6b4)';
                     inputField.style.borderColor = '#48bb78';
-                    showResult(true, quiz.memory_method, overlay);
+                    showResult(true, quiz, wordData, overlay);
                 } else {
                     inputField.style.background = 'linear-gradient(135deg, #fed7d7, #fc8181)';
                     inputField.style.borderColor = '#f56565';
                     inputField.value = `${userAnswer} → ${quiz.word}`;
-                    showResult(false, quiz.memory_method, overlay);
+                    showResult(false, quiz, wordData, overlay);
                 }
             };
 
@@ -947,8 +947,10 @@
         };
     }
 
+
+
     // 显示结果
-    function showResult(isCorrect, memoryMethod, overlay) {
+    function showResult(isCorrect, quiz, wordData, overlay) {
         setTimeout(() => {
             const resultContainer = document.createElement('div');
             resultContainer.style.cssText = `
@@ -956,52 +958,371 @@
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background: ${isCorrect ? 'linear-gradient(135deg, #48bb78, #38a169)' : 'linear-gradient(135deg, #f56565, #e53e3e)'};
-                color: white;
-                padding: 24px 32px;
+                background: white;
+                color: #2d3748;
+                padding: 0;
                 border-radius: 16px;
-                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
                 z-index: 1000002;
-                text-align: center;
-                max-width: 400px;
-                width: 90%;
+                max-width: 480px;
+                width: 92%;
+                max-height: 80vh;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 opacity: 0;
-                transform: translate(-50%, -50%) scale(0.8);
+                transform: translate(-50%, -50%) scale(0.9);
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                overflow: hidden;
+            `;
+
+            // 创建内容容器（可滚动）
+            const contentContainer = document.createElement('div');
+            contentContainer.style.cssText = `
+                max-height: 80vh;
+                overflow-y: auto;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            `;
+            
+            // 隐藏滚动条
+            const scrollbarStyle = document.createElement('style');
+            scrollbarStyle.textContent = `
+                .result-content::-webkit-scrollbar { display: none; }
+            `;
+            contentContainer.className = 'result-content';
+            document.head.appendChild(scrollbarStyle);
+
+            // 创建结果头部
+            const resultHeader = document.createElement('div');
+            resultHeader.style.cssText = `
+                background: ${isCorrect ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #EF4444, #DC2626)'};
+                color: white;
+                padding: 16px 20px;
+                text-align: center;
+                position: relative;
             `;
 
             const resultIcon = document.createElement('div');
             resultIcon.style.cssText = `
-                font-size: 48px;
-                margin-bottom: 16px;
+                font-size: 36px;
+                margin-bottom: 6px;
             `;
             resultIcon.textContent = isCorrect ? '🎉' : '😅';
 
-                         const resultText = document.createElement('div');
-             resultText.style.cssText = `
-                 font-size: 18px;
-                 font-weight: 700;
-                 margin-bottom: 12px;
-             `;
-             resultText.textContent = isCorrect ? '正确！' : '再试试吧';
- 
-             const memoryText = document.createElement('div');
-             memoryText.style.cssText = `
-                 font-size: 13px;
-                 opacity: 0.9;
-                 line-height: 1.5;
-                 word-wrap: break-word;
-                 white-space: normal;
-             `;
-            memoryText.textContent = memoryMethod || '';
+            const resultText = document.createElement('div');
+            resultText.style.cssText = `
+                font-size: 18px;
+                font-weight: 700;
+                margin-bottom: 4px;
+            `;
+            resultText.textContent = isCorrect ? '恭喜答对了！' : '答错了，没关系继续加油！';
 
-            resultContainer.appendChild(resultIcon);
-            resultContainer.appendChild(resultText);
-            if (memoryMethod) {
-                resultContainer.appendChild(memoryText);
+            const encourageText = document.createElement('div');
+            encourageText.style.cssText = `
+                font-size: 13px;
+                opacity: 0.9;
+            `;
+            encourageText.textContent = isCorrect ? '继续保持这种学习状态！' : '通过错误学习是进步的好方法！';
+
+            resultHeader.appendChild(resultIcon);
+            resultHeader.appendChild(resultText);
+            resultHeader.appendChild(encourageText);
+
+            // 单词主体信息
+            const wordMainInfo = document.createElement('div');
+            wordMainInfo.style.cssText = `
+                text-align: center;
+                padding: 20px;
+                background: linear-gradient(135deg, #F8FAFC, #F1F5F9);
+                border-bottom: 1px solid #E2E8F0;
+            `;
+
+            const wordTitle = document.createElement('div');
+            wordTitle.textContent = quiz.word;
+            wordTitle.style.cssText = `
+                font-size: 28px;
+                font-weight: 800;
+                color: #1E293B;
+                margin-bottom: 6px;
+                letter-spacing: 0.5px;
+            `;
+
+            const phoneticInfo = document.createElement('div');
+            phoneticInfo.textContent = quiz.phonetic || '/音标信息暂无/';
+            phoneticInfo.style.cssText = `
+                font-size: 14px;
+                color: #64748B;
+                font-style: italic;
+            `;
+
+            wordMainInfo.appendChild(wordTitle);
+            wordMainInfo.appendChild(phoneticInfo);
+
+            // 创建内容区域
+            const wordDetailSection = document.createElement('div');
+            wordDetailSection.style.cssText = `
+                padding: 16px 20px 20px;
+                background: white;
+            `;
+
+            // 释义信息
+            const definitionsSection = document.createElement('div');
+            definitionsSection.style.cssText = `
+                margin-bottom: 16px;
+            `;
+
+            const definitionsTitle = document.createElement('div');
+            definitionsTitle.innerHTML = '📖 词义解释';
+            definitionsTitle.style.cssText = `
+                font-size: 15px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            `;
+
+            definitionsSection.appendChild(definitionsTitle);
+
+            // 显示释义（只显示前2个以节省空间）
+            if (quiz.definitions && quiz.definitions.length > 0) {
+                const displayDefs = quiz.definitions.slice(0, 2); // 最多显示2个释义
+                displayDefs.forEach((def, index) => {
+                    const defItem = document.createElement('div');
+                    defItem.style.cssText = `
+                        padding: 8px 12px;
+                        margin-bottom: 6px;
+                        background: #F8FAFC;
+                        border-radius: 6px;
+                        border-left: 3px solid #3B82F6;
+                        display: flex;
+                        align-items: flex-start;
+                        gap: 8px;
+                    `;
+
+                    const defPos = document.createElement('span');
+                    defPos.textContent = def.pos || 'n.';
+                    defPos.style.cssText = `
+                        background: #3B82F6;
+                        color: white;
+                        padding: 1px 6px;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        font-weight: 600;
+                        flex-shrink: 0;
+                        margin-top: 2px;
+                    `;
+
+                    const defMeaning = document.createElement('span');
+                    defMeaning.textContent = def.meaning || def.definition || '释义信息暂无';
+                    defMeaning.style.cssText = `
+                        font-size: 13px;
+                        color: #374151;
+                        line-height: 1.4;
+                        flex: 1;
+                    `;
+
+                    defItem.appendChild(defPos);
+                    defItem.appendChild(defMeaning);
+                    definitionsSection.appendChild(defItem);
+                });
+                
+                if (quiz.definitions.length > 2) {
+                    const moreText = document.createElement('div');
+                    moreText.textContent = `+${quiz.definitions.length - 2} 个更多释义`;
+                    moreText.style.cssText = `
+                        font-size: 11px;
+                        color: #6B7280;
+                        text-align: center;
+                        font-style: italic;
+                        margin-top: 4px;
+                    `;
+                    definitionsSection.appendChild(moreText);
+                }
+            } else {
+                // 使用correct_answer作为释义
+                const defItem = document.createElement('div');
+                defItem.style.cssText = `
+                    padding: 8px 12px;
+                    background: #F8FAFC;
+                    border-radius: 6px;
+                    border-left: 3px solid #3B82F6;
+                    font-size: 13px;
+                    color: #374151;
+                `;
+                defItem.textContent = quiz.correct_answer || '释义信息暂无';
+                definitionsSection.appendChild(defItem);
             }
 
+            // 记忆方法/例句信息（简化显示）
+            if (quiz.memory_method) {
+                const memorySection = document.createElement('div');
+                memorySection.style.cssText = `
+                    margin-bottom: 16px;
+                `;
+
+                const memoryTitle = document.createElement('div');
+                memoryTitle.innerHTML = '💡 记忆方法 & 例句';
+                memoryTitle.style.cssText = `
+                    font-size: 15px;
+                    font-weight: 600;
+                    color: #374151;
+                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                `;
+
+                const memoryContent = document.createElement('div');
+                // 限制内容长度以避免过长
+                const limitedContent = quiz.memory_method.length > 150 
+                    ? quiz.memory_method.substring(0, 150) + '...' 
+                    : quiz.memory_method;
+                    
+                memoryContent.style.cssText = `
+                    padding: 10px 12px;
+                    background: linear-gradient(135deg, #FEF3F2, #FDE8E8);
+                    border-radius: 6px;
+                    border-left: 3px solid #F87171;
+                    line-height: 1.4;
+                    font-size: 12px;
+                    color: #374151;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                `;
+                memoryContent.textContent = limitedContent;
+
+                memorySection.appendChild(memoryTitle);
+                memorySection.appendChild(memoryContent);
+                wordDetailSection.appendChild(memorySection);
+            }
+
+            // 操作按钮容器
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                display: flex;
+                gap: 8px;
+                margin-top: 4px;
+            `;
+
+            // 下一题按钮
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = '🔄 下一题';
+            nextButton.style.cssText = `
+                flex: 1;
+                padding: 12px 16px;
+                background: linear-gradient(135deg, #10B981, #059669);
+                border: none;
+                border-radius: 8px;
+                color: white;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+            `;
+
+            nextButton.addEventListener('mouseenter', () => {
+                nextButton.style.transform = 'translateY(-1px)';
+                nextButton.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+            });
+
+            nextButton.addEventListener('mouseleave', () => {
+                nextButton.style.transform = 'translateY(0)';
+                nextButton.style.boxShadow = 'none';
+            });
+
+            nextButton.addEventListener('click', async () => {
+                // 如果答对了，在本地更新徽章数字
+                if (isCorrect) {
+                    console.log(`[SimpleElfLoader] 🎯 用户答对了单词 "${quiz.word}"，本地更新徽章数字`);
+                    updateBadgeAfterLearning(true); // 传递true表示答对了，需要减少徽章数字
+                }
+                
+                resultContainer.style.opacity = '0';
+                resultContainer.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                setTimeout(() => {
+                    if (resultContainer.parentNode) {
+                        resultContainer.parentNode.removeChild(resultContainer);
+                    }
+                    if (scrollbarStyle.parentNode) {
+                        scrollbarStyle.parentNode.removeChild(scrollbarStyle);
+                    }
+                    closeModal(overlay);
+                    
+                    // 延迟一下再开始下一题，让动画完成
+                    setTimeout(() => {
+                        showSimpleStudyPrompt();
+                    }, 500);
+                }, 300);
+            });
+
+            // 先退下按钮  
+            const exitButton = document.createElement('button');
+            exitButton.innerHTML = '👋 先退下';
+            exitButton.style.cssText = `
+                flex: 1;
+                padding: 12px 16px;
+                background: linear-gradient(135deg, #6B7280, #4B5563);
+                border: none;
+                border-radius: 8px;
+                color: white;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+            `;
+
+            exitButton.addEventListener('mouseenter', () => {
+                exitButton.style.transform = 'translateY(-1px)';
+                exitButton.style.boxShadow = '0 4px 12px rgba(107, 114, 128, 0.3)';
+            });
+
+            exitButton.addEventListener('mouseleave', () => {
+                exitButton.style.transform = 'translateY(0)';
+                exitButton.style.boxShadow = 'none';
+            });
+
+            exitButton.addEventListener('click', async () => {
+                // 如果答对了，在本地更新徽章数字
+                if (isCorrect) {
+                    console.log(`[SimpleElfLoader] 🎯 用户答对了单词 "${quiz.word}"，本地更新徽章数字`);
+                    updateBadgeAfterLearning(true); // 传递true表示答对了，需要减少徽章数字
+                }
+                
+                resultContainer.style.opacity = '0';
+                resultContainer.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                setTimeout(() => {
+                    if (resultContainer.parentNode) {
+                        resultContainer.parentNode.removeChild(resultContainer);
+                    }
+                    if (scrollbarStyle.parentNode) {
+                        scrollbarStyle.parentNode.removeChild(scrollbarStyle);
+                    }
+                    closeModal(overlay);
+                }, 300);
+            });
+
+            // 组装按钮
+            buttonContainer.appendChild(nextButton);
+            buttonContainer.appendChild(exitButton);
+
+            // 组装所有内容
+            wordDetailSection.appendChild(definitionsSection);
+            wordDetailSection.appendChild(buttonContainer);
+
+            contentContainer.appendChild(resultHeader);
+            contentContainer.appendChild(wordMainInfo);
+            contentContainer.appendChild(wordDetailSection);
+            
+            resultContainer.appendChild(contentContainer);
             document.body.appendChild(resultContainer);
 
             // 显示动画
@@ -1010,20 +1331,19 @@
                 resultContainer.style.transform = 'translate(-50%, -50%) scale(1)';
             });
 
-            // 3秒后自动关闭
-            setTimeout(() => {
-                resultContainer.style.opacity = '0';
-                resultContainer.style.transform = 'translate(-50%, -50%) scale(0.8)';
-                setTimeout(() => {
-                    if (resultContainer.parentNode) {
-                        resultContainer.parentNode.removeChild(resultContainer);
-                    }
-                    closeModal(overlay);
-                    
-                    // 学习完成后，更新徽章数字
-                    updateBadgeAfterLearning();
-                }, 300);
-            }, 3000);
+            // ESC键关闭（触发"先退下"）
+            const handleEsc = (e) => {
+                if (e.key === 'Escape') {
+                    exitButton.click();
+                    document.removeEventListener('keydown', handleEsc);
+                } else if (e.key === 'Enter') {
+                    // Enter键触发"下一题"
+                    nextButton.click();
+                    document.removeEventListener('keydown', handleEsc);
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
+
         }, 1000);
     }
 
@@ -1044,7 +1364,7 @@
     }
 
     // 学习完成后更新徽章
-    async function updateBadgeAfterLearning() {
+    async function updateBadgeAfterLearning(isCorrectAnswer = false) {
         try {
             console.log('[SimpleElfLoader] 🔄 学习完成，更新徽章数字...');
             
@@ -1055,40 +1375,69 @@
                 return;
             }
             
-            // 重新获取今日单词状态
-            const words = await getTodayWords();
+            const badge = elfElement.querySelector('.elf-badge');
+            if (!badge) {
+                console.log('[SimpleElfLoader] ❌ 徽章元素未找到，无法更新');
+                return;
+            }
             
-            if (words && words.length > 0) {
-                // 计算待学习单词数量
-                const pendingWords = words.filter(w => !w.mastered);
+            // 如果答对了，直接在本地减少徽章数字
+            if (isCorrectAnswer) {
+                const currentCount = parseInt(badge.getAttribute('data-word-count') || badge.textContent || '0');
+                const newCount = Math.max(0, currentCount - 1);
                 
-                console.log('[SimpleElfLoader] 📊 学习后单词状态更新:', {
-                    总单词数: words.length,
-                    待学习数: pendingWords.length,
-                    已掌握数: words.length - pendingWords.length,
-                    更新后徽章数字: Math.min(pendingWords.length, 99)
+                console.log('[SimpleElfLoader] 📊 本地更新徽章数字:', {
+                    当前数字: currentCount,
+                    更新后数字: newCount,
+                    答对状态: '正确答案'
                 });
                 
-                // 更新徽章数字
-                const badge = elfElement.querySelector('.elf-badge');
-                if (badge) {
+                badge.setAttribute('data-word-count', newCount);
+                
+                if (newCount > 0) {
+                    // 更新显示的数字
+                    badge.textContent = newCount;
+                    console.log(`[SimpleElfLoader] ✅ 徽章已更新 - 新的待学习单词数: ${newCount}`);
+                } else {
+                    // 没有待学习单词了，隐藏徽章
+                    badge.style.display = 'none';
+                    badge.style.opacity = '0';
+                    badge.classList.add('hidden');
+                    console.log('[SimpleElfLoader] 🎉 恭喜！所有单词都已掌握，徽章已隐藏');
+                }
+            } else {
+                // 如果不是答对的情况，可能是初始化或刷新，重新获取数据
+                const words = await getTodayWords();
+                
+                if (words && words.length > 0) {
+                    // 计算待学习单词数量
+                    const pendingWords = words.filter(w => !w.mastered);
+                    
+                    console.log('[SimpleElfLoader] 📊 刷新后单词状态:', {
+                        总单词数: words.length,
+                        待学习数: pendingWords.length,
+                        已掌握数: words.length - pendingWords.length,
+                        更新后徽章数字: Math.min(pendingWords.length, 99)
+                    });
+                    
                     const newCount = Math.min(pendingWords.length, 99);
                     badge.setAttribute('data-word-count', newCount);
                     
                     if (newCount > 0) {
-                        // 更新显示的数字
                         badge.textContent = newCount;
-                        console.log(`[SimpleElfLoader] ✅ 徽章已更新 - 新的待学习单词数: ${newCount}`);
+                        badge.style.display = '';
+                        badge.style.opacity = '1';
+                        badge.classList.remove('hidden');
+                        console.log(`[SimpleElfLoader] ✅ 徽章已刷新 - 待学习单词数: ${newCount}`);
                     } else {
-                        // 没有待学习单词了，隐藏徽章
                         badge.style.display = 'none';
                         badge.style.opacity = '0';
                         badge.classList.add('hidden');
                         console.log('[SimpleElfLoader] 🎉 恭喜！所有单词都已掌握，徽章已隐藏');
                     }
+                } else {
+                    console.log('[SimpleElfLoader] ℹ️ 无法获取今日单词状态');
                 }
-            } else {
-                console.log('[SimpleElfLoader] ℹ️ 无法获取今日单词状态');
             }
         } catch (error) {
             console.error('[SimpleElfLoader] 更新徽章失败:', error);
