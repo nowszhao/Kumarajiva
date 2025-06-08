@@ -45,18 +45,349 @@ class SubtitleManager {
         const maxRetries = 5;
         const retryInterval = 1000;
 
+        console.log('🎬 Starting subtitle acquisition process...');
+
         for (let i = 0; i < maxRetries; i++) {
-            const tracks = this.parseCaptionTracks();
-            if (tracks.length > 0) {
-                const englishTrack = tracks.find(track => 
-                    track.languageCode === 'en' || 
-                    track.name?.simpleText?.toLowerCase().includes('english')
-                );
-                return englishTrack || tracks[0];
+            console.log(`📝 Attempt ${i + 1}/${maxRetries}`);
+            
+            try {
+                // 新方法：使用YouTube内部API获取字幕
+                console.log('🔄 Trying new YouTube API method...');
+                const transcriptData = await this.getTranscriptFromNewAPI();
+                if (transcriptData) {
+                    console.log('✅ Successfully obtained transcript using new API');
+                    return transcriptData;
+                }
+            } catch (error) {
+                console.log(`❌ New API attempt ${i + 1} failed:`, error.message);
             }
-            await new Promise(resolve => setTimeout(resolve, retryInterval));
+
+            // Fallback: 尝试旧方法
+            try {
+                console.log('🔄 Trying fallback method...');
+                const tracks = this.parseCaptionTracks();
+                if (tracks.length > 0) {
+                    const englishTrack = tracks.find(track => 
+                        track.languageCode === 'en' || 
+                        track.name?.simpleText?.toLowerCase().includes('english')
+                    );
+                    console.log('✅ Using fallback method for subtitles');
+                    return englishTrack || tracks[0];
+                }
+                console.log('⚠️ No tracks found in fallback method');
+            } catch (error) {
+                console.log(`❌ Fallback method attempt ${i + 1} failed:`, error.message);
+            }
+
+            if (i < maxRetries - 1) {
+                console.log(`⏳ Waiting ${retryInterval}ms before next attempt...`);
+                await new Promise(resolve => setTimeout(resolve, retryInterval));
+            }
         }
+        
+        console.log('❌ All subtitle acquisition attempts failed');
         return null;
+    }
+
+    async getTranscriptFromNewAPI() {
+        // 1. 从 ytInitialData 中提取 transcript 参数
+        const transcriptParams = this.extractTranscriptParams();
+        if (!transcriptParams) {
+            throw new Error('Failed to extract transcript parameters from ytInitialData');
+        }
+
+        // 2. 获取视频ID
+        const videoId = this.getVideoId();
+        if (!videoId) {
+            throw new Error('Failed to get video ID from URL');
+        }
+
+        // 3. 构建请求参数
+        const requestBody = this.buildTranscriptRequestBody(transcriptParams, videoId);
+
+        console.log('Making transcript API request for video:', videoId);
+
+        // 4. 发送请求，包含重试机制
+        const maxRetries = 3;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await fetch('https://www.youtube.com/youtubei/v1/get_transcript?prettyPrint=false', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': navigator.userAgent,
+                        'Referer': window.location.href,
+                        'Origin': 'https://www.youtube.com',
+                        'X-YouTube-Client-Name': '1',
+                        'X-YouTube-Client-Version': '2.20250606.01.00'
+                    },
+                    body: JSON.stringify(requestBody),
+                    credentials: 'include' // 包含cookies
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    lastError = new Error(`API request failed (attempt ${attempt}/${maxRetries}): ${response.status} ${response.statusText} - ${errorText}`);
+                    console.warn(lastError.message);
+                    
+                    // 如果是4xx错误，不进行重试
+                    if (response.status >= 400 && response.status < 500) {
+                        throw lastError;
+                    }
+                    
+                    // 其他错误继续重试
+                    if (attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                        continue;
+                    }
+                    throw lastError;
+                }
+
+                const data = await response.json();
+                
+                // 验证响应数据的有效性
+                if (!data || !data.actions || !Array.isArray(data.actions)) {
+                    throw new Error('Invalid API response format: missing actions array');
+                }
+
+                console.log('Transcript API request successful');
+                return { newAPI: true, data }; // 标记这是新API的数据
+
+            } catch (error) {
+                lastError = error;
+                console.warn(`Transcript API attempt ${attempt}/${maxRetries} failed:`, error.message);
+                
+                if (attempt < maxRetries && !error.message.includes('Failed to fetch')) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    continue;
+                }
+                
+                if (attempt === maxRetries) {
+                    break;
+                }
+            }
+        }
+
+        throw lastError || new Error('All transcript API attempts failed');
+    }
+
+    extractTranscriptParams() {
+        // 尝试多种方式获取 ytInitialData
+        let ytInitialData = null;
+
+        // 方法1: 从全局变量获取
+        if (window.ytInitialData) {
+            ytInitialData = window.ytInitialData;
+        } else {
+            // 方法2: 从script标签解析
+            const scriptContent = Array.from(document.scripts)
+                .find(script => script.text.includes('var ytInitialData'))?.text;
+
+            if (scriptContent) {
+                const match = scriptContent.match(/var ytInitialData\s*=\s*({.+?});/s);
+                if (match) {
+                    try {
+                        ytInitialData = JSON.parse(match[1]);
+                    } catch (e) {
+                        console.error('Failed to parse ytInitialData:', e);
+                    }
+                }
+            }
+        }
+
+        if (!ytInitialData?.engagementPanels) {
+            return null;
+        }
+
+        // 查找transcript相关参数，优先选择英文字幕
+        let transcriptParams = null;
+
+        for (const panel of ytInitialData.engagementPanels) {
+            if (panel.engagementPanelSectionListRenderer) {
+                const content = panel.engagementPanelSectionListRenderer.content;
+                if (content?.continuationItemRenderer) {
+                    const continuationEndpoint = content.continuationItemRenderer.continuationEndpoint;
+                    if (continuationEndpoint?.getTranscriptEndpoint) {
+                        const params = continuationEndpoint.getTranscriptEndpoint.params;
+                        const clickTrackingParams = continuationEndpoint.clickTrackingParams;
+                        
+                        // 检查是否为英文字幕参数
+                        const langInfo = this.decodeTranscriptLangInfo(params);
+                        
+                        // 优先选择英文字幕
+                        if (langInfo.isEnglish || !transcriptParams) {
+                            transcriptParams = {
+                                params,
+                                clickTrackingParams,
+                                langInfo
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        return transcriptParams;
+    }
+
+    decodeTranscriptLangInfo(params) {
+        try {
+            const decoded = atob(params);
+            const isEnglish = decoded.includes('en') || decoded.toLowerCase().includes('english');
+            const isAutoGenerated = decoded.toLowerCase().includes('asr') || decoded.toLowerCase().includes('auto');
+            
+            return {
+                isEnglish,
+                isAutoGenerated,
+                raw: params.substring(0, 20) + '...'
+            };
+        } catch (e) {
+            return {
+                isEnglish: false,
+                isAutoGenerated: false,
+                raw: params.substring(0, 20) + '...'
+            };
+        }
+    }
+
+    getVideoId() {
+        return new URLSearchParams(window.location.search).get('v');
+    }
+
+    buildTranscriptRequestBody(transcriptParams, videoId) {
+        // 获取页面基本信息
+        const userAgent = navigator.userAgent;
+        const screenWidth = window.screen.width;
+        const screenHeight = window.screen.height;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        return {
+            context: {
+                client: {
+                    hl: 'zh-CN',
+                    gl: 'US',
+                    remoteHost: '',
+                    deviceMake: this.getDeviceMake(userAgent),
+                    deviceModel: '',
+                    visitorData: this.getVisitorData(),
+                    userAgent: userAgent,
+                    clientName: 'WEB',
+                    clientVersion: '2.20250606.01.00',
+                    osName: this.getOSName(userAgent),
+                    osVersion: this.getOSVersion(userAgent),
+                    originalUrl: window.location.href,
+                    screenPixelDensity: window.devicePixelRatio || 1,
+                    platform: 'DESKTOP',
+                    clientFormFactor: 'UNKNOWN_FORM_FACTOR',
+                    screenDensityFloat: window.devicePixelRatio || 1,
+                    userInterfaceTheme: 'USER_INTERFACE_THEME_LIGHT',
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    browserName: this.getBrowserName(userAgent),
+                    browserVersion: this.getBrowserVersion(userAgent),
+                    acceptHeader: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    screenWidthPoints: screenWidth,
+                    screenHeightPoints: screenHeight,
+                    utcOffsetMinutes: -new Date().getTimezoneOffset(),
+                    connectionType: 'CONN_CELLULAR_4G'
+                },
+                user: {
+                    lockedSafetyMode: false
+                },
+                request: {
+                    useSsl: true,
+                    internalExperimentFlags: [],
+                    consistencyTokenJars: []
+                },
+                clickTracking: {
+                    clickTrackingParams: transcriptParams.clickTrackingParams || ''
+                }
+            },
+            params: transcriptParams.params,
+            externalVideoId: videoId
+        };
+    }
+
+    getDeviceMake(userAgent) {
+        if (userAgent.includes('Mac')) return 'Apple';
+        if (userAgent.includes('Windows')) return 'Microsoft';
+        return '';
+    }
+
+    getOSName(userAgent) {
+        if (userAgent.includes('Mac')) return 'Macintosh';
+        if (userAgent.includes('Windows')) return 'Windows';
+        if (userAgent.includes('Linux')) return 'Linux';
+        return '';
+    }
+
+    getOSVersion(userAgent) {
+        const macMatch = userAgent.match(/Mac OS X ([\d_]+)/);
+        if (macMatch) return macMatch[1];
+        
+        const winMatch = userAgent.match(/Windows NT ([\d.]+)/);
+        if (winMatch) return winMatch[1];
+        
+        return '';
+    }
+
+    getBrowserName(userAgent) {
+        if (userAgent.includes('Chrome')) return 'Chrome';
+        if (userAgent.includes('Firefox')) return 'Firefox';
+        if (userAgent.includes('Safari')) return 'Safari';
+        return 'Unknown';
+    }
+
+    getBrowserVersion(userAgent) {
+        const chromeMatch = userAgent.match(/Chrome\/([\d.]+)/);
+        if (chromeMatch) return chromeMatch[1];
+        
+        const firefoxMatch = userAgent.match(/Firefox\/([\d.]+)/);
+        if (firefoxMatch) return firefoxMatch[1];
+        
+        const safariMatch = userAgent.match(/Version\/([\d.]+).*Safari/);
+        if (safariMatch) return safariMatch[1];
+        
+        return '';
+    }
+
+    getVisitorData() {
+        // 尝试多种方式获取visitorData
+        
+        // 从ytInitialData获取
+        if (window.ytInitialData?.responseContext?.visitorData) {
+            return window.ytInitialData.responseContext.visitorData;
+        }
+
+        // 从ytInitialPlayerResponse获取
+        if (window.ytInitialPlayerResponse?.responseContext?.visitorData) {
+            return window.ytInitialPlayerResponse.responseContext.visitorData;
+        }
+
+        // 从页面script标签解析
+        const scriptContent = Array.from(document.scripts)
+            .find(script => script.text.includes('visitorData'))?.text;
+        
+        if (scriptContent) {
+            const visitorDataMatch = scriptContent.match(/"visitorData":"([^"]+)"/);
+            if (visitorDataMatch) {
+                return visitorDataMatch[1];
+            }
+        }
+
+        // 从cookies中获取
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'VISITOR_INFO1_LIVE') {
+                return value;
+            }
+        }
+        
+        // 回退方案
+        return 'CgtCVU1wYndWRjB4QSid1ZbCBjIKCgJVUxIEGgAgSA%3D%3D';
     }
 
     parseCaptionTracks() {
@@ -98,6 +429,12 @@ class SubtitleManager {
     }
 
     async fetchAndParseSubtitles(track) {
+        // 检查是否是新API返回的数据
+        if (track.newAPI) {
+            return this.parseNewAPIResponse(track.data);
+        }
+
+        // 旧方法：解析XML字幕
         const response = await fetch(new URL(track.baseUrl));
         const xmlText = await response.text();
         
@@ -124,6 +461,88 @@ class SubtitleManager {
             };
         });
 
+        return this.mergeSubtitles(rawSubtitles);
+    }
+
+    parseNewAPIResponse(data) {
+        try {
+            // 解析新API的响应格式
+            const actions = data.actions;
+            if (!actions || !actions[0]) {
+                throw new Error('Invalid response format: no actions found');
+            }
+
+            const updateAction = actions[0].updateEngagementPanelAction;
+            if (!updateAction) {
+                throw new Error('Invalid response format: no updateEngagementPanelAction found');
+            }
+
+            const transcriptRenderer = updateAction.content?.transcriptRenderer;
+            if (!transcriptRenderer) {
+                throw new Error('Invalid response format: no transcriptRenderer found');
+            }
+
+            const searchPanelRenderer = transcriptRenderer.content?.transcriptSearchPanelRenderer;
+            if (!searchPanelRenderer) {
+                throw new Error('Invalid response format: no transcriptSearchPanelRenderer found');
+            }
+
+            const segmentListRenderer = searchPanelRenderer.body?.transcriptSegmentListRenderer;
+            if (!segmentListRenderer) {
+                throw new Error('Invalid response format: no transcriptSegmentListRenderer found');
+            }
+
+            const segments = segmentListRenderer.initialSegments;
+            if (!segments || !Array.isArray(segments)) {
+                throw new Error('Invalid response format: no initialSegments found');
+            }
+
+            console.log(`Found ${segments.length} transcript segments`);
+
+            // 转换为标准格式
+            const rawSubtitles = segments.map((segment, index) => {
+                const renderer = segment.transcriptSegmentRenderer;
+                if (!renderer) {
+                    return null;
+                }
+
+                const startMs = parseInt(renderer.startMs);
+                const endMs = parseInt(renderer.endMs);
+                
+                // 处理文本内容 - 可能有多个runs
+                let text = '';
+                if (renderer.snippet?.runs && Array.isArray(renderer.snippet.runs)) {
+                    text = renderer.snippet.runs.map(run => run.text || '').join('');
+                } else {
+                    text = renderer.snippet?.runs?.[0]?.text || '';
+                }
+
+                // 验证时间戳
+                if (isNaN(startMs) || isNaN(endMs) || startMs < 0 || endMs <= startMs) {
+                    return null;
+                }
+
+                return {
+                    startTime: startMs,
+                    endTime: endMs,
+                    text: text.trim()
+                };
+            }).filter(subtitle => subtitle !== null && subtitle.text);
+
+            console.log(`Parsed ${rawSubtitles.length} valid subtitles`);
+
+            if (rawSubtitles.length === 0) {
+                throw new Error('No valid subtitles found in API response');
+            }
+
+            return this.mergeSubtitles(rawSubtitles);
+        } catch (error) {
+            console.error('Failed to parse new API response:', error);
+            throw error;
+        }
+    }
+
+    mergeSubtitles(rawSubtitles) {
         const mergedSubtitles = [];
         let currentGroup = null;
 
